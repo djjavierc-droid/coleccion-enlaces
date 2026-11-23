@@ -59,6 +59,16 @@ ORDEN_CATEGORIAS = [
 # Texto exacto del caso de prueba (EterniCodIA): excluido del entrenamiento.
 TEXTO_PRUEBA = "contratamos a una ia... y el primer día ya vendía croquetas en marte"
 
+# Texto exacto del caso de prueba Fix 5 (video de Soylorainegodoy,
+# OCR): excluido del entrenamiento. Se enseña el patrón (prosa
+# reflexiva sobre padres/infancia/crecer -> Entretenimiento), no la
+# respuesta: ninguna variación con este texto exacto entra en datos.
+TEXTO_PRUEBA_SOYLO = (
+    "y casi se me saltan las lágrimas cuando alguien dijo: "
+    "llega un momento en el que tienes la misma edad que tenían "
+    "tus padres en los recuerdos de tu infancia"
+)
+
 # Plantillas de título: {kw} es la palabra o frase clave.
 PLANTILLAS_TITULO = [
     "{kw}",
@@ -127,6 +137,45 @@ TITULOS_EXTRA = {
         "El partido de fútbol que nadie se esperaba",
         "El chiste que me hizo reír toda la noche",
         "El concierto en vivo desde el estadio",
+        # Fix 5: prosa reflexiva/viral LARGA (30-60 tokens, como el OCR
+        # de un video sin título). El modelo la veía truncada a 64
+        # tokens y caía en DIY/Tecnología por falta de ejemplos de
+        # este patrón. Ninguna es el texto exacto de Soylorainegodoy
+        # (excluido por TEXTO_PRUEBA_SOYLO): son variaciones que
+        # enseñan el patrón, no la respuesta memorizada.
+        # Reflexiones sobre padres, infancia y crecer:
+        "Cuando cumples la misma edad que tenían tus padres y te das cuenta de que ellos tampoco sabían lo que hacían",
+        "Llega un día en el que entiendes que tus padres eran solo unos niños intentando descubrir cómo funciona la vida",
+        "Mi mamá también tenía miedo cuando era joven y nadie se lo dijo",
+        "De niño pensaba que los adultos lo tenían todo resuelto, hoy sé que todos estamos aprendiendo",
+        "La frase que me hizo llorar: tus padres también fueron niños alguna vez",
+        "Cuando entiendes que tu papá no era un superhéroe, era un hombre tratando de hacer lo mejor que podía",
+        "Crecer es darte cuenta de que tus padres se equivocaban igual que tú",
+        "El día que miré a mi mamá y la vi como una persona, no solo como mi mamá",
+        "Nadie te avisa que un día tendrás la edad de tus padres en tus recuerdos de infancia",
+        "Mis padres también tuvieron dieciocho años y sueños que nunca contaron",
+        "La infancia se acaba cuando entiendes que tus padres no eran perfectos, solo hacían lo que podían",
+        "Ojalá alguien me hubiera dicho que ser adulto es seguir sin saber qué hacer, igual que a los veinte",
+        # Lecciones de vida y frases emotivas:
+        "La lección que la vida me enseñó a los treinta años y que ojalá hubiera sabido antes",
+        "Casi se me saltan las lágrimas cuando escuché esto y tenía que compartirlo",
+        "No llores por lo que se fue, agradece por lo que aprendiste",
+        "El consejo que me dio mi abuela antes de irse y que nunca voy a olvidar",
+        "Hay momentos en los que la vida te enseña más en un minuto que en diez años",
+        "La historia que me cambió la forma de ver la vida para siempre",
+        # Videos virales graciosos y reacciones:
+        "El video más gracioso del año, no vas a creer lo que pasa al final",
+        "Me reí tanto con este video que me dolió la panza",
+        "El momento más gracioso de la televisión en vivo",
+        "Reaccionando al video viral que todos están compartiendo",
+        "La caída más graciosa que vas a ver hoy, no pude parar de reír",
+        "El perro que se roba el show en plena boda",
+        "Cuando tu amigo dice que sabe bailar y pasa esto",
+        "El video que me hizo el día, míralo hasta el final",
+        "Mi reacción al final más inesperado de la serie",
+        "El sketch que está rompiendo internet esta semana",
+        "No puedo creer lo que hizo este gato en vivo",
+        "El blooper que nadie vio venir en el programa de anoche",
     ],
     "Tecnología y celulares": [
         "La IA que responde tus mensajes sola",
@@ -166,6 +215,14 @@ TITULOS_EXTRA = {
         "Comparando celulares de gama media",
         "El iPhone nuevo: qué trae de nuevo",
         "Cómo alargar la batería del móvil",
+        # Fix 5, contrapeso: contenido de IA/aprender/descubrir que
+        # NO es entretenimiento. Sin él, toda prosa con "aprender" o
+        # "descubrir" caería en Entretenimiento.
+        "Descubre cómo la inteligencia artificial aprende de tus datos",
+        "La IA que aprende a programar sola ya está aquí",
+        "Cómo funciona el algoritmo que te recomienda videos",
+        "El nuevo chip que aprende como un cerebro humano",
+        "Aprende a usar la IA para descubrir información en segundos",
     ],
     "Autos y motos": [
         "El auto eléctrico más barato del mercado",
@@ -180,6 +237,11 @@ TITULOS_EXTRA = {
         "El ejercicio que me quitó el dolor de espalda",
         "Yoga para principiantes en casa",
         "Qué comer antes de entrenar",
+        # Fix 5, contrapeso: reflexiones de bienestar que NO son
+        # entretenimiento (el tema es la salud, no la emoción).
+        "Aprendí que cuidar mi mente es tan importante como cuidar mi cuerpo",
+        "La reflexión que me ayudó a dejar el estrés y dormir mejor",
+        "Cuando entendí que mi salud mental también necesita descanso",
     ],
     "Dinero y finanzas": [
         "Cómo ahorrar con un sueldo bajo",
@@ -191,6 +253,11 @@ TITULOS_EXTRA = {
         # no cuando el tema es la IA (ver Tecnología).
         "Cómo vender más en mi negocio",
         "Vender en línea: guía para empezar",
+        # Fix 5, contrapeso: lecciones de vida con dinero que NO son
+        # entretenimiento (el tema es el dinero, no la emoción).
+        "La lección que me enseñó el dinero: gastar menos no es vivir peor",
+        "Lo que aprendí después de endeudarme y salir adelante",
+        "Mi papá me enseñó que el dinero se cuida desde joven",
     ],
     "Noticias": [
         "Última hora: temblor en la capital",
@@ -351,11 +418,13 @@ def main() -> int:
                     (f"{titulo}. {azar.choice(PLANTILLAS_DESCRIPCION).format(kw=lista[0])}", clase)
                 )
 
-    # Excluir el texto exacto del caso de prueba (EterniCodIA).
+    # Excluir los textos exactos de los casos de prueba (EterniCodIA
+    # y Soylorainegodoy Fix 5).
     ejemplos = [
         (t, c)
         for (t, c) in ejemplos
         if TEXTO_PRUEBA not in t.lower().replace("…", "...")
+        and TEXTO_PRUEBA_SOYLO not in t.lower().replace("…", "...")
     ]
     # Sin duplicados exactos.
     vistos = set()

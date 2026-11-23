@@ -69,24 +69,30 @@ def main() -> int:
     etiquetas = (DIR_DATOS / "etiquetas.txt").read_text(encoding="utf-8").splitlines()
     tokenizer = AutoTokenizer.from_pretrained(str(MODELO_TF))
 
-    # ---- 1. Envolver el modelo con las entradas que espera la app ----
+    # ---- 1+2. Conversión con rango dinámico (pesos INT8, activaciones float) ----
+    # NO INT8 completo: destruye DistilBERT (ver docstring).
+    # La conversión se hace con from_concrete_functions y una firma de
+    # entrada explícita [input_ids, input_word_mask]: from_keras_model
+    # (TF 2.20) emite las entradas en orden inverso (la máscara en el
+    # índice 0, con nombres serving_default_*) y la app alimenta POR
+    # POSICIÓN (índice 0 = input_ids, índice 1 = attention_mask; ver
+    # ClasificadorModelo.kt), así que ese .tflite clasificaría basura
+    # en producción aunque la verificación por nombre pasara. Con la
+    # firma explícita el orden es el de la v1.0.3: (0, 'input_ids'),
+    # (1, 'input_word_mask'). Medido en Fix 5 (2026-11-23).
     base = TFAutoModelForSequenceClassification.from_pretrained(
         str(MODELO_TF), num_labels=len(etiquetas)
     )
-    entrada_ids = tf.keras.Input(shape=(None,), dtype=tf.int32, name="input_ids")
-    entrada_mask = tf.keras.Input(shape=(None,), dtype=tf.int32, name="input_word_mask")
-    salida = base(
-        input_ids=entrada_ids,
-        attention_mask=entrada_mask,
-    ).logits
-    modelo = tf.keras.Model(
-        inputs=[entrada_ids, entrada_mask], outputs=salida
-    )
-    print("Entradas del modelo:", [i.name for i in modelo.inputs])
 
-    # ---- 2. Conversión con rango dinámico (pesos INT8, activaciones float) ----
-    # NO INT8 completo: destruye DistilBERT (ver docstring).
-    conversor = tf.lite.TFLiteConverter.from_keras_model(modelo)
+    @tf.function(input_signature=[
+        tf.TensorSpec(shape=[None, None], dtype=tf.int32, name="input_ids"),
+        tf.TensorSpec(shape=[None, None], dtype=tf.int32, name="input_word_mask"),
+    ])
+    def servir(ids, mask):
+        return base(input_ids=ids, attention_mask=mask).logits
+
+    funcion = servir.get_concrete_function()
+    conversor = tf.lite.TFLiteConverter.from_concrete_functions([funcion], servir)
     conversor.optimizations = [tf.lite.Optimize.DEFAULT]
     conversor.inference_output_type = tf.float32
     tflite_bytes = conversor.convert()
@@ -101,6 +107,16 @@ def main() -> int:
     print("Salidas TFLite:", [(d["name"], d["shape"].tolist(), str(d["dtype"])) for d in detalles_salida])
     assert len(detalles_entrada) == 2, "el modelo debe tener 2 entradas"
     assert len(detalles_salida) == 1 and detalles_salida[0]["shape"].tolist()[-1] == len(etiquetas)
+    # Contrato de la app (ClasificadorModelo.kt alimenta POR POSICIÓN):
+    # índice 0 = input_ids, índice 1 = attention_mask. Si el conversor
+    # invierte el orden, la verificación por nombre pasaría pero la app
+    # clasificaría basura: fallar aquí, no en producción.
+    assert "input_ids" in detalles_entrada[0]["name"], (
+        f"la entrada 0 debe ser input_ids, es {detalles_entrada[0]['name']}"
+    )
+    assert "mask" in detalles_entrada[1]["name"], (
+        f"la entrada 1 debe ser la máscara, es {detalles_entrada[1]['name']}"
+    )
     # Las entradas se asignan POR NOMBRE: el conversor las ordena
     # por nombre ('input_word_mask' antes que 'input_ids'), no en el
     # orden de las entradas de Keras. Asignar por posición alimenta
