@@ -7,9 +7,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,36 +19,35 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -84,9 +81,13 @@ import kotlinx.coroutines.launch
  *
  * Consume el estado único [HomeViewModel.estado]: encabezado grande
  * con el título y el contador total, barra de búsqueda redondeada,
- * fila horizontal de chips de categoría con contador, y cuadrícula
- * agrupada por categoría con encabezados de sección (las `secciones`
- * las deriva el ViewModel, no los composables).
+ * menú lateral deslizante con las categorías ([MenuLateral]) y
+ * cuadrícula agrupada por categoría con encabezados de sección (las
+ * `secciones` las deriva el ViewModel, no los composables). La fila
+ * horizontal de chips de la Fase 6 se eliminó en la corrección 1.0.1
+ * (punto 2): se cortaba en el borde; las categorías viven ahora en
+ * el menú lateral, que se abre con el icono de las dos rayitas
+ * arriba a la izquierda.
  *
  * - El ícono de favorito de cada tarjeta alterna con
  *   [HomeViewModel.alternarFavorito] y SÍ funciona en esta fase.
@@ -116,21 +117,21 @@ import kotlinx.coroutines.launch
  * en la cuadrícula, ni en la búsqueda, ni en favoritos (el ViewModel
  * ya los filtra). En la vista "Todos" cada carpeta bloqueada con
  * enlaces muestra un marcador ([SeccionBloqueada]) con su nombre, su
- * ícono y "Toca para abrir con huella". Al tocar el marcador o el
- * chip de una carpeta bloqueada se abre [BiometricPrompt]; con
- * éxito, la carpeta queda desbloqueada solo durante la sesión (el
- * estado vive en el ViewModel, en memoria) y sus tarjetas aparecen.
- * Sin método de bloqueo configurado en el dispositivo se muestra un
- * mensaje amigable en vez del prompt. La huella nunca se pide para
- * abrir la app, solo por carpeta.
+ * ícono y "Toca para abrir con huella". Al tocar el marcador o la
+ * fila de una carpeta bloqueada en el menú lateral se abre
+ * [BiometricPrompt]; con éxito, la carpeta queda desbloqueada solo
+ * durante la sesión (el estado vive en el ViewModel, en memoria) y
+ * sus tarjetas aparecen. Sin método de bloqueo configurado en el
+ * dispositivo se muestra un mensaje amigable en vez del prompt. La
+ * huella nunca se pide para abrir la app, solo por carpeta.
  *
  * ## Carpetas propias (Fase 9)
- * El chip "+" al final de la fila abre el diálogo de crear carpeta
- * (nombre, color e ícono; máximo 20 categorías en total). La
- * pulsación larga sobre el chip de una carpeta PROPIA abre su
- * gestión (renombrar o borrar, con confirmación); la pulsación larga
- * sobre una predefinida no hace nada, porque no se pueden renombrar
- * ni borrar.
+ * La fila "Nueva carpeta" al final del menú lateral abre el diálogo
+ * de crear carpeta (nombre, color e ícono; máximo 20 categorías en
+ * total). La pulsación larga sobre la fila de una carpeta PROPIA
+ * abre su gestión (renombrar o borrar, con confirmación); la
+ * pulsación larga sobre una predefinida no hace nada, porque no se
+ * pueden renombrar ni borrar.
  *
  * ## Tema (Fase 9)
  * El botón del encabezado cambia entre modo oscuro y claro; la
@@ -149,6 +150,7 @@ fun HomeScreen(
     var carpetaBorrarConfirmar by remember { mutableStateOf<Categoria?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val alcance = rememberCoroutineScope()
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val contexto = LocalContext.current
     val haptics = LocalHapticFeedback.current
     val mensajeSinAppAbrir = stringResource(R.string.menu_open_error)
@@ -181,7 +183,7 @@ fun HomeScreen(
     /**
      * Pide la huella (o la credencial del dispositivo) para abrir
      * una carpeta. Con éxito la desbloquea para la sesión (con
-     * feedback táctil) y, si venía de su chip, además la selecciona.
+     * feedback táctil) y, si venía de su fila del menú, además la selecciona.
      * Si el usuario cierra el prompt sin autenticarse, no se muestra
      * ningún error: solo los errores reales llegan al Snackbar.
      */
@@ -212,11 +214,15 @@ fun HomeScreen(
     }
 
     /**
-     * Elegir una categoría desde su chip: si está bloqueada, primero
-     * pide la huella; si ya está desbloqueada (o es "Todos"), la
-     * selecciona directamente.
+     * Elegir una categoría desde el menú lateral: si está bloqueada,
+     * primero pide la huella; si ya está desbloqueada (o es "Todos"),
+     * la selecciona directamente. En el menú, Todos / Favoritos /
+     * categoría son vistas excluyentes: elegir una quita el filtro
+     * de solo favoritos si estaba puesto (los chips antiguos
+     * combinaban categoría y favoritos; el menú no).
      */
     val seleccionarCategoria: (Long?) -> Unit = { id ->
+        if (estado.soloFavoritos) viewModel.alternarSoloFavoritos()
         if (id == null) {
             viewModel.seleccionarCategoria(null)
         } else {
@@ -227,9 +233,41 @@ fun HomeScreen(
                 else -> pedirHuella(categoria, true)
             }
         }
+        alcance.launch { drawerState.close() }
+    }
+
+    /** Elegir "Favoritos" desde el menú: quita la categoría y activa solo favoritos. */
+    val seleccionarFavoritos: () -> Unit = {
+        viewModel.seleccionarCategoria(null)
+        if (!estado.soloFavoritos) viewModel.alternarSoloFavoritos()
+        alcance.launch { drawerState.close() }
     }
 
     FondoDegradado {
+        ModalNavigationDrawer(
+            drawerState = drawerState,
+            drawerContent = {
+                MenuLateral(
+                    categorias = estado.categorias,
+                    contadores = estado.contadores,
+                    totalEnlaces = estado.totalEnlaces,
+                    categoriaSeleccionadaId = estado.categoriaSeleccionadaId,
+                    soloFavoritos = estado.soloFavoritos,
+                    categoriasDesbloqueadas = estado.categoriasDesbloqueadas,
+                    onSeleccionarTodos = { seleccionarCategoria(null) },
+                    onAlternarSoloFavoritos = seleccionarFavoritos,
+                    onSeleccionarCategoria = seleccionarCategoria,
+                    onCrearCarpeta = {
+                        viewModel.abrirDialogoCarpeta()
+                        alcance.launch { drawerState.close() }
+                    },
+                    onGestionarCarpeta = { categoria ->
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        carpetaGestionar = categoria
+                    },
+                )
+            },
+        ) {
         Scaffold(
             containerColor = Color.Transparent,
             snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -260,30 +298,15 @@ fun HomeScreen(
                         totalEnlaces = estado.totalEnlaces,
                         temaOscuro = temaOscuro,
                         onAlternarTema = onAlternarTema,
+                        onAbrirMenu = { alcance.launch { drawerState.open() } },
                     )
                 }
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     BarraBusqueda(
                         texto = estado.busqueda,
+                        temaOscuro = temaOscuro,
                         onTextoCambiado = viewModel::cambiarBusqueda,
                         onLimpiar = viewModel::limpiarBusqueda,
-                    )
-                }
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    FilaChips(
-                        categorias = estado.categorias,
-                        contadores = estado.contadores,
-                        totalEnlaces = estado.totalEnlaces,
-                        categoriaSeleccionadaId = estado.categoriaSeleccionadaId,
-                        soloFavoritos = estado.soloFavoritos,
-                        categoriasDesbloqueadas = estado.categoriasDesbloqueadas,
-                        onSeleccionarCategoria = seleccionarCategoria,
-                        onAlternarSoloFavoritos = viewModel::alternarSoloFavoritos,
-                        onCrearCarpeta = { viewModel.abrirDialogoCarpeta() },
-                        onGestionarCarpeta = { categoria ->
-                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                            carpetaGestionar = categoria
-                        },
                     )
                 }
 
@@ -376,12 +399,18 @@ fun HomeScreen(
                 }
             }
         }
+        }
         if (estado.mostrarDialogoAgregar) {
             DialogoAgregarEnlace(
                 urlInicial = estado.urlInicialDialogo,
                 guardando = estado.guardandoEnlace,
+                comprobando = estado.comprobandoVistaPrevia,
+                sinVistaPrevia = estado.sinVistaPrevia,
+                tituloSugerido = estado.tituloSugerido,
                 error = estado.errorAgregar,
-                onGuardar = viewModel::agregarEnlace,
+                onComprobar = viewModel::comprobarVistaPrevia,
+                onGuardarEditado = viewModel::guardarEnlaceEditado,
+                onUrlCambiada = viewModel::limpiarSinVistaPrevia,
                 onCerrar = viewModel::cerrarDialogoAgregar,
                 onLimpiarError = viewModel::limpiarErrorAgregar,
             )
@@ -444,12 +473,13 @@ fun HomeScreen(
     }
 }
 
-/** Encabezado grande: título de la app y contador total, con el interruptor de tema. */
+/** Encabezado grande: menú lateral, título de la app y contador total, con el interruptor de tema. */
 @Composable
 private fun Encabezado(
     totalEnlaces: Int,
     temaOscuro: Boolean,
     onAlternarTema: () -> Unit,
+    onAbrirMenu: () -> Unit,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -457,11 +487,21 @@ private fun Encabezado(
             .fillMaxWidth()
             .padding(top = Espaciado.s),
     ) {
+        IconButton(onClick = onAbrirMenu) {
+            Icon(
+                imageVector = Icons.Filled.Menu,
+                contentDescription = stringResource(R.string.home_menu_open),
+                tint = MaterialTheme.colorScheme.onBackground,
+            )
+        }
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = stringResource(R.string.home_title),
                 style = ColeccionTipografia.tituloGrande,
-                color = MaterialTheme.colorScheme.onBackground,
+                // Título vivo con el color primario (corrección 1.0.1,
+                // punto 1): en claro 5.02:1 sobre el tono superior del
+                // degradado y 5.66:1 sobre el fondo; en oscuro 6.92:1.
+                color = MaterialTheme.colorScheme.primary,
             )
             Text(
                 text = stringResource(R.string.home_subtitle),
@@ -495,6 +535,7 @@ private fun Encabezado(
 @Composable
 private fun BarraBusqueda(
     texto: String,
+    temaOscuro: Boolean,
     onTextoCambiado: (String) -> Unit,
     onLimpiar: () -> Unit,
 ) {
@@ -518,185 +559,30 @@ private fun BarraBusqueda(
         singleLine = true,
         shape = RoundedCornerShape(28.dp),
         colors = TextFieldDefaults.colors(
-            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+            // En modo claro la barra es blanca (surface): sobre el
+            // degradado claro la variante (#E9E7F8) casi no se
+            // distinguía del fondo. En oscuro no cambia.
+            focusedContainerColor = if (temaOscuro) {
+                MaterialTheme.colorScheme.surfaceVariant
+            } else {
+                MaterialTheme.colorScheme.surface
+            },
+            unfocusedContainerColor = if (temaOscuro) {
+                MaterialTheme.colorScheme.surfaceVariant
+            } else {
+                MaterialTheme.colorScheme.surface
+            },
+            disabledContainerColor = if (temaOscuro) {
+                MaterialTheme.colorScheme.surfaceVariant
+            } else {
+                MaterialTheme.colorScheme.surface
+            },
             focusedIndicatorColor = Color.Transparent,
             unfocusedIndicatorColor = Color.Transparent,
             disabledIndicatorColor = Color.Transparent,
         ),
         modifier = Modifier.fillMaxWidth(),
     )
-}
-
-/**
- * Fila horizontal de chips: "Todos", solo favoritos, uno por
- * categoría y el "+" para crear una carpeta propia.
- *
- * Los chips de categoría son propios ([ChipCategoria]) en vez de
- * [FilterChip]: necesitan pulsación larga (gestionar las carpetas
- * propias) y un candado cuando la carpeta sigue bloqueada, y
- * [FilterChip] no expone pulsación larga.
- */
-@Composable
-private fun FilaChips(
-    categorias: List<Categoria>,
-    contadores: Map<Long, Int>,
-    totalEnlaces: Int,
-    categoriaSeleccionadaId: Long?,
-    soloFavoritos: Boolean,
-    categoriasDesbloqueadas: Set<Long>,
-    onSeleccionarCategoria: (Long?) -> Unit,
-    onAlternarSoloFavoritos: () -> Unit,
-    onCrearCarpeta: () -> Unit,
-    onGestionarCarpeta: (Categoria) -> Unit,
-) {
-    LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(Espaciado.s),
-        contentPadding = PaddingValues(vertical = Espaciado.xs),
-    ) {
-        item {
-            ChipTexto(
-                texto = "${stringResource(R.string.home_chip_todos)} · $totalEnlaces",
-                seleccionado = categoriaSeleccionadaId == null,
-                color = MaterialTheme.colorScheme.primary,
-                onClick = { onSeleccionarCategoria(null) },
-            )
-        }
-        item {
-            FilterChip(
-                selected = soloFavoritos,
-                onClick = onAlternarSoloFavoritos,
-                label = { Text(stringResource(R.string.home_chip_favoritos)) },
-                leadingIcon = {
-                    Icon(
-                        Icons.Filled.Favorite,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                    )
-                },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = MaterialTheme.colorScheme.secondary,
-                    selectedLabelColor = MaterialTheme.colorScheme.onSecondary,
-                    selectedLeadingIconColor = MaterialTheme.colorScheme.onSecondary,
-                ),
-            )
-        }
-        items(categorias, key = { it.id }) { categoria ->
-            val cantidad = contadores[categoria.id] ?: 0
-            ChipCategoria(
-                categoria = categoria,
-                cantidad = cantidad,
-                seleccionado = categoriaSeleccionadaId == categoria.id,
-                bloqueada = categoria.id !in categoriasDesbloqueadas,
-                onClick = { onSeleccionarCategoria(categoria.id) },
-                onLongClick = if (categoria.esPredefinida) {
-                    null
-                } else {
-                    { onGestionarCarpeta(categoria) }
-                },
-            )
-        }
-        item {
-            FilterChip(
-                selected = false,
-                onClick = onCrearCarpeta,
-                label = { Text(stringResource(R.string.carpeta_add_chip)) },
-                leadingIcon = {
-                    Icon(
-                        Icons.Filled.Add,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                    )
-                },
-            )
-        }
-    }
-}
-
-/** Chip sin ícono (el "Todos"), con el color de acento principal. */
-@Composable
-private fun ChipTexto(
-    texto: String,
-    seleccionado: Boolean,
-    color: Color,
-    onClick: () -> Unit,
-) {
-    FilterChip(
-        selected = seleccionado,
-        onClick = onClick,
-        label = { Text(texto) },
-        colors = FilterChipDefaults.filterChipColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-            labelColor = MaterialTheme.colorScheme.onSurface,
-            selectedContainerColor = color,
-            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-        ),
-    )
-}
-
-/**
- * Chip de categoría con toque (seleccionar o pedir huella si está
- * bloqueada) y pulsación larga (gestionar, solo carpetas propias).
- * Muestra un candado cuando la carpeta sigue bloqueada en la sesión.
- */
-@Composable
-private fun ChipCategoria(
-    categoria: Categoria,
-    cantidad: Int,
-    seleccionado: Boolean,
-    bloqueada: Boolean,
-    onClick: () -> Unit,
-    onLongClick: (() -> Unit)?,
-) {
-    val color = colorCategoria(categoria)
-    val fondo = if (seleccionado) color else MaterialTheme.colorScheme.surfaceVariant
-    val contenido = if (seleccionado) {
-        colorSobreCategoria(color)
-    } else {
-        MaterialTheme.colorScheme.onSurface
-    }
-    val forma = RoundedCornerShape(8.dp)
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .clip(forma)
-            .background(fondo)
-            .then(
-                if (!seleccionado) {
-                    Modifier.border(1.dp, MaterialTheme.colorScheme.outline, forma)
-                } else {
-                    Modifier
-                },
-            )
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-            .padding(
-                horizontal = Espaciado.s + Espaciado.xs,
-                vertical = Espaciado.s,
-            ),
-    ) {
-        Icon(
-            imageVector = iconoCategoria(categoria.icono),
-            contentDescription = null,
-            tint = if (seleccionado) contenido else color,
-            modifier = Modifier.size(18.dp),
-        )
-        Spacer(modifier = Modifier.size(Espaciado.xs))
-        Text(
-            text = "${categoria.nombre} · $cantidad",
-            color = contenido,
-            style = MaterialTheme.typography.labelLarge,
-        )
-        if (bloqueada) {
-            Spacer(modifier = Modifier.size(Espaciado.xs))
-            Icon(
-                imageVector = Icons.Filled.Lock,
-                contentDescription = null,
-                tint = contenido,
-                modifier = Modifier.size(14.dp),
-            )
-        }
-    }
 }
 
 /** Encabezado de sección: ícono y nombre de la categoría + cantidad. */
