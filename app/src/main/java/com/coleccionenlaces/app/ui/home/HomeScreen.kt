@@ -69,6 +69,7 @@ import androidx.fragment.app.FragmentActivity
 import com.coleccionenlaces.app.R
 import com.coleccionenlaces.app.data.Categoria
 import com.coleccionenlaces.app.data.EnlaceConCategoria
+import com.coleccionenlaces.app.ui.legal.TipoLegal
 import com.coleccionenlaces.app.ui.theme.ColeccionTipografia
 import com.coleccionenlaces.app.ui.theme.Espaciado
 import com.coleccionenlaces.app.ui.theme.FondoDegradado
@@ -145,6 +146,7 @@ fun HomeScreen(
     viewModel: HomeViewModel,
     temaOscuro: Boolean,
     onAlternarTema: () -> Unit,
+    onAbrirLegal: (TipoLegal) -> Unit = {},
 ) {
     val estado by viewModel.estado.collectAsState()
     var enlaceMenu by remember { mutableStateOf<EnlaceConCategoria?>(null) }
@@ -282,6 +284,10 @@ fun HomeScreen(
                     onGestionarCarpeta = { categoria ->
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                         carpetaGestionar = categoria
+                    },
+                    onAbrirLegal = { tipo ->
+                        alcance.launch { drawerState.close() }
+                        onAbrirLegal(tipo)
                     },
                 )
             },

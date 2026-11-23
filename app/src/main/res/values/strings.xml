@@ -4,6 +4,11 @@
     <string name="home_title">Colección</string>
     <string name="home_menu_open">Abrir el menú de categorías</string>
     <string name="home_menu_categories">Categorías</string>
+    <string name="menu_about">Acerca de</string>
+    <string name="legal_privacy">Política de privacidad</string>
+    <string name="legal_terms">Acuerdo del usuario</string>
+    <string name="legal_deletion">Eliminación de datos</string>
+    <string name="legal_back">Volver</string>
     <string name="home_subtitle">Tu colección de enlaces, organizada.</string>
     <string name="home_search_hint">Buscar enlaces…</string>
     <string name="home_search_clear">Limpiar búsqueda</string>

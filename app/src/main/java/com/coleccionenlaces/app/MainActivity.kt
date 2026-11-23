@@ -16,6 +16,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.coleccionenlaces.app.ui.home.HomeScreen
 import com.coleccionenlaces.app.ui.home.HomeViewModel
+import com.coleccionenlaces.app.ui.legal.PantallaLegal
+import com.coleccionenlaces.app.ui.legal.TipoLegal
 import com.coleccionenlaces.app.ui.theme.ColeccionTheme
 import com.coleccionenlaces.app.ui.theme.PreferenciasTema
 import com.coleccionenlaces.app.util.extraerTextoAcompanante
@@ -117,7 +119,22 @@ private fun ColeccionNavHost(
                 viewModel = homeViewModel,
                 temaOscuro = temaOscuro,
                 onAlternarTema = onAlternarTema,
+                onAbrirLegal = { tipo ->
+                    navController.navigate("legal/${tipo.ruta}")
+                },
             )
+        }
+        // Textos legales de "Acerca de" (corrección 1.0.1, punto 2):
+        // cada uno abre su pantalla dentro de la aplicación con el
+        // texto completo; la flecha vuelve a la principal.
+        composable("legal/{tipo}") { entrada ->
+            val tipo = TipoLegal.deRuta(entrada.arguments?.getString("tipo"))
+            if (tipo != null) {
+                PantallaLegal(
+                    tipo = tipo,
+                    onVolver = { navController.popBackStack() },
+                )
+            }
         }
     }
 }

@@ -14,9 +14,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.DeleteForever
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.PrivacyTip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -32,6 +35,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.coleccionenlaces.app.R
 import com.coleccionenlaces.app.data.Categoria
+import com.coleccionenlaces.app.ui.legal.TipoLegal
+import com.coleccionenlaces.app.ui.legal.tituloLegalRes
 import com.coleccionenlaces.app.ui.theme.ColeccionTipografia
 import com.coleccionenlaces.app.ui.theme.Espaciado
 
@@ -88,6 +93,11 @@ fun itemsMenuLateral(
  * gestión (renombrar o borrar), como hacía la pulsación larga sobre
  * su chip; sobre una predefinida no hace nada.
  *
+ * Al final va la sección "Acerca de" (modelo del cajón de Reddit):
+ * Política de privacidad, Acuerdo del usuario y Eliminación de
+ * datos. Cada una abre su pantalla dentro de la aplicación con el
+ * texto completo ([onAbrirLegal]); el cajón se cierra al tocarla.
+ *
  * El contador total y la búsqueda se quedan en la pantalla
  * principal: este menú solo lista categorías.
  */
@@ -104,6 +114,7 @@ fun MenuLateral(
     onSeleccionarCategoria: (Long) -> Unit,
     onCrearCarpeta: () -> Unit,
     onGestionarCarpeta: (Categoria) -> Unit,
+    onAbrirLegal: (TipoLegal) -> Unit,
 ) {
     val items = itemsMenuLateral(categorias, contadores, categoriasDesbloqueadas)
     val porId = categorias.associateBy { it.id }
@@ -198,8 +209,46 @@ fun MenuLateral(
                 onClick = onCrearCarpeta,
                 onLongClick = null,
             )
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = Espaciado.s),
+            )
+            TituloSeccionMenu(stringResource(R.string.menu_about))
+            for (tipo in TipoLegal.entries) {
+                FilaMenu(
+                    nombre = stringResource(tituloLegalRes(tipo)),
+                    icono = iconoLegal(tipo),
+                    colorCirculo = MaterialTheme.colorScheme.surfaceVariant,
+                    colorIcono = MaterialTheme.colorScheme.onSurfaceVariant,
+                    seleccionado = false,
+                    bloqueada = false,
+                    onClick = { onAbrirLegal(tipo) },
+                    onLongClick = null,
+                )
+            }
         }
     }
+}
+
+/** El ícono de cada elemento de "Acerca de". */
+private fun iconoLegal(tipo: TipoLegal): ImageVector = when (tipo) {
+    TipoLegal.PRIVACIDAD -> Icons.Filled.PrivacyTip
+    TipoLegal.TERMINOS -> Icons.Filled.Description
+    TipoLegal.ELIMINACION -> Icons.Filled.DeleteForever
+}
+
+/** Título pequeño de sección dentro del menú, como "Acerca de". */
+@Composable
+private fun TituloSeccionMenu(texto: String) {
+    Text(
+        text = texto.uppercase(),
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(
+            start = Espaciado.m,
+            top = Espaciado.xs,
+            bottom = Espaciado.xs,
+        ),
+    )
 }
 
 /** Una fila del menú: círculo de color con ícono, nombre, contador y candado si está bloqueada. */
