@@ -17,4 +17,16 @@
     <string name="home_empty_body">Pega tu primer enlace con el botón de abajo y aparecerá aquí con su vista previa.</string>
     <string name="home_no_results_title">Sin resultados</string>
     <string name="home_no_results_body">Prueba con otra búsqueda o con otra categoría.</string>
+    <string name="add_dialog_title">Agregar enlace</string>
+    <string name="add_dialog_url_label">URL del enlace</string>
+    <string name="add_dialog_url_placeholder">https://ejemplo.com/articulo</string>
+    <string name="add_dialog_paste">Pegar del portapapeles</string>
+    <string name="add_dialog_clear">Limpiar</string>
+    <string name="add_dialog_url_invalid">Escribe una URL válida, por ejemplo https://ejemplo.com</string>
+    <string name="add_dialog_url_hint">Si el sitio no tiene vista previa, se guarda igual con su dominio como título.</string>
+    <string name="add_dialog_loading">Obteniendo la vista previa…</string>
+    <string name="add_dialog_cancel">Cancelar</string>
+    <string name="add_dialog_save">Guardar</string>
+    <string name="add_dialog_error_invalid">Esa URL no es válida. Revisa que empiece por http:// o https://.</string>
+    <string name="add_dialog_error_save">No se pudo guardar el enlace. Inténtalo de nuevo.</string>
 </resources>

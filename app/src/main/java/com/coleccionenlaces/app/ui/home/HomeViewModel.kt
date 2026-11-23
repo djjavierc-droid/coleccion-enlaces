@@ -39,7 +39,12 @@ data class SeccionEnlaces(
  * - [cargando]: true solo hasta la primera emisión de la base; luego
  *   los cambios llegan solos por el Flow de Room.
  * - [guardandoEnlace] / [errorAgregar]: estado transitorio de
- *   [HomeViewModel.agregarEnlace] (lo usará el diálogo de la Fase 7).
+ *   [HomeViewModel.agregarEnlace] (lo usa el diálogo de la Fase 7).
+ * - [mostrarDialogoAgregar] / [urlInicialDialogo]: el diálogo de
+ *   agregar (Fase 7). El botón flotante lo abre vacío; un enlace
+ *   compartido (ACTION_SEND) lo abre prellenado con la URL extraída.
+ *   Al guardar con éxito el ViewModel lo cierra solo; con error se
+ *   queda abierto para que la UI muestre el error dentro del diálogo.
  */
 data class HomeUiState(
     val enlaces: List<EnlaceConCategoria> = emptyList(),
@@ -52,6 +57,8 @@ data class HomeUiState(
     val cargando: Boolean = true,
     val guardandoEnlace: Boolean = false,
     val errorAgregar: TipoErrorAgregarEnlace? = null,
+    val mostrarDialogoAgregar: Boolean = false,
+    val urlInicialDialogo: String? = null,
 ) {
     /**
      * Secciones por categoría, en el orden de los chips, solo con
@@ -98,6 +105,8 @@ private data class ControlesUi(
     val busqueda: String = "",
     val guardandoEnlace: Boolean = false,
     val errorAgregar: TipoErrorAgregarEnlace? = null,
+    val mostrarDialogoAgregar: Boolean = false,
+    val urlInicialDialogo: String? = null,
 )
 
 class HomeViewModel(
@@ -135,6 +144,8 @@ class HomeViewModel(
                 cargando = false,
                 guardandoEnlace = c.guardandoEnlace,
                 errorAgregar = c.errorAgregar,
+                mostrarDialogoAgregar = c.mostrarDialogoAgregar,
+                urlInicialDialogo = c.urlInicialDialogo,
             )
         }.stateIn(
             scope = viewModelScope,
@@ -168,21 +179,58 @@ class HomeViewModel(
      * inválida, [HomeUiState.errorAgregar] lleva el tipo de error
      * (la UI lo muestra y lo limpia con [limpiarErrorAgregar]).
      * Un fallo de vista previa NO es error: el enlace se guarda igual.
+     *
+     * Al guardar con éxito, el diálogo se cierra solo (y se limpia su
+     * URL inicial): la tarjeta nueva aparece por el Flow. Con error,
+     * el diálogo se queda abierto para mostrar el error dentro de él.
      */
     fun agregarEnlace(url: String) {
         viewModelScope.launch {
             controles.update { it.copy(guardandoEnlace = true, errorAgregar = null) }
-            val resultado = repositorio.agregarEnlace(url)
-            if (resultado is ResultadoAgregarEnlace.Error) {
-                controles.update { it.copy(errorAgregar = resultado.tipo) }
+            when (val resultado = repositorio.agregarEnlace(url)) {
+                is ResultadoAgregarEnlace.Exito -> controles.update {
+                    it.copy(
+                        guardandoEnlace = false,
+                        mostrarDialogoAgregar = false,
+                        urlInicialDialogo = null,
+                    )
+                }
+                is ResultadoAgregarEnlace.Error -> controles.update {
+                    it.copy(guardandoEnlace = false, errorAgregar = resultado.tipo)
+                }
             }
-            controles.update { it.copy(guardandoEnlace = false) }
         }
     }
 
     /** Limpia el error de agregar, tras mostrarlo. */
     fun limpiarErrorAgregar() {
         controles.update { it.copy(errorAgregar = null) }
+    }
+
+    /**
+     * Abre el diálogo de agregar, vacío o prellenado con [urlInicial]
+     * (enlace recibido desde el menú de compartir). Abrirlo limpia
+     * cualquier error anterior de agregar.
+     */
+    fun abrirDialogoAgregar(urlInicial: String? = null) {
+        controles.update {
+            it.copy(
+                mostrarDialogoAgregar = true,
+                urlInicialDialogo = urlInicial,
+                errorAgregar = null,
+            )
+        }
+    }
+
+    /** Cierra el diálogo de agregar y limpia su URL inicial y el error. */
+    fun cerrarDialogoAgregar() {
+        controles.update {
+            it.copy(
+                mostrarDialogoAgregar = false,
+                urlInicialDialogo = null,
+                errorAgregar = null,
+            )
+        }
     }
 
     /** Invierte el favorito de un enlace. */

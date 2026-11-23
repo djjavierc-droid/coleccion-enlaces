@@ -41,9 +41,6 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -66,26 +63,24 @@ import com.coleccionenlaces.app.ui.theme.FondoDegradado
  *
  * - El ícono de favorito de cada tarjeta alterna con
  *   [HomeViewModel.alternarFavorito] y SÍ funciona en esta fase.
- * - El botón flotante abre el estado `mostrarDialogoAgregar`: el
- *   CONTENIDO del diálogo (campo, validación, vista previa en curso
- *   y guardado) es la Fase 7 y no se inventa aquí; solo queda el
- *   estado preparado.
+ * - El botón flotante abre el diálogo de agregar de la Fase 7
+ *   ([HomeViewModel.abrirDialogoAgregar]); el diálogo se muestra
+ *   cuando [HomeUiState.mostrarDialogoAgregar] es true y se cierra
+ *   solo al guardar con éxito (el ViewModel lo cierra) o con
+ *   [HomeViewModel.cerrarDialogoAgregar] al cancelar.
  * - Tocar una tarjeta NO abre nada en esta fase: abrir el enlace y
  *   el menú de tarjeta son la Fase 8.
  */
 @Composable
 fun HomeScreen(viewModel: HomeViewModel) {
     val estado by viewModel.estado.collectAsState()
-    // Estado preparado para la Fase 7: el diálogo de agregar todavía
-    // no tiene contenido; el botón solo deja este estado en true.
-    var mostrarDialogoAgregar by remember { mutableStateOf(false) }
 
     FondoDegradado {
         Scaffold(
             containerColor = Color.Transparent,
             floatingActionButton = {
                 ExtendedFloatingActionButton(
-                    onClick = { mostrarDialogoAgregar = true },
+                    onClick = { viewModel.abrirDialogoAgregar() },
                     icon = { Icon(Icons.Filled.Add, contentDescription = null) },
                     text = { Text(stringResource(R.string.home_add_link)) },
                 )
@@ -174,6 +169,16 @@ fun HomeScreen(viewModel: HomeViewModel) {
                     }
                 }
             }
+        }
+        if (estado.mostrarDialogoAgregar) {
+            DialogoAgregarEnlace(
+                urlInicial = estado.urlInicialDialogo,
+                guardando = estado.guardandoEnlace,
+                error = estado.errorAgregar,
+                onGuardar = viewModel::agregarEnlace,
+                onCerrar = viewModel::cerrarDialogoAgregar,
+                onLimpiarError = viewModel::limpiarErrorAgregar,
+            )
         }
     }
 }
