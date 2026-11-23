@@ -110,22 +110,23 @@ dependencies {
 // Esta tarea extrae las .so x86_64 del AAR (incluida libc++_shared.so,
 // de la que depende la JNI) a build/libs-nativas-test y las tareas de
 // test las ponen en java.library.path y LD_LIBRARY_PATH.
-val libsNativasTest = configurations.create("libsNativasTest") {
-    isCanBeResolved = true
-    isCanBeConsumed = false
-}
-
-dependencies {
-    add("libsNativasTest", libs.tensorflow.lite)
-}
-
+//
+// El AAR se busca en debugRuntimeClasspath (la configuración que ya
+// resuelve la dependencia para el APK). Una configuración propia sin
+// atributos NO sirvió: en el run 45186874597 se resolvía vacía
+// ("Collection contains no element matching the predicate").
 tasks.register("extraerLibsNativasTest") {
     val salida = layout.buildDirectory.dir("libs-nativas-test")
     outputs.dir(salida)
     doLast {
-        val aar = libsNativasTest.files.first {
+        val classpath = configurations.getByName("debugRuntimeClasspath")
+        val aar = classpath.files.firstOrNull {
             it.name.startsWith("tensorflow-lite-") && it.name.endsWith(".aar")
-        }
+        } ?: error(
+            "No se encontró el AAR de tensorflow-lite en " +
+                "debugRuntimeClasspath. Archivos: " +
+                classpath.files.take(20).joinToString(", ") { it.name },
+        )
         copy {
             from(zipTree(aar)) {
                 include("jni/x86_64/*.so")
