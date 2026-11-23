@@ -53,6 +53,13 @@ class ReentrenamientoWorker(
         /**
          * Programa el trabajo periódico (una vez al día, con cargador
          * y en reposo). Idempotente: si ya existe, se conserva.
+         *
+         * Si WorkManager no está inicializado (en las pruebas unitarias
+         * con Robolectric no hay inicializador de androidx.startup y
+         * `getInstance()` lanza IllegalStateException), se registra y
+         * se sigue: la programación es una optimización en segundo
+         * plano, no algo sin lo que la app no pueda arrancar. El
+         * aprendizaje en línea (a) sigue funcionando en el proceso.
          */
         fun programar(contexto: Context) {
             val restricciones = Constraints.Builder()
@@ -66,12 +73,20 @@ class ReentrenamientoWorker(
             )
                 .setConstraints(restricciones)
                 .build()
-            WorkManager.getInstance(contexto.applicationContext)
-                .enqueueUniquePeriodicWork(
-                    NOMBRE_TRABAJO,
-                    ExistingPeriodicWorkPolicy.KEEP,
-                    peticion,
+            try {
+                WorkManager.getInstance(contexto.applicationContext)
+                    .enqueueUniquePeriodicWork(
+                        NOMBRE_TRABAJO,
+                        ExistingPeriodicWorkPolicy.KEEP,
+                        peticion,
+                    )
+            } catch (_: IllegalStateException) {
+                android.util.Log.w(
+                    "ReentrenamientoWorker",
+                    "WorkManager no inicializado; reentrenamiento en " +
+                        "reposo no programado en este entorno.",
                 )
+            }
         }
     }
 }

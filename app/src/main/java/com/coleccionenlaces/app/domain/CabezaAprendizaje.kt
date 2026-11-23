@@ -57,7 +57,12 @@ class CabezaAprendizaje(
     fun palabrasDe(texto: String): List<String> {
         val normalizado = Clasificador.normalizar(texto)
         if (normalizado.isBlank()) return emptyList()
-        return normalizado.split(" ").distinct()
+        // Sin palabras vacías: "de", "la", "el"... aparecen en todos
+        // los títulos y no dicen nada de la categoría; solo añaden
+        // ruido a los cubos. (Lo exige la prueba `palabrasDe normaliza
+        // acentos y mayusculas`: "Receta de PASTEL de chocolate" da
+        // ["receta", "pastel", "chocolate"], sin "de".)
+        return normalizado.split(" ").distinct().filter { it !in PALABRAS_VACIAS }
     }
 
     /** Cubo de una palabra (hash estable entre ejecuciones). */
@@ -188,6 +193,22 @@ class CabezaAprendizaje(
 
         /** Épocas del reentrenamiento por lotes. */
         const val EPOCAS_LOTE = 10
+
+        /**
+         * Palabras vacías del español (artículos, preposiciones,
+         * pronombres y auxiliares): aparecen en casi todos los
+         * títulos y no aportan señal de categoría. `palabrasDe` las
+         * quita antes de entrenar o predecir.
+         */
+        val PALABRAS_VACIAS = setOf(
+            "a", "al", "ante", "bajo", "con", "contra", "de", "del",
+            "desde", "durante", "el", "en", "entre", "es", "esa", "ese",
+            "eso", "esta", "este", "esto", "fue", "ha", "han", "hay",
+            "la", "las", "le", "les", "lo", "los", "mas", "me", "mi",
+            "mis", "muy", "no", "nos", "para", "pero", "por", "que",
+            "se", "ser", "si", "son", "su", "sus", "te", "tu", "tus",
+            "un", "una", "unas", "uno", "unos", "y", "ya",
+        )
 
         /** Reconstruye una cabeza desde los bytes de [aBytes]. */
         fun desdeBytes(etiquetas: List<String>, bytes: ByteArray?): CabezaAprendizaje {

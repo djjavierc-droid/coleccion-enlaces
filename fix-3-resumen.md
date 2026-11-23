@@ -231,7 +231,29 @@ tokenizador WordPiece; solo cambian los pesos y el vocabulario).
   ReentrenamientoWorker, CabezaAprendizaje (regresión logística con
   hash, 1024 cubetas × 16 clases; "Otros" no entrena pesos).
 
-### 5.7 Git (pendiente: commit + push)
+### 5.8 CI — primer run fallido y correcciones (run 45184499669)
+- Push 96c25b9 → CI **failure** en el paso 6 "Pruebas unitarias":
+  **126 pruebas fallidas**, dos causas:
+  1. **125 × `IllegalStateException at WorkManagerImpl.java:179`**:
+     `ColeccionApplication.onCreate()` → `iniciarAprendizaje()` →
+     `ReentrenamientoWorker.programar()` → `WorkManager.getInstance()`.
+     En Robolectric WorkManager nunca se inicializa (no corre el
+     inicializador de androidx.startup) y `getInstance()` lanza. El
+     código nunca se había corrido en CI: solo se había escrito.
+     Corrección: `programar()` captura `IllegalStateException`,
+     registra un warning y sigue (la programación es best-effort; el
+     aprendizaje en línea no depende de ella). En un teléfono real
+     WorkManager sí está inicializado por el inicializador por
+     defecto, así que la programación sigue funcionando en producción.
+  2. **1 × `CabezaAprendizajeTest.palabrasDe normaliza acentos y
+     mayusculas`** (AssertionError): el test esperaba "de" eliminado
+     ("Receta de PASTEL de chocolate" → ["receta", "pastel",
+     "chocolate"]) y la implementación no quitaba palabras vacías.
+     Corrección: `palabrasDe` filtra `PALABRAS_VACIAS` (artículos,
+     preposiciones, pronombres y auxiliares del español); mejora la
+     cabeza (esas palabras no tienen señal de categoría) y hace que el
+     código cumpla su propio test.
+- Pendiente: segundo run de CI tras estas dos correcciones.
 - `.gitignore` ya excluye entrenamiento/venv/, datos/, tmp/,
   .hf-cache/, modelo_tf/, modelo_clasificador.tflite, *.log, *.json.
   **modelo_base/ (157 MB MobileBERT) y modelo_base_distilbert/
