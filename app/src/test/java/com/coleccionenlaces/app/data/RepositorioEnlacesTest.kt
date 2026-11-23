@@ -1,10 +1,16 @@
 package com.coleccionenlaces.app.data
 
 import android.content.Context
+import android.graphics.Bitmap
 import androidx.test.core.app.ApplicationProvider
+import com.coleccionenlaces.app.domain.AnalizadorVisual
 import com.coleccionenlaces.app.domain.CabezaAprendizaje
+import com.coleccionenlaces.app.domain.ClasificadorVision
+import com.coleccionenlaces.app.domain.EtiquetaImagen
+import com.coleccionenlaces.app.domain.MotorPalabrasClave
 import com.coleccionenlaces.app.domain.ResultadoOEmbed
 import com.coleccionenlaces.app.domain.ResultadoVistaPrevia
+import com.coleccionenlaces.app.domain.SenalesVisuales
 import com.coleccionenlaces.app.domain.TipoErrorVistaPrevia
 import com.coleccionenlaces.app.domain.VistaPrevia
 import kotlinx.coroutines.flow.first
@@ -180,6 +186,29 @@ class RepositorioEnlacesTest {
                     .addInterceptor { throw UnknownHostException("graph.facebook.com") }
                     .build(),
             ),
+        )
+
+    /** Analizador visual falso (Fix 5): devuelve siempre [senales]. */
+    private class AnalizadorFalso(
+        private val senales: SenalesVisuales?,
+    ) : AnalizadorVisual {
+        override suspend fun analizar(bitmap: Bitmap): SenalesVisuales? = senales
+    }
+
+    /** Repositorio con visión + OCR (Fix 5), con el motor por palabras clave (determinista). */
+    private fun repositorioConVision(
+        senales: SenalesVisuales?,
+        directorio: File? = null,
+    ): RepositorioEnlaces =
+        RepositorioEnlaces(
+            enlaceDao,
+            categoriaDao,
+            ServicioVistaPrevia(cliente = clienteFalso(emptyMap())),
+            ServicioOEmbed(cliente = clienteOEmbedFalso(emptyMap())),
+            directorio,
+            motorClasificacion = MotorPalabrasClave,
+            analizadorVisual = AnalizadorFalso(senales),
+            clasificadorVision = ClasificadorVision(MotorPalabrasClave),
         )
 
     @Test
@@ -869,6 +898,129 @@ class RepositorioEnlacesTest {
         assertFalse(repo.guardarMiniaturaVideo(9999L, bitmap))
     }
 
+    // ---- Fix 5: visión + OCR al guardar la miniatura ----
+
+    /**
+     * El cuadro de un enlace en "Otros" se analiza al guardarse: el
+     * texto del OCR ("Receta de pasta casera...") lo mueve a Cocina
+     * y queda como descripción (así la clasificación es estable). La
+     * miniatura local NO se borra con la reclasificación.
+     */
+    @Test
+    fun `guardarMiniaturaVideo con OCR clasifica un enlace en Otros`() = runBlocking {
+        val repo = repositorioConVision(
+            SenalesVisuales(
+                etiquetas = emptyList(),
+                textoOcr = "Receta de pasta casera en 15 minutos",
+            ),
+            directorio = directorioMiniaturas,
+        )
+        val id = enlaceDao.insertar(
+            Enlace(
+                url = "https://www.facebook.com/share/r/1JqVPz7de",
+                titulo = "facebook.com",
+                categoriaId = otrosId,
+                htmlVideo = "<div class=\"fb-video\"></div>",
+            ),
+        )
+        val bitmap = Bitmap.createBitmap(10, 10, Bitmap.Config.ARGB_8888)
+
+        assertTrue(repo.guardarMiniaturaVideo(id, bitmap))
+
+        val enlace = enlaceDao.obtenerPorId(id)!!
+        assertEquals(cocinaId, enlace.categoriaId)
+        assertEquals("Receta de pasta casera en 15 minutos", enlace.descripcion)
+        assertTrue("la miniatura local no debe borrarse al reclasificar", enlace.imagenLocal != null)
+        assertTrue(File(enlace.imagenLocal!!).exists())
+    }
+
+    /**
+     * Si el cuadro es la pantalla de error ("Video no disponible"),
+     * la visión NO reclasifica: el enlace queda en "Otros" y la
+     * miniatura se guarda igual (M3 la rechaza antes en el WebView;
+     * aquí se comprueba que la clasificación nunca usa el error).
+     */
+    @Test
+    fun `guardarMiniaturaVideo con pantalla de error no reclasifica`() = runBlocking {
+        val repo = repositorioConVision(
+            SenalesVisuales(
+                etiquetas = listOf(EtiquetaImagen("Video game", 0.95f)),
+                textoOcr = "Video no disponible\nEste video ya no existe",
+            ),
+            directorio = directorioMiniaturas,
+        )
+        val id = enlaceDao.insertar(
+            Enlace(
+                url = "https://www.facebook.com/share/r/1JqVPz7de",
+                titulo = "facebook.com",
+                categoriaId = otrosId,
+                htmlVideo = "<div class=\"fb-video\"></div>",
+            ),
+        )
+        val bitmap = Bitmap.createBitmap(10, 10, Bitmap.Config.ARGB_8888)
+
+        assertTrue(repo.guardarMiniaturaVideo(id, bitmap))
+
+        val enlace = enlaceDao.obtenerPorId(id)!!
+        assertEquals(otrosId, enlace.categoriaId)
+        assertTrue(enlace.descripcion.isBlank())
+    }
+
+    /**
+     * Sin señal visual (el analizador no devuelve nada), el enlace
+     * queda en "Otros": la visión nunca adivina.
+     */
+    @Test
+    fun `guardarMiniaturaVideo sin senal visual no reclasifica`() = runBlocking {
+        val repo = repositorioConVision(
+            senales = null,
+            directorio = directorioMiniaturas,
+        )
+        val id = enlaceDao.insertar(
+            Enlace(
+                url = "https://www.facebook.com/share/r/1JqVPz7de",
+                titulo = "facebook.com",
+                categoriaId = otrosId,
+                htmlVideo = "<div class=\"fb-video\"></div>",
+            ),
+        )
+        val bitmap = Bitmap.createBitmap(10, 10, Bitmap.Config.ARGB_8888)
+
+        assertTrue(repo.guardarMiniaturaVideo(id, bitmap))
+
+        val enlace = enlaceDao.obtenerPorId(id)!!
+        assertEquals(otrosId, enlace.categoriaId)
+    }
+
+    /**
+     * La visión solo actúa sobre enlaces en "Otros": uno ya
+     * clasificado en Cocina no se toca aunque el OCR diga otra cosa.
+     */
+    @Test
+    fun `guardarMiniaturaVideo no toca un enlace ya clasificado`() = runBlocking {
+        val repo = repositorioConVision(
+            SenalesVisuales(
+                etiquetas = listOf(EtiquetaImagen("Video game", 0.9f)),
+                textoOcr = "Gameplay de Minecraft construyendo mi base",
+            ),
+            directorio = directorioMiniaturas,
+        )
+        val id = enlaceDao.insertar(
+            Enlace(
+                url = "https://www.facebook.com/share/r/1JqVPz7de",
+                titulo = "Receta de paella valenciana",
+                categoriaId = cocinaId,
+                htmlVideo = "<div class=\"fb-video\"></div>",
+            ),
+        )
+        val bitmap = Bitmap.createBitmap(10, 10, Bitmap.Config.ARGB_8888)
+
+        assertTrue(repo.guardarMiniaturaVideo(id, bitmap))
+
+        val enlace = enlaceDao.obtenerPorId(id)!!
+        assertEquals(cocinaId, enlace.categoriaId)
+    }
+
     // ---- Corrección 1.0.1: texto visible del reproductor ----
 
     @Test
@@ -1028,19 +1180,24 @@ class RepositorioEnlacesTest {
     // ---- Fix 4, bug 2: el movimiento manual actualiza los pesos en Room ----
 
     /**
-     * El caso exacto de Javier: el enlace del juego, guardado con
-     * título "facebook.com" y clasificado en Tecnología, se mueve a
-     * mano a "Juegos". El movimiento guarda la corrección y los
-     * pesos en Room, y una cabeza nueva cargada desde esos pesos
-     * predice "Juegos" para ese mismo texto: el aprendizaje sobrevive
-     * al reinicio de la app.
+     * Mover un enlace a mano guarda la corrección y los pesos en Room,
+     * y una cabeza nueva cargada desde esos pesos predice la categoría
+     * para ese mismo texto: el aprendizaje sobrevive al reinicio.
      *
-     * Simulación del algoritmo (cubos 710/385, sin colisión): un
-     * paso en línea deja "Juegos" como argmax con confianza 0,23
-     * (por debajo del umbral 0,6 del motor); tras el reentrenamiento
-     * en reposo (10 épocas) sube a ~0,64 y supera el umbral. Por
-     * eso el test comprueba el argmax tras el movimiento y la
-     * confianza tras el reentrenamiento.
+     * Fix 5, mina del diagnóstico (§6.3): los enlaces de esta prueba
+     * llevan título con CONTENIDO REAL ("Nuevo juego para celular
+     * gratis"), no solo el dominio. El caso exacto de Javier (título
+     * "facebook.com") ya NO registra corrección: la cabeza aprendería
+     * el dominio y, tras el reentrenamiento en reposo, todos los
+     * facebook.com sin texto irían a Juegos (medido: ~0,64). Ese caso
+     * tiene su propia prueba
+     * (`mover un enlace con titulo solo-dominio no registra correccion`).
+     *
+     * Un paso en línea deja "Juegos" como argmax (por debajo del
+     * umbral 0,6 del motor); tras el reentrenamiento en reposo (10
+     * épocas) la confianza supera el umbral. Por eso el test comprueba
+     * el argmax tras el movimiento y la confianza tras el
+     * reentrenamiento.
      */
     @Test
     fun `mover un enlace a mano guarda la correccion y los pesos en Room`() =
@@ -1064,7 +1221,7 @@ class RepositorioEnlacesTest {
             val id = enlaceDao.insertar(
                 Enlace(
                     url = "https://www.facebook.com/share/r/1Bo58NQ",
-                    titulo = "facebook.com",
+                    titulo = "Nuevo juego para celular gratis",
                     descripcion = "",
                     categoriaId = tecnologiaId,
                     categoriaManual = false,
@@ -1081,7 +1238,7 @@ class RepositorioEnlacesTest {
             // línea: su argmax para ese texto es "Juegos".
             val pesosGuardados = db.aprendizajeDao().obtenerPesos()
             assertTrue(pesosGuardados != null)
-            val prediccion = cabeza.predecir("facebook.com")
+            val prediccion = cabeza.predecir("Nuevo juego para celular gratis")
             assertTrue(prediccion != null)
             assertEquals("Juegos", etiquetas[prediccion!!.indiceClase])
             // Un SEGUNDO movimiento también persiste los pesos (Fix 4:
@@ -1090,7 +1247,7 @@ class RepositorioEnlacesTest {
             val id2 = enlaceDao.insertar(
                 Enlace(
                     url = "https://www.facebook.com/share/r/1JqVPz7de",
-                    titulo = "facebook.com",
+                    titulo = "Gameplay de Minecraft construyendo mi base",
                     descripcion = "",
                     categoriaId = tecnologiaId,
                     categoriaManual = false,
@@ -1102,7 +1259,7 @@ class RepositorioEnlacesTest {
             // Tras el reentrenamiento en reposo, la confianza supera
             // el umbral del motor (0,6): la corrección se aplica.
             assertEquals(2, servicioAprendizaje.reentrenarEnReposo())
-            val trasReposo = cabeza.predecir("facebook.com")
+            val trasReposo = cabeza.predecir("Nuevo juego para celular gratis")
             assertTrue(trasReposo != null)
             assertEquals("Juegos", etiquetas[trasReposo!!.indiceClase])
             assertTrue(trasReposo.confianza >= 0.6f)
@@ -1112,8 +1269,59 @@ class RepositorioEnlacesTest {
                 etiquetas,
                 db.aprendizajeDao().obtenerPesos()?.pesos,
             )
-            val prediccionNueva = cabezaNueva.predecir("facebook.com")
+            val prediccionNueva = cabezaNueva.predecir("Nuevo juego para celular gratis")
             assertTrue(prediccionNueva != null)
             assertEquals("Juegos", etiquetas[prediccionNueva!!.indiceClase])
+        }
+
+    // ---- Fix 5, mina del diagnóstico (§6.3) ----
+
+    /**
+     * El caso exacto de Javier (el vídeo de juego que movió a mano):
+     * el enlace se guardó con título "facebook.com" (solo el dominio)
+     * y se mueve a "Juegos". El movimiento SÍ se aplica (la categoría
+     * cambia y queda manual), pero NO se registra corrección: la
+     * cabeza aprendería "facebook.com" -> Juegos y, tras el
+     * reentrenamiento en reposo, TODOS los enlaces facebook.com sin
+     * texto irían a Juegos. Sin corrección registrada, la cabeza no
+     * aprende nada del dominio.
+     */
+    @Test
+    fun `mover un enlace con titulo solo-dominio no registra correccion`() =
+        runBlocking {
+            val etiquetas = listOf(
+                "Cocina", "Videos de mecánica", "Videos de construcción",
+                "Contenido XXX", "Entretenimiento", "Tecnología y celulares",
+                "Autos y motos", "Salud y ejercicio", "Dinero y finanzas",
+                "Noticias", "Juegos", "Hazlo tú mismo (DIY)",
+                "Jardín y plantas", "Pesca y campo", "Moda y ropa", "Viajes",
+            )
+            val cabeza = CabezaAprendizaje(etiquetas)
+            val servicioAprendizaje = ServicioAprendizaje(db.aprendizajeDao(), cabeza)
+            val repo = RepositorioEnlaces(
+                enlaceDao,
+                categoriaDao,
+                ServicioVistaPrevia(cliente = clienteFalso(emptyMap())),
+                ServicioOEmbed(cliente = clienteOEmbedFalso(emptyMap())),
+                servicioAprendizaje = servicioAprendizaje,
+            )
+            val id = enlaceDao.insertar(
+                Enlace(
+                    url = "https://www.facebook.com/share/r/1JqVPz7de",
+                    titulo = "facebook.com",
+                    descripcion = "",
+                    categoriaId = tecnologiaId,
+                    categoriaManual = false,
+                ),
+            )
+
+            assertTrue(repo.cambiarCategoriaManual(id, juegosId))
+
+            val guardado = enlaceDao.obtenerPorId(id)!!
+            assertEquals(juegosId, guardado.categoriaId)
+            assertTrue(guardado.categoriaManual)
+            assertEquals(0, servicioAprendizaje.contarCorrecciones())
+            assertNull(db.aprendizajeDao().obtenerPesos())
+            assertNull(cabeza.predecir("facebook.com"))
         }
 }

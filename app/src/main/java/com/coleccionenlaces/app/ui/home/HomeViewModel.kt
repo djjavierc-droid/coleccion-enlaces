@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.coleccionenlaces.app.data.Categoria
 import com.coleccionenlaces.app.data.EnlaceConCategoria
 import com.coleccionenlaces.app.data.EnlacePreparado
+import com.coleccionenlaces.app.data.EstadoVideo
 import com.coleccionenlaces.app.data.RepositorioEnlaces
 import com.coleccionenlaces.app.data.ResultadoAgregarEnlace
 import com.coleccionenlaces.app.data.ResultadoCarpeta
@@ -419,6 +420,15 @@ class HomeViewModel(
         viewModelScope.launch {
             repositorio.alternarFavorito(enlaceId)
         }
+    }
+
+    /**
+     * Pre-comprobación M5 (Fix 5): ¿el vídeo de Facebook de este
+     * enlace se puede incrustar? La tarjeta la llama antes de montar
+     * el WebView; si no está disponible, el reproductor no se monta.
+     */
+    suspend fun comprobarVideoDisponible(enlaceId: Long): EstadoVideo {
+        return repositorio.comprobarVideoDisponible(enlaceId)
     }
 
     /**

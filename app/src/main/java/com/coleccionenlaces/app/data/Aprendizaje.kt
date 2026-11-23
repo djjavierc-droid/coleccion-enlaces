@@ -49,6 +49,10 @@ interface AprendizajeDao {
     @Query("SELECT * FROM correcciones_aprendizaje ORDER BY creadoEn ASC, id ASC")
     suspend fun obtenerCorrecciones(): List<CorreccionAprendizaje>
 
+    /** Borra una corrección por id (Fix 5: purga de correcciones solo-dominio). */
+    @Query("DELETE FROM correcciones_aprendizaje WHERE id = :id")
+    suspend fun borrarCorreccion(id: Long)
+
     /** Número de correcciones guardadas. */
     @Query("SELECT COUNT(*) FROM correcciones_aprendizaje")
     suspend fun contarCorrecciones(): Int

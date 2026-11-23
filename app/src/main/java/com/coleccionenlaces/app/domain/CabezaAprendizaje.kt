@@ -162,6 +162,16 @@ class CabezaAprendizaje(
         pesos.any { it != 0f } || sesgos.any { it != 0f }
 
     /**
+     * Pone pesos y sesgos a cero (Fix 5: reconstruir la cabeza limpia
+     * tras purgar las correcciones solo-dominio; la cabeza usa truco
+     * de hash y no se puede borrar el peso de una sola palabra).
+     */
+    fun reiniciar() {
+        pesos = FloatArray(NUM_CUBETAS * etiquetas.size)
+        sesgos = FloatArray(etiquetas.size)
+    }
+
+    /**
      * Copia los pesos y sesgos de otra cabeza con las mismas
      * etiquetas (para cargar los pesos guardados en Room).
      */

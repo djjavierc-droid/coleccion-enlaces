@@ -1,0 +1,42 @@
+{
+  "pregunta": "Una app Android guarda enlaces de videos de Facebook que no dan título ni descripción, solo el dominio. ¿Cómo clasificarlos sola en categorías (cocina, mecánica, tecnología, juegos, etc.) sin texto, SIN servidor, SIN pagar nada, todo en el teléfono? Responde en 3 líneas: método, por qué funciona sin servidor, y su punto débil.",
+  "iniciado": "2026-11-23T23:02:48.762Z",
+  "terminado": "2026-11-23T23:03:37.282Z",
+  "duracion_total_ms": 48520,
+  "modelos_llamados": 14,
+  "exitos": 5,
+  "fallos": 0,
+  "respuestas": [
+    {
+      "modelo": "ddgw/gpt-5.4-mini",
+      "ok": true,
+      "respuesta": "Método: usa el video mismo, no el enlace: extrae unas pocas capturas/frames, corre un modelo de visión en el teléfono (p. ej. TensorFlow Lite/MobileNet o un clasificador entrenado con tus categorías) y combina eso con OCR de pantallas si aparece texto.  \nSin servidor: todo el análisis ocurre localmente en el dispositivo, con modelos descargados una vez y ejecución offline, así que no hace falta subir enlaces ni contenido.  \nPunto débil: si el video es ambiguo, muy corto o solo muestra cosas genéricas, la clasificación baja mucho porque sin título ni audio el contexto es limitado.",
+      "ms": 4659
+    },
+    {
+      "modelo": "ddgw/tinfoil/gpt-oss-120b",
+      "ok": true,
+      "respuesta": "**Método:** Usa un modelo de embeddings de texto (por ejemplo, MiniLM‑On‑Device) para transformar la URL del dominio en un vector y compara esos vectores con prototipos predefinidos de cada categoría mediante búsqueda de vecinos más cercanos.  \n**Por qué funciona sin servidor:** El modelo y los prototipos se almacenan en la app; todo el cálculo se hace localmente en el teléfono, sin llamadas a internet ni backend.  \n**Punto débil:** La clasificación depende solo del dominio, por lo que URLs genéricas o dominios que albergan contenido mixto pueden asignarse a la categoría incorrecta.",
+      "ms": 4738
+    },
+    {
+      "modelo": "ddgw/gpt-5.6-luna",
+      "ok": true,
+      "respuesta": "Método: usa en el móvil un modelo on-device multimodal y extrae la miniatura del enlace (Open Graph/preview) para clasificarla con embeddings o una red ligera; si no hay miniatura, abre el video y analiza 1–3 fotogramas clave + OCR opcional.  \nPor qué funciona sin servidor: todo el pipeline corre localmente en Android (descarga del preview, inferencia, reglas/categorías y caché), sin enviar datos fuera del teléfono ni depender de APIs de pago.  \nPunto débil: si el enlace no expone miniatura o el contenido visual es ambiguo, la precisión baja mucho; además consume batería, almacenamiento y puede ir lento en móviles modestos.",
+      "ms": 4764
+    },
+    {
+      "modelo": "groq/allam-2-7b",
+      "ok": true,
+      "respuesta": "Para clasificar enlaces de videos de Facebook sin texto en categorías, puede utilizar la siguiente solución en tres líneas:\n\n1. Utilice la función de reconocimiento de imágenes y voz integrada en los dispositivos Android. A través de esta función, puede identificar temas y categorías relevantes en las imágenes y descripciones de los videos, aunque no se muestren en el texto.\n\n2. Utilice la función de reconocimiento de voz para capturar la información de los videos y buscar patrones de palabras clave relacionadas con las categorías que busca. Esto puede ser útil para determinar el contenido de los videos aunque no se muestren en el texto.\n\n3. Utilice la interacción humana para clasificar manualmente una gran cantidad de videos y establecer un catálogo de categorías basado en las imágenes y los contenidos descritos por la función de reconocimiento de voz. Después, puede utilizar este catálogo para clasificar los videos futuros automáticamente.\n\nPero, ten en cuenta que esta solución tiene los siguientes desventajas:\n\n1. La precisión de la función de reconocimiento de imágenes y voz puede ser limitada, lo que puede resultar en clasificaciones incorrectas o incompleta.\n2. La función de reconocimiento de voz solo puede capturar información basada en palabras clave, lo que puede limitar la precisión de la clasificación.\n3. La interacción humana puede ser laboriosa y tardadora para clasificar una gran cantidad de videos. Además, puede resultar en errores humanos al clasificar los videos.\n\nPara mejorar la precisión de la solución, considera utilizar herramientas de reconocimiento",
+      "ms": 5235
+    },
+    {
+      "modelo": "ddgw/mistral-small-2603",
+      "ok": true,
+      "respuesta": "**Método:** Usa un clasificador local basado en *hashing de dominios* (ej: `facebook.com/watch/?v=...` → `watch`) + *reglas heurísticas* (ej: `youtube.com/shorts/` → \"juegos\") o *aprendizaje automático ligero* (TensorFlow Lite con modelos preentrenados en categorías).\n\n**Sin servidor:** El modelo y las reglas se ejecutan *on-device* (ej: en Android con ML Kit o TensorFlow Lite), usando solo recursos locales.\n\n**Punto débil:** Baja precisión si los dominios son genéricos (ej: `bit.ly/...`) o si el contenido no coincide con las reglas/patrones esperados.",
+      "ms": 5398
+    }
+  ],
+  "fallos_detalle": []
+}

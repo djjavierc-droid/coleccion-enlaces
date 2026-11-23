@@ -384,6 +384,9 @@ fun HomeScreen(
                                     onTextoDetectado = { id, texto ->
                                         viewModel.actualizarTextoDesdeWebView(id, texto)
                                     },
+                                    comprobarVideoDisponible = { id ->
+                                        viewModel.comprobarVideoDisponible(id)
+                                    },
                                     modifier = Modifier.animateItem(),
                                 )
                             }

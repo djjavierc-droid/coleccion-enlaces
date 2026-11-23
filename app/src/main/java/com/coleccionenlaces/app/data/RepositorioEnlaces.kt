@@ -1,12 +1,15 @@
 package com.coleccionenlaces.app.data
 
 import android.graphics.Bitmap
+import com.coleccionenlaces.app.domain.AnalizadorVisual
 import com.coleccionenlaces.app.domain.Clasificador
+import com.coleccionenlaces.app.domain.ClasificadorVision
 import com.coleccionenlaces.app.domain.MotorClasificacion
 import com.coleccionenlaces.app.domain.MotorPalabrasClave
 import com.coleccionenlaces.app.domain.ResultadoOEmbed
 import com.coleccionenlaces.app.domain.ResultadoVistaPrevia
 import com.coleccionenlaces.app.domain.TipoErrorVistaPrevia
+import com.coleccionenlaces.app.domain.esTextoSoloDominio
 import com.coleccionenlaces.app.domain.esUrlCortaFacebookCompartida
 import com.coleccionenlaces.app.domain.proveedorOEmbedDe
 import com.coleccionenlaces.app.util.esUrlImagenFirmada
@@ -152,6 +155,23 @@ class RepositorioEnlaces(
      * necesitan: sin él, mover un enlace no registra corrección.
      */
     private val servicioAprendizaje: ServicioAprendizaje? = null,
+    /**
+     * Pre-comprobación del vídeo de Facebook (M5, Fix 5). Null en las
+     * pruebas que no la necesitan: sin él, el vídeo se considera
+     * disponible y el WebView se monta como antes.
+     */
+    private val servicioComprobacionVideo: ServicioComprobacionVideo? = null,
+    /**
+     * Analizador visual (Fix 5, ML Kit en el dispositivo). Null en
+     * las pruebas que no lo necesitan: sin él no hay clasificación
+     * por visión y el cuadro se guarda sin más.
+     */
+    private val analizadorVisual: AnalizadorVisual? = null,
+    /**
+     * Clasificador por visión (Fix 5): decide la categoría a partir
+     * de las señales del analizador. Null sin analizador.
+     */
+    private val clasificadorVision: ClasificadorVision? = null,
 ) {
 
     /** Todas las categorías, en el orden de los chips y secciones. */
@@ -383,7 +403,67 @@ class RepositorioEnlaces(
             guardarBytesLocal(enlaceId, bitmapABytes(bitmap), "png")
         } ?: return false
         enlaceDao.actualizar(enlace.copy(imagenLocal = ruta))
+        // Fix 5: visión + OCR — el cuadro ya está guardado; si el
+        // enlace está en "Otros", mirar el vídeo puede sacarlo de ahí.
+        // Se pasa el enlace YA actualizado (con imagenLocal): si el
+        // gancho volviera a guardar el enlace original, borraría la
+        // ruta de la miniatura recién guardada.
+        withContext(Dispatchers.IO) {
+            clasificarPorVisionSiOtros(enlace.copy(imagenLocal = ruta), bitmap)
+        }
         return true
+    }
+
+    /**
+     * Pre-comprobación M5 (Fix 5): ¿el vídeo de Facebook de este
+     * enlace se puede incrustar? Devuelve DISPONIBLE si el enlace no
+     * existe, si no es de Facebook o si no hay servicio de
+     * comprobación.
+     */
+    suspend fun comprobarVideoDisponible(enlaceId: Long): EstadoVideo {
+        val enlace = enlaceDao.obtenerPorId(enlaceId) ?: return EstadoVideo.DISPONIBLE
+        return servicioComprobacionVideo?.comprobar(enlace.url)
+            ?: EstadoVideo.DISPONIBLE
+    }
+
+    /**
+     * Clasificación por visión + OCR (Fix 5): si el enlace está en
+     * "Otros" y su categoría no es manual, analiza el cuadro
+     * capturado (etiquetas de lo que se ve + OCR del texto quemado)
+     * y, si hay señal, lo mueve a la categoría detectada.
+     *
+     * El texto del OCR se guarda como descripción cuando está vacía:
+     * así la clasificación es estable (una reclasificación posterior
+     * por texto reproduce el mismo resultado) y la tarjeta muestra de
+     * qué va el vídeo. La pantalla de error nunca se clasifica: el
+     * analizador la detecta por OCR de los píxeles y el clasificador
+     * de visión la rechaza. Nunca lanza: sin analizador o sin señal,
+     * no se toca nada.
+     */
+    private suspend fun clasificarPorVisionSiOtros(enlace: Enlace, bitmap: Bitmap) {
+        if (enlace.categoriaManual) return
+        val categoriaActual = categoriaDao.obtenerPorId(enlace.categoriaId)?.nombre
+        if (categoriaActual != Clasificador.OTROS) return
+        val vision = clasificadorVision ?: return
+        val analizador = analizadorVisual ?: return
+        val senales = try {
+            analizador.analizar(bitmap)
+        } catch (_: Exception) {
+            null
+        } ?: return
+        if (senales.esPantallaError) return
+        val nombre = vision.clasificarPorVision(senales)
+        if (nombre == Clasificador.OTROS) return
+        val categoriaId = categoriaDao.obtenerPorNombre(nombre)?.id ?: return
+        val descripcionNueva =
+            if (enlace.descripcion.isBlank() && senales.textoOcr.isNotBlank()) {
+                senales.textoOcr.trim().take(500)
+            } else {
+                enlace.descripcion
+            }
+        enlaceDao.actualizar(
+            enlace.copy(categoriaId = categoriaId, descripcion = descripcionNueva),
+        )
     }
 
     /** El bitmap como bytes PNG, o null si no se pudo comprimir. */
@@ -518,10 +598,21 @@ class RepositorioEnlaces(
         val enlace = enlaceDao.obtenerPorId(enlaceId) ?: return false
         val categoria = categoriaDao.obtenerPorId(categoriaId) ?: return false
         enlaceDao.actualizar(enlace.copy(categoriaId = categoriaId, categoriaManual = true))
-        servicioAprendizaje?.registrarCorreccion(
-            "${enlace.titulo} ${enlace.descripcion}".trim(),
-            categoria.nombre,
-        )
+        val textoCorreccion = "${enlace.titulo} ${enlace.descripcion}".trim()
+        // Fix 5, mina del diagnóstico (§6.3): si el texto es SOLO el
+        // dominio ("facebook.com"), NO se registra la corrección: la
+        // cabeza aprendería "facebook.com" -> categoría y, tras el
+        // reentrenamiento en reposo, TODOS los enlaces facebook.com
+        // sin texto irían a esa categoría (medido: el juego movido a
+        // mano subiría a ~0,64). Solo se aprende del contenido real.
+        // Las correcciones solo-dominio ya guardadas se purgan al
+        // arrancar (ServicioAprendizaje.purgarCorreccionesSoloDominio).
+        if (!esTextoSoloDominio(textoCorreccion)) {
+            servicioAprendizaje?.registrarCorreccion(
+                textoCorreccion,
+                categoria.nombre,
+            )
+        }
         return true
     }
 

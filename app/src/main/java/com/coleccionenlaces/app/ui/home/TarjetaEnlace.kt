@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.coleccionenlaces.app.R
 import com.coleccionenlaces.app.data.EnlaceConCategoria
+import com.coleccionenlaces.app.data.EstadoVideo
 import com.coleccionenlaces.app.ui.theme.ColeccionTipografia
 import com.coleccionenlaces.app.ui.theme.Espaciado
 import java.io.File
@@ -77,10 +78,12 @@ private enum class EstadoImagen { CARGANDO, OK, ERROR }
  * > reproductor oEmbed (WebView) > imagen de la vista previa >
  * respaldo con aviso.
  *
- * Fix 4, bug 3: si el reproductor muestra la página de error de
- * Facebook ("Video no disponible"), el WebView NO captura el cuadro
- * y la tarjeta muestra su marcador propio ("Video no disponible")
- * en vez de la página de error como imagen.
+ * Fix 5: antes de montar el WebView, [comprobarVideoDisponible]
+ * pre-comprueba la página del plugin de Facebook (M5): si el vídeo
+ * no está disponible, el WebView no se monta y la tarjeta muestra
+ * su marcador propio. El mecanismo de Fix 4 (leer `innerText` del
+ * documento principal) no funcionaba nunca: ese texto es siempre ""
+ * porque el reproductor vive en un iframe (ver fix-5-diagnostico.md).
  *
  * La animación de entrada (fade y leve desplazamiento) se ejecuta
  * una vez por enlace: el estado vive en `remember` y la cuadrícula
@@ -99,6 +102,7 @@ fun TarjetaEnlace(
     onAbrirMenu: () -> Unit,
     onMiniaturaCapturada: (Long, Bitmap) -> Unit = { _, _ -> },
     onTextoDetectado: (Long, String) -> Unit = { _, _ -> },
+    comprobarVideoDisponible: (suspend (Long) -> EstadoVideo)? = null,
     modifier: Modifier = Modifier,
 ) {
     val enlace = item.enlace
@@ -138,6 +142,9 @@ fun TarjetaEnlace(
                     },
                     onTextoDetectado = { texto ->
                         onTextoDetectado(enlace.id, texto)
+                    },
+                    comprobarVideoDisponible = comprobarVideoDisponible?.let { comprobar ->
+                        { comprobar(enlace.id) }
                     },
                 )
                 Column(
@@ -200,6 +207,7 @@ private fun ImagenTarjeta(
     onAlternarFavorito: () -> Unit,
     onMiniaturaCapturada: (Bitmap) -> Unit,
     onTextoDetectado: (String) -> Unit,
+    comprobarVideoDisponible: (suspend () -> EstadoVideo)? = null,
 ) {
     // Estado de carga por fuente: si la local falla se cae al
     // reproductor o a la remota, y si la remota falla al respaldo.
@@ -238,6 +246,7 @@ private fun ImagenTarjeta(
                 onMiniaturaCapturada = onMiniaturaCapturada,
                 onTextoDetectado = onTextoDetectado,
                 onVideoNoDisponible = { videoNoDisponible = true },
+                comprobarVideoDisponible = comprobarVideoDisponible,
                 modifier = Modifier.fillMaxSize(),
             )
         } else if (mostrarRemota) {

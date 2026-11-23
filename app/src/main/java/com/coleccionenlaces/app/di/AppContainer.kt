@@ -1,15 +1,18 @@
 package com.coleccionenlaces.app.di
 
 import android.content.Context
+import com.coleccionenlaces.app.data.AnalizadorVisualMlKit
 import com.coleccionenlaces.app.data.AppDatabase
 import com.coleccionenlaces.app.data.RepositorioEnlaces
 import com.coleccionenlaces.app.data.ServicioAprendizaje
+import com.coleccionenlaces.app.data.ServicioComprobacionVideo
 import com.coleccionenlaces.app.data.ServicioOEmbed
 import com.coleccionenlaces.app.data.ServicioVistaPrevia
 import com.coleccionenlaces.app.domain.BloqueoCarpetas
 import com.coleccionenlaces.app.domain.CabezaAprendizaje
 import com.coleccionenlaces.app.domain.ClasificadorInteligente
 import com.coleccionenlaces.app.domain.ClasificadorModelo
+import com.coleccionenlaces.app.domain.ClasificadorVision
 import com.coleccionenlaces.app.domain.ObservadorBloqueoApp
 import com.coleccionenlaces.app.ui.home.HomeViewModelFactory
 import com.coleccionenlaces.app.work.ReentrenamientoWorker
@@ -61,7 +64,25 @@ class AppContainer(context: Context) {
             directorioMiniaturas = File(contextoApp.filesDir, "miniaturas"),
             motorClasificacion = motorClasificacion,
             servicioAprendizaje = servicioAprendizaje,
+            servicioComprobacionVideo = servicioComprobacionVideo,
+            analizadorVisual = analizadorVisual,
+            clasificadorVision = clasificadorVision,
         )
+    }
+
+    /** Pre-comprobación del vídeo de Facebook (M5, Fix 5). */
+    val servicioComprobacionVideo: ServicioComprobacionVideo by lazy {
+        ServicioComprobacionVideo()
+    }
+
+    /** Analizador visual (ML Kit empaquetado, Fix 5). */
+    val analizadorVisual: AnalizadorVisualMlKit by lazy {
+        AnalizadorVisualMlKit()
+    }
+
+    /** Clasificador por visión + OCR (Fix 5). */
+    val clasificadorVision: ClasificadorVision by lazy {
+        ClasificadorVision(motorClasificacion)
     }
 
     /** Etiquetas del modelo (las 16, en el orden de `etiquetas.txt`). */
@@ -105,12 +126,17 @@ class AppContainer(context: Context) {
 
     /**
      * Arranca el aprendizaje (Fix 3): carga los pesos guardados en la
-     * cabeza y programa el reentrenamiento diario en reposo. Se llama
-     * una vez desde `ColeccionApplication.onCreate()`; no bloquea.
+     * cabeza, purga las correcciones solo-dominio (Fix 5, mina del
+     * diagnóstico §6.3) y programa el reentrenamiento diario en
+     * reposo. Se llama una vez desde `ColeccionApplication.onCreate()`;
+     * no bloquea. La purga va DESPUÉS de cargar los pesos (reconstruye
+     * la cabeza desde los ejemplos limpios) y no hace nada si no hay
+     * correcciones malas.
      */
     fun iniciarAprendizaje() {
         alcanceFondo.launch {
             servicioAprendizaje.cargarPesos()
+            servicioAprendizaje.purgarCorreccionesSoloDominio()
         }
         ReentrenamientoWorker.programar(contextoApp)
     }

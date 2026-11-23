@@ -13,8 +13,8 @@ android {
         applicationId = "com.coleccionenlaces.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 4
-        versionName = "1.0.3"
+        versionCode = 5
+        versionName = "1.0.4"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -91,6 +91,12 @@ dependencies {
     // Reentrenamiento de la cabeza en reposo (Fix 3): trabajo único
     // periódico con cargador y dispositivo en reposo.
     implementation(libs.androidx.work.runtime.ktx)
+    // Visión + OCR (Fix 5): ML Kit EMPAQUETADO — Image Labeling base
+    // (etiquetas de lo que se ve) + Text Recognition v2 latino (OCR
+    // del texto quemado en el vídeo). Modelos dentro del APK: ~9,7 MB
+    // más, disponibles sin internet desde la primera ejecución.
+    implementation(libs.mlkit.image.labeling)
+    implementation(libs.mlkit.text.recognition)
 
     testImplementation(libs.junit)
     // Pruebas del ViewModel (Fase 5): runTest y Main de prueba.

@@ -114,6 +114,46 @@ class ClasificadorModeloTest {
     }
 
     @Test
+    fun `el texto OCR del video de Soylorainegodoy clasifica en Entretenimiento`() {
+        // Fix 5, caso real de Javier: el vídeo no tiene título ni
+        // descripción; el texto quemado en el vídeo (OCR) es la única
+        // señal. Necesita el modelo REENTRENADO con prosa reflexiva
+        // (Fix 5): con el modelo de la v1.0.3 daba "Hazlo tú mismo
+        // (DIY)" 0,445 -> "Otros" (medido con el .tflite real).
+        val modelo = modeloDisponible()
+        val textoOcr =
+            "Y casi se me saltan las lágrimas cuando alguien dijo: " +
+                "Llega un momento en el que tienes la misma edad que tenían " +
+                "tus padres en los recuerdos de tu infancia. Y, aun así, tú " +
+                "sigues sin sentirte una persona adulta. Entonces te das " +
+                "cuenta de que tus padres también eran solo unos niños " +
+                "intentando descubrir cómo funciona la vida."
+        val resultado = modelo.clasificar(textoOcr)
+        assertNotNull(resultado)
+        assertEquals("Entretenimiento", resultado!!.categoria)
+        assertTrue(
+            "confianza ${resultado.confianza} < 0,5",
+            resultado.confianza >= 0.5f,
+        )
+        modelo.cerrar()
+    }
+
+    @Test
+    fun `un video de juego sin titulo clasifica en Juegos`() {
+        // Fix 5: el texto que trae un vídeo de juego (título o OCR)
+        // debe ir a Juegos, no a Tecnología (bug 2 de Fix 4).
+        val modelo = modeloDisponible()
+        val resultado = modelo.clasificar("Nuevo juego para celular gratis")
+        assertNotNull(resultado)
+        assertEquals("Juegos", resultado!!.categoria)
+        assertTrue(
+            "confianza ${resultado.confianza} < 0,5",
+            resultado.confianza >= 0.5f,
+        )
+        modelo.cerrar()
+    }
+
+    @Test
     fun `un texto generico no alcanza el umbral del motor`() {
         val modelo = modeloDisponible()
         // "No te lo vas a creer": medido en Python con el .tflite

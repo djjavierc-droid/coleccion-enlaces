@@ -1,6 +1,7 @@
 package com.coleccionenlaces.app.data
 
 import com.coleccionenlaces.app.domain.CabezaAprendizaje
+import com.coleccionenlaces.app.domain.esTextoSoloDominio
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -47,9 +48,14 @@ class ServicioAprendizaje(
     /**
      * Registra una corrección: guarda el ejemplo y entrena la cabeza
      * con un paso en línea. Devuelve true si se registró.
+     *
+     * Fix 5, mina del diagnóstico (§6.3): un texto SOLO-dominio
+     * ("facebook.com") NO se registra: no describe contenido y la
+     * cabeza aprendería el dominio, no el vídeo.
      */
     suspend fun registrarCorreccion(texto: String, categoria: String): Boolean {
         if (texto.isBlank()) return false
+        if (esTextoSoloDominio(texto)) return false
         return try {
             dao.insertarCorreccion(CorreccionAprendizaje(texto = texto, categoria = categoria))
             candado.withLock {
@@ -59,6 +65,43 @@ class ServicioAprendizaje(
             true
         } catch (_: Exception) {
             false
+        }
+    }
+
+    /**
+     * Purga las correcciones solo-dominio ya guardadas (Fix 5, mina
+     * del diagnóstico §6.3): borra los ejemplos cuyo texto es solo el
+     * dominio ("facebook.com") y reconstruye la cabeza desde los
+     * restantes, para que el veneno ya guardado (p. ej. "facebook.com"
+     * -> Juegos, del vídeo de juego que Javier movió a mano) no suba
+     * a ~0,64 en el próximo reentrenamiento en reposo y mande TODOS
+     * los enlaces facebook.com sin texto a Juegos.
+     *
+     * La cabeza usa truco de hash (las palabras caen en cubos): no se
+     * puede borrar quirúrgicamente el peso de una sola palabra, así
+     * que se reinicia a cero y se reentrena por lotes con los ejemplos
+     * limpios (el mismo entrenamiento que haría el trabajo en reposo).
+     * Devuelve cuántas correcciones malas se borraron (0 si no había
+     * ninguna: en ese caso no se toca la cabeza). Se llama al arrancar
+     * (AppContainer.iniciarAprendizaje); es idempotente.
+     */
+    suspend fun purgarCorreccionesSoloDominio(): Int {
+        return try {
+            val correcciones = dao.obtenerCorrecciones()
+            val malas = correcciones.filter { esTextoSoloDominio(it.texto) }
+            if (malas.isEmpty()) return 0
+            for (mala in malas) {
+                dao.borrarCorreccion(mala.id)
+            }
+            candado.withLock {
+                cabeza.reiniciar()
+                val restantes = dao.obtenerCorrecciones().map { it.texto to it.categoria }
+                cabeza.entrenarLote(restantes)
+                dao.guardarPesos(PesosCabeza(pesos = cabeza.aBytes()))
+            }
+            malas.size
+        } catch (_: Exception) {
+            0
         }
     }
 
