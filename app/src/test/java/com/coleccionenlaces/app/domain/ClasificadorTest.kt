@@ -285,7 +285,7 @@ class ClasificadorTest {
             "",
             "https://ejemplo.com/pagina",
         )
-        assertEquals("Otros", Clasificador.clasificar("Receta de pastel", "", "https://ejemplo.com/pagina"))
+        assertEquals("Cocina", Clasificador.clasificar("Receta de pastel", "", "https://ejemplo.com/pagina"))
         assertEquals(0, puntajes["Otros"])
         assertEquals(4, puntajes["Cocina"])
     }
