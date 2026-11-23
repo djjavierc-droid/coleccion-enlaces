@@ -1,6 +1,7 @@
 package com.coleccionenlaces.app.data
 
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import com.coleccionenlaces.app.domain.AnalizadorVisual
 import com.coleccionenlaces.app.domain.Clasificador
 import com.coleccionenlaces.app.domain.ClasificadorVision
@@ -57,6 +58,13 @@ data class EnlacePreparado(
      * pedirlo dos veces (una al comprobar y otra al guardar).
      */
     val oembed: ResultadoOEmbed? = null,
+    /**
+     * Póster resuelto de un vídeo de Facebook (Fix 5, fuente de
+     * cuadros resuelta), o null si la URL no es un vídeo canónico de
+     * Facebook o no se pudo resolver. Se guarda aquí para no
+     * resolverlo dos veces (una al comprobar y otra al guardar).
+     */
+    val posterResuelto: PosterResuelto? = null,
 )
 sealed interface ResultadoCarpeta {
     data class Exito(val id: Long) : ResultadoCarpeta
@@ -172,6 +180,13 @@ class RepositorioEnlaces(
      * de las señales del analizador. Null sin analizador.
      */
     private val clasificadorVision: ClasificadorVision? = null,
+    /**
+     * Póster resuelto de un vídeo de Facebook (Fix 5, fuente de
+     * cuadros resuelta). Null en las pruebas que no lo necesitan: sin
+     * él no se resuelve ningún póster y el flujo sigue como antes
+     * (vista previa + oEmbed + WebView).
+     */
+    private val servicioPosterResuelto: ServicioPosterResuelto? = null,
 ) {
 
     /** Todas las categorías, en el orden de los chips y secciones. */
@@ -235,6 +250,11 @@ class RepositorioEnlaces(
      * Dailymotion dan título y miniatura, y Facebook, TikTok,
      * Instagram y X dan el HTML del reproductor para capturar su
      * cuadro.
+     *
+     * Fix 5: si la vista previa no trajo título (el muro de login de
+     * Facebook no trae ninguno), se intenta además el póster
+     * resuelto: la ruta del rastreador sobre la URL canónica del
+     * vídeo entrega el título real y la foto real del vídeo.
      */
     suspend fun prepararEnlace(url: String): EnlacePreparado {
         val urlLimpia = url.trim()
@@ -244,7 +264,12 @@ class RepositorioEnlaces(
         } else {
             null
         }
-        return EnlacePreparado(resultado, oembed)
+        val poster = if (resultado.vistaPrevia.titulo == null) {
+            servicioPosterResuelto?.resolver(urlLimpia)
+        } else {
+            null
+        }
+        return EnlacePreparado(resultado, oembed, poster)
     }
 
     /**
@@ -342,14 +367,27 @@ class RepositorioEnlaces(
                 null
             }
             val oembedExito = oembed as? ResultadoOEmbed.Exito
+            // Fix 5: póster resuelto — el de la preparación o, si no se
+            // preparó, resolverlo aquí. Solo hace falta cuando la vista
+            // previa no trajo título (el muro de login no trae ninguno);
+            // para el resto de URLs devuelve null sin tocar la red.
+            val poster = preparado?.posterResuelto
+                ?: if (vistaPrevia.titulo == null) {
+                    servicioPosterResuelto?.resolver(urlLimpia)
+                } else {
+                    null
+                }
+            val posterPrevia = poster?.vistaPrevia
             val host = extraerHost(urlLimpia) ?: urlLimpia
             val tituloCompartido = primeraLinea(textoCompartido)
             val titulo = oembedExito?.titulo?.trim().takeUnless { it.isNullOrBlank() }
                 ?: vistaPrevia.titulo?.trim().takeUnless { it.isNullOrBlank() }
+                ?: posterPrevia?.titulo?.trim().takeUnless { it.isNullOrBlank() }
                 ?: tituloCompartido
                 ?: host
             val tituloEsTextoCompartido = titulo == tituloCompartido
             val descripcion = vistaPrevia.descripcion?.trim().takeUnless { it.isNullOrBlank() }
+                ?: posterPrevia?.descripcion?.trim().takeUnless { it.isNullOrBlank() }
                 ?: if (tituloEsTextoCompartido) {
                     restoTrasPrimeraLinea(textoCompartido)
                 } else {
@@ -369,16 +407,62 @@ class RepositorioEnlaces(
             val categoriaId = nombreCategoria?.let { categoriaDao.obtenerPorNombre(it)?.id }
                 ?: categoriaDao.obtenerPorNombre(Clasificador.OTROS)?.id
             val id = enlaceDao.insertar(enlaceSinCategoria.copy(categoriaId = categoriaId))
-            // Miniatura local: la del oEmbed (YouTube) siempre, y la
-            // de la vista previa solo si su URL lleva firma temporal.
+            var enlaceGuardado =
+                enlaceSinCategoria.copy(id = id, categoriaId = categoriaId)
+            // Miniatura local: la del oEmbed (YouTube) siempre, la del
+            // póster resuelto (Fix 5: la foto real del vídeo, cuya URL
+            // firmada se rompe a los días) antes que la de la vista
+            // previa —cuando hay póster, la vista previa era el muro
+            // de login y su imagen no es el vídeo—, y la de la vista
+            // previa solo si su URL lleva firma temporal.
             val imagenADescargar = oembedExito?.urlMiniatura
+                ?: posterPrevia?.urlImagen
                 ?: vistaPrevia.urlImagen?.takeIf { esUrlImagenFirmada(it) }
+            var cuadroResueltoGuardado = false
             if (imagenADescargar != null) {
                 val ruta = descargarImagenLocal(id, imagenADescargar)
                 if (ruta != null) {
-                    enlaceDao.actualizar(
-                        enlaceSinCategoria.copy(id = id, categoriaId = categoriaId, imagenLocal = ruta),
-                    )
+                    enlaceGuardado = enlaceGuardado.copy(imagenLocal = ruta)
+                    enlaceDao.actualizar(enlaceGuardado)
+                    cuadroResueltoGuardado =
+                        imagenADescargar == posterPrevia?.urlImagen
+                }
+            }
+            // Sin og:image pero con .mp4 directo: sacar un cuadro del
+            // vídeo y guardarlo como miniatura local.
+            if (!cuadroResueltoGuardado && poster != null &&
+                poster.urlsVideo.isNotEmpty()
+            ) {
+                val destino = directorioMiniaturas?.let { carpeta ->
+                    carpeta.mkdirs()
+                    File(carpeta, "miniatura-$id.jpg")
+                }
+                if (destino != null &&
+                    servicioPosterResuelto?.extraerCuadroDeVideo(
+                        poster.urlsVideo.first(), destino,
+                    ) == true
+                ) {
+                    enlaceGuardado =
+                        enlaceGuardado.copy(imagenLocal = destino.absolutePath)
+                    enlaceDao.actualizar(enlaceGuardado)
+                    cuadroResueltoGuardado = true
+                }
+            }
+            // Fix 5: visión + OCR sobre la foto real guardada (póster
+            // resuelto o cuadro del .mp4): si el enlace quedó en
+            // "Otros", mirar el vídeo puede sacarlo de ahí. Se
+            // decodifica el archivo local; si no se puede decodificar,
+            // no se toca nada.
+            if (cuadroResueltoGuardado) {
+                val rutaImagen = enlaceGuardado.imagenLocal
+                val bitmap = rutaImagen?.let {
+                    withContext(Dispatchers.IO) { BitmapFactory.decodeFile(it) }
+                }
+                if (bitmap != null) {
+                    withContext(Dispatchers.IO) {
+                        clasificarPorVisionSiOtros(enlaceGuardado, bitmap)
+                    }
+                    bitmap.recycle()
                 }
             }
             ResultadoAgregarEnlace.Exito(id)

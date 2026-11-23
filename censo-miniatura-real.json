@@ -1,0 +1,295 @@
+{
+  "pregunta": "Una app Android guarda enlaces de videos de Facebook. Al abrir el reproductor oficial (oEmbed) sin sesión, algunos videos muestran 'Video no disponible' y no hay ningún cuadro real que capturar; oEmbed ya no devuelve miniatura ni título; la página del video pide inicio de sesión; el video sí se ve en la app de Facebook con sesión. La app debe conseguir la foto real del video de forma 100% automática, SIN servidor, SIN pagar nada, todo en el teléfono. ¿Qué método concreto recomiendas? Responde en 3 líneas: método, por qué funciona sin servidor, y su punto débil.",
+  "iniciado": "2026-11-23T23:33:42.157Z",
+  "terminado": "2026-11-23T23:34:24.656Z",
+  "duracion_total_ms": 42499,
+  "modelos_llamados": 47,
+  "exitos": 19,
+  "fallos": 28,
+  "respuestas": [
+    {
+      "modelo": "ddgw/claude-haiku-4-5",
+      "ok": true,
+      "respuesta": "Método: abrir la URL del video en un navegador/WebView con sesión de Facebook dentro del teléfono, extraer la miniatura desde el HTML/DOM o del `<meta property=\"og:image\">` / datos embebidos cuando aparezca.  \nPor qué funciona sin servidor: todo ocurre localmente en el dispositivo, usando la sesión ya autenticada del usuario y parsing del contenido que devuelve Facebook en el cliente.  \nPunto débil: es frágil; Facebook cambia el HTML, puede bloquear scraping/automación y a veces solo entrega la imagen si hay sesión válida o carga dinámica.",
+      "ms": 4125
+    },
+    {
+      "modelo": "ddgw/gpt-5.4-mini",
+      "ok": true,
+      "respuesta": "Método: usar la caché local de la app de Facebook (o la vista WebView) para extraer la miniatura/preview ya descargada, en vez de depender de oEmbed o de la página pública.  \nPor qué funciona sin servidor: todo ocurre en el teléfono y aprovecha contenido que la app ya obtuvo al reproducir o previsualizar el video con sesión iniciada.  \nPunto débil: no es universal ni estable; si la caché no existe, cambia el formato interno o Facebook la limpia, no habrá imagen que recuperar.",
+      "ms": 4735
+    },
+    {
+      "modelo": "ddgw/gpt-5.6-luna",
+      "ok": true,
+      "respuesta": "Método: usar la URL pública del post/video y extraer la miniatura desde el HTML/código embebido de Facebook con WebView o scraping local, buscando metadatos tipo `og:image`/`thumbnail_url` antes de abrir el reproductor.  \nPor qué funciona sin servidor: todo ocurre en el teléfono, sin API propia ni backend; solo cargas la página pública y lees los metadatos que el cliente ya recibe.  \nPunto débil: cuando Facebook oculta esos metadatos o exige sesión, se rompe y no garantiza 100% de cobertura para todos los videos.",
+      "ms": 4784
+    },
+    {
+      "modelo": "ddgw/mistral-small-2603",
+      "ok": true,
+      "respuesta": "**Método:** Usar la API no oficial de Facebook Graph (endpoint `/v19.0/{video-id}?fields=picture,title`) con un token de acceso temporal generado desde el navegador móvil (sin autenticación).\n\n**Por qué funciona sin servidor:** El token se obtiene vía JavaScript en el navegador (usando `fetch` con CORS) y se pasa directamente a la app Android mediante un `WebView` o `Jsoup`.\n\n**Punto débil:** Facebook puede bloquear o cambiar el endpoint sin aviso, invalidando el método.",
+      "ms": 4099
+    },
+    {
+      "modelo": "ddgw/tinfoil/gemma4-31b",
+      "ok": true,
+      "respuesta": "Utiliza un WebView oculto con un User-Agent de navegador móvil para extraer el enlace de la etiqueta `<meta property=\"og:image\">` del HTML. Funciona sin servidor porque el renderizado y el parseo del DOM ocurren localmente en el dispositivo del usuario. Su punto débil es que Facebook puede bloquear la IP por exceso de peticiones o forzar el muro de inicio de sesión mediante JavaScript.",
+      "ms": 4750
+    },
+    {
+      "modelo": "ddgw/tinfoil/gpt-oss-120b",
+      "ok": true,
+      "respuesta": "**Método:** Usar la API pública de Graph (`https://graph.facebook.com/v12.0/<VIDEO_ID>?fields=picture&access_token=APP_ID|APP_SECRET`) generando un token de aplicación (APP ID | APP SECRET) directamente en el dispositivo.  \n\n**Por qué funciona sin servidor:** El token de aplicación es estático y puede ser creado en la app; la llamada a Graph devuelve la miniatura del video sin requerir sesión de usuario ni backend.  \n\n**Punto débil:** El token de aplicación expone el APP SECRET en el cliente, lo que permite a terceros extraerlo y abusar del límite de peticiones o bloquear la app.",
+      "ms": 4768
+    },
+    {
+      "modelo": "groq/allam-2-7b",
+      "ok": true,
+      "respuesta": "Para conseguir la foto real del video de forma automática en la aplicación Android sin servidor ni pagar nada, puedo sugerir el siguiente método:\n\n1. Utilice la API de Facebook Graph para acceder al video y buscar la imagen de miniatura (preview image) relacionada con el video.\n2. Si la imagen de miniatura no está disponible, intente buscar la imagen de la página de la publicación donde se encuentra el video.\n3. Si aún no se encuentra la imagen, puede recurrir a la API de YouTube para buscar la imagen de la página de la publicación donde se encuentra el video de YouTube.\n\nEste método funciona sin servidor porque se utiliza la API de Facebook Graph y, en su defecto, la API de YouTube, ambas de las cuales son APIs oficiales y proporcionan datos directamente desde sus respectivos servicios.\n\nPunto débil:\n\nEl punto débil de este método es que depende de las API de terceros para obtener la imagen de miniatura. Si alguna de estas API se detiene o cambia su funcionamiento, puede que la aplicación no pueda obtener la imagen correctamente. Además, la aplicación no puede controlar la ubicación de la imagen en caso de que Facebook o YouTube cambien su estructura de datos. Por lo tanto, es importante mantener la aplicación actualizada y seguir las actualizaciones de estas API para garantizar la funcionamiento correcto.",
+      "ms": 6625
+    },
+    {
+      "modelo": "groq/qwen/qwen3.8-27b",
+      "ok": true,
+      "respuesta": "Método: Inyectar un WebView con cookies de sesión del usuario (autenticado previamente) para cargar la URL del video y capturar el frame del `<video>` nativo cuando se detecte reproducción.\nPor qué funciona sin servidor: Todo el procesamiento, la autenticación y la captura de pantalla ocurren localmente en el dispositivo Android, sin necesidad de APIs externas ni backend.\nPunto débil: Viola los Términos de Servicio de Facebook (riesgo de baneo de cuenta) y es frágil ante cambios en el DOM o la estructura de seguridad de la web.",
+      "ms": 6460
+    },
+    {
+      "modelo": "gemini/gemini-3.1-flash-lite",
+      "ok": true,
+      "respuesta": "**Método:** Utilizar un `WebView` oculto en la app que inyecte un script (JavaScript) para navegar a la URL del video y extraer los metadatos `og:image` y `og:title` directamente del HTML renderizado.\n\n**Por qué funciona sin servidor:** Al usar un `WebView` con las cookies de sesión del usuario (si ya está logueado en Facebook en el navegador del dispositivo o mediante una sesión iniciada en el propio `WebView`), la página se carga como si fuera un usuario real, saltando la restricción de \"Video no disponible\".\n\n**Punto débil:** Es altamente inestable ante cambios en el diseño (DOM) de Facebook y requiere que el usuario inicie sesión dentro del `WebView` de tu app, lo cual puede ser bloqueado por Facebook si detecta automatización (bot).",
+      "ms": 10507
+    },
+    {
+      "modelo": "auto/best-chat",
+      "ok": true,
+      "respuesta": "Método: Inyectar un WebView con cookies de sesión del usuario (login manual inicial) para cargar la URL del video y capturar el frame del reproductor nativo.\nPor qué funciona sin servidor: Aprovecha el motor de renderizado local del teléfono y las credenciales del usuario para desbloquear el contenido restringido, eliminando la necesidad de APIs externas o proxies.\nPunto débil: Viola los Términos de Servicio de Facebook (riesgo de baneo de cuenta) y requiere mantener la sesión activa, lo que consume batería y genera fricción si el token expira.",
+      "ms": 17587
+    },
+    {
+      "modelo": "auto/best-coding",
+      "ok": true,
+      "respuesta": "Usa una WebView con `WebViewClient` para interceptar las respuestas HTTP de `video` o `image` y extraer la URL del MP4 o JPEG directamente del tráfico.\nFunciona sin servidor porque el navegador del propio teléfono gestiona la sesión y las cabeceras de autenticación necesarias para que Facebook entregue los recursos.\nSu punto débil es que depende de que la estructura de la página web no cambie y que el usuario mantenga una sesión activa válida en la WebView.",
+      "ms": 16644
+    },
+    {
+      "modelo": "auto/best-free",
+      "ok": true,
+      "respuesta": "Usa un WebView con `CookieManager` para inyectar las cookies de sesión del usuario (extraídas de la app nativa o mediante login in-app) y capturar el frame del `<video>` o la miniatura HTML renderizada.\nFunciona sin servidor porque el navegador del propio teléfono gestiona la autenticación y el descifrado localmente, simulando una visita autenticada real.\nSu punto débil es la fragilidad ante cambios en el DOM de Facebook y la posible detección de automatización o bloqueo por políticas de seguridad de la plataforma.",
+      "ms": 5535
+    },
+    {
+      "modelo": "auto/best-reasoning",
+      "ok": true,
+      "respuesta": "Usa un WebView in-app para cargar la URL del video, forzando la carga de la página completa donde el cliente JS de Facebook renderiza el reproductor y la miniatura.\nFunciona sin servidor porque el WebView ejecuta el JavaScript y las peticiones HTTP directamente en el dispositivo, aprovechando el contexto de red local para obtener los recursos estáticos (poster) que la API pública oculta.\nSu punto débil es la fragilidad ante cambios en el DOM de Facebook y el riesgo de que la página detecte el entorno de WebView o exija interacción manual (login) si las cookies de sesión no se gestionan correctamente.",
+      "ms": 17571
+    },
+    {
+      "modelo": "auto/coding:cheap",
+      "ok": true,
+      "respuesta": "Usa un WebView oculto inyectando JavaScript para extraer la URL de la miniatura o el poster del reproductor HTML5 tras cargar la URL del video.\nFunciona sin servidor porque el WebView del propio dispositivo gestiona la sesión local, las cookies y el renderizado del DOM para obtener los datos dinámicos.\nSu punto débil es que Facebook puede cambiar la estructura del HTML o bloquear la extracción mediante detección de automatización, rompiendo la app.",
+      "ms": 18022
+    },
+    {
+      "modelo": "auto/coding:free",
+      "ok": true,
+      "respuesta": "1. **Método:** Inyecta una WebView con el `User-Agent` de la app de Facebook oficial y las cookies de sesión del usuario (tras un login único) para cargar la URL del video y capturar el frame del `VideoView` nativo.\n2. **Por qué funciona sin servidor:** La WebView ejecuta el JavaScript y las peticiones HTTP directamente en el dispositivo, simulando una sesión autenticada real que el servidor de Facebook acepta, eliminando la necesidad de proxies o APIs de pago.\n3. **Punto débil:** Es frágil ante cambios en el DOM o la política de seguridad de Facebook (CSP), y viola los Términos de Servicio, lo que puede resultar en el bloqueo de la cuenta del usuario.",
+      "ms": 7269
+    },
+    {
+      "modelo": "auto/lkgp",
+      "ok": true,
+      "respuesta": "Usa un WebView con inyección de cookies de sesión del usuario para cargar la URL del video y capturar el frame del `<video>` mediante `takeSnapshot`.\nFunciona sin servidor porque el navegador interno del teléfono gestiona la autenticación y el descifrado del stream localmente, evitando bloqueos de red.\nSu punto débil es la alta fragilidad ante cambios en el DOM de Facebook y el consumo elevado de batería/RAM al mantener sesiones activas.",
+      "ms": 18174
+    },
+    {
+      "modelo": "auto/pro-reasoning",
+      "ok": true,
+      "respuesta": "Usa un WebView con inyección de JavaScript para capturar el `src` del elemento `<video>` o la miniatura de fondo, forzando la carga en un entorno con cookies de sesión si el usuario inicia sesión dentro de la propia app.\nFunciona sin servidor porque el WebView del dispositivo gestiona la red, las cookies y el renderizado HTML/CSS localmente, extrayendo los datos directamente del DOM cargado.\nSu punto débil es la fragilidad ante cambios en el código de Facebook (que romperá los selectores JS) y el riesgo de violar sus Términos de Servicio, lo que puede provocar baneos de la cuenta o de la app.",
+      "ms": 21315
+    },
+    {
+      "modelo": "auto/qwen",
+      "ok": true,
+      "respuesta": "Usa un WebView con `evaluateJavascript` para inyectar un script que extraiga la URL de la miniatura (`og:image`) del DOM de la página de Facebook cargada con la sesión activa del usuario.\nFunciona sin servidor porque el navegador del teléfono gestiona las cookies de sesión y ejecuta el JavaScript localmente, permitiendo acceder a los metadatos que la API pública oculta.\nSu punto débil es la fragilidad ante cambios en la estructura HTML de Facebook y el riesgo de violar sus Términos de Servicio, lo que puede provocar bloqueos o cierres de cuenta.",
+      "ms": 11169
+    },
+    {
+      "modelo": "auto/reasoning",
+      "ok": true,
+      "respuesta": "Usa un WebView in-app con cookies de sesión del usuario para cargar la URL del video y capturar el frame visible mediante `takeScreenshot()`.\nFunciona sin servidor porque el navegador del propio teléfono gestiona la autenticación y el renderizado del reproductor localmente.\nSu punto débil es que requiere que el usuario inicie sesión en Facebook dentro de la app y consume más batería/ram que una API simple.",
+      "ms": 19832
+    }
+  ],
+  "fallos_detalle": [
+    {
+      "modelo": "cohere/command-a-03-2025",
+      "ok": false,
+      "error": "OmniRoute /v1/chat/completions HTTP 429",
+      "ms": 12250
+    },
+    {
+      "modelo": "cohere/command-r-08-2024",
+      "ok": false,
+      "error": "OmniRoute /v1/chat/completions HTTP 429",
+      "ms": 12275
+    },
+    {
+      "modelo": "cohere/command-r-plus-08-2024",
+      "ok": false,
+      "error": "OmniRoute /v1/chat/completions HTTP 429",
+      "ms": 12250
+    },
+    {
+      "modelo": "cohere/command-r7b-12-2024",
+      "ok": false,
+      "error": "OmniRoute /v1/chat/completions HTTP 429",
+      "ms": 12252
+    },
+    {
+      "modelo": "cohere/command-a-vision-07-2025",
+      "ok": false,
+      "error": "OmniRoute /v1/chat/completions HTTP 429",
+      "ms": 12249
+    },
+    {
+      "modelo": "cohere/command-a-reasoning-08-2025",
+      "ok": false,
+      "error": "OmniRoute /v1/chat/completions HTTP 429",
+      "ms": 12269
+    },
+    {
+      "modelo": "nvidia/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+      "ok": false,
+      "error": "respuesta vacía",
+      "ms": 11038
+    },
+    {
+      "modelo": "nvidia/nvidia/nemotron-3-ultra-550b-a55b",
+      "ok": false,
+      "error": "respuesta vacía",
+      "ms": 17984
+    },
+    {
+      "modelo": "nvidia/nvidia/nemotron-3.5-lightning-30b-a3b",
+      "ok": false,
+      "error": "respuesta vacía",
+      "ms": 8532
+    },
+    {
+      "modelo": "nvidia/nvidia/nemotron-3.5-super-vl-120b-a12b",
+      "ok": false,
+      "error": "respuesta vacía",
+      "ms": 11012
+    },
+    {
+      "modelo": "gemini/lyria-3-pro-preview",
+      "ok": false,
+      "error": "respuesta vacía",
+      "ms": 14353
+    },
+    {
+      "modelo": "gemini/lyria-3.5",
+      "ok": false,
+      "error": "respuesta vacía",
+      "ms": 11502
+    },
+    {
+      "modelo": "auto/best-chaos",
+      "ok": false,
+      "error": "The operation was aborted due to timeout",
+      "ms": 20020
+    },
+    {
+      "modelo": "auto/best-coding-fast",
+      "ok": false,
+      "error": "The operation was aborted due to timeout",
+      "ms": 20110
+    },
+    {
+      "modelo": "auto/best-fast",
+      "ok": false,
+      "error": "The operation was aborted due to timeout",
+      "ms": 20115
+    },
+    {
+      "modelo": "auto/chat",
+      "ok": false,
+      "error": "The operation was aborted due to timeout",
+      "ms": 20124
+    },
+    {
+      "modelo": "auto/cheap",
+      "ok": false,
+      "error": "The operation was aborted due to timeout",
+      "ms": 20130
+    },
+    {
+      "modelo": "auto/coding:fast",
+      "ok": false,
+      "error": "The operation was aborted due to timeout",
+      "ms": 20138
+    },
+    {
+      "modelo": "auto/coding:reliable",
+      "ok": false,
+      "error": "The operation was aborted due to timeout",
+      "ms": 20166
+    },
+    {
+      "modelo": "auto/fast",
+      "ok": false,
+      "error": "The operation was aborted due to timeout",
+      "ms": 20166
+    },
+    {
+      "modelo": "auto/glm",
+      "ok": false,
+      "error": "OmniRoute /v1/chat/completions HTTP 502",
+      "ms": 6814
+    },
+    {
+      "modelo": "auto/llama",
+      "ok": false,
+      "error": "The operation was aborted due to timeout",
+      "ms": 20166
+    },
+    {
+      "modelo": "auto/multimodal",
+      "ok": false,
+      "error": "The operation was aborted due to timeout",
+      "ms": 20165
+    },
+    {
+      "modelo": "auto/offline",
+      "ok": false,
+      "error": "The operation was aborted due to timeout",
+      "ms": 20164
+    },
+    {
+      "modelo": "auto/pro-coding",
+      "ok": false,
+      "error": "The operation was aborted due to timeout",
+      "ms": 20168
+    },
+    {
+      "modelo": "auto/pro-fast",
+      "ok": false,
+      "error": "The operation was aborted due to timeout",
+      "ms": 20176
+    },
+    {
+      "modelo": "auto/pro-vision",
+      "ok": false,
+      "error": "The operation was aborted due to timeout",
+      "ms": 22793
+    },
+    {
+      "modelo": "auto/vision",
+      "ok": false,
+      "error": "The operation was aborted due to timeout",
+      "ms": 22803
+    }
+  ]
+}

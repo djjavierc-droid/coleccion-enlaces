@@ -7,6 +7,7 @@ import com.coleccionenlaces.app.data.RepositorioEnlaces
 import com.coleccionenlaces.app.data.ServicioAprendizaje
 import com.coleccionenlaces.app.data.ServicioComprobacionVideo
 import com.coleccionenlaces.app.data.ServicioOEmbed
+import com.coleccionenlaces.app.data.ServicioPosterResuelto
 import com.coleccionenlaces.app.data.ServicioVistaPrevia
 import com.coleccionenlaces.app.domain.BloqueoCarpetas
 import com.coleccionenlaces.app.domain.CabezaAprendizaje
@@ -67,12 +68,18 @@ class AppContainer(context: Context) {
             servicioComprobacionVideo = servicioComprobacionVideo,
             analizadorVisual = analizadorVisual,
             clasificadorVision = clasificadorVision,
+            servicioPosterResuelto = servicioPosterResuelto,
         )
     }
 
     /** Pre-comprobación del vídeo de Facebook (M5, Fix 5). */
     val servicioComprobacionVideo: ServicioComprobacionVideo by lazy {
         ServicioComprobacionVideo()
+    }
+
+    /** Póster resuelto de un vídeo de Facebook (Fix 5, fuente de cuadros resuelta). */
+    val servicioPosterResuelto: ServicioPosterResuelto by lazy {
+        ServicioPosterResuelto()
     }
 
     /** Analizador visual (ML Kit empaquetado, Fix 5). */

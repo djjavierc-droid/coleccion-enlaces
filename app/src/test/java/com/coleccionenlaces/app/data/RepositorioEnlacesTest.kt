@@ -8,10 +8,12 @@ import com.coleccionenlaces.app.domain.CabezaAprendizaje
 import com.coleccionenlaces.app.domain.ClasificadorVision
 import com.coleccionenlaces.app.domain.EtiquetaImagen
 import com.coleccionenlaces.app.domain.MotorPalabrasClave
+import com.coleccionenlaces.app.domain.PosterResuelto
 import com.coleccionenlaces.app.domain.ResultadoOEmbed
 import com.coleccionenlaces.app.domain.ResultadoVistaPrevia
 import com.coleccionenlaces.app.domain.SenalesVisuales
 import com.coleccionenlaces.app.domain.TipoErrorVistaPrevia
+import com.coleccionenlaces.app.domain.VistaPrevia
 import com.coleccionenlaces.app.domain.VistaPrevia
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -1323,5 +1325,221 @@ class RepositorioEnlacesTest {
             assertEquals(0, servicioAprendizaje.contarCorrecciones())
             assertNull(db.aprendizajeDao().obtenerPesos())
             assertNull(cabeza.predecir("facebook.com"))
+        }
+
+    // ---- Fix 5: póster resuelto (fuente de cuadros resuelta) ----
+
+    private val urlReel = "https://www.facebook.com/reel/1168661422485798/"
+    private val urlOgImage =
+        "https://scontent-ord5-1.xx.fbcdn.net/v/t15.5256-10/896273245_abc_n.jpg?oh=123&oe=6B0AA877"
+
+    /** Muro de login de Facebook (forma real: título genérico, sin og tags). */
+    private val htmlMuroError =
+        "<html><head><title>Error</title></head><body></body></html>"
+
+    /** Página del rastreador con og:title que clasifica (Cocina) y og:image. */
+    private val htmlRastreadorPaella = """
+        <html><head>
+        <meta property="og:title" content="Receta de paella valenciana paso a paso">
+        <meta property="og:description" content="La receta tradicional paso a paso.">
+        <meta property="og:image" content="$urlOgImage">
+        </head><body></body></html>
+    """.trimIndent()
+
+    /** Página del rastreador con og:title sin señal y og:image. */
+    private val htmlRastreadorMiraEsto = """
+        <html><head>
+        <meta property="og:title" content="Mira esto">
+        <meta property="og:image" content="$urlOgImage">
+        </head><body></body></html>
+    """.trimIndent()
+
+    /** PNG 1x1 válido (BitmapFactory lo decodifica en Robolectric). */
+    private val png1x1: ByteArray = java.util.Base64.getDecoder().decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+    )
+
+    /** Cliente que sirve HTML por URL y bytes de imagen por URL. */
+    private fun clientePosterFalso(
+        paginas: Map<String, String>,
+        imagenes: Map<String, ByteArray>,
+    ): OkHttpClient = OkHttpClient.Builder()
+        .addInterceptor { cadena ->
+            val url = cadena.request().url.toString()
+            val bytes = imagenes[url]
+            if (bytes != null) {
+                Response.Builder()
+                    .request(cadena.request())
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(200)
+                    .message("OK")
+                    .body(bytes.toResponseBody("image/jpeg".toMediaType()))
+                    .build()
+            } else {
+                val cuerpo = paginas[url] ?: ""
+                Response.Builder()
+                    .request(cadena.request())
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(200)
+                    .message("OK")
+                    .body(cuerpo.toResponseBody("text/html; charset=utf-8".toMediaType()))
+                    .build()
+            }
+        }
+        .build()
+
+    /** Repositorio con póster resuelto y visión por palabras clave (determinista). */
+    private fun repositorioConPoster(
+        paginaRastreador: String?,
+        senales: SenalesVisuales? = null,
+        servicioPoster: ServicioPosterResuelto? = null,
+    ): RepositorioEnlaces {
+        val poster = servicioPoster ?: paginaRastreador?.let {
+            ServicioPosterResuelto(cliente = clienteFalso(mapOf(urlReel to it)))
+        }
+        return RepositorioEnlaces(
+            enlaceDao,
+            categoriaDao,
+            ServicioVistaPrevia(
+                cliente = clientePosterFalso(
+                    paginas = mapOf(urlReel to htmlMuroError),
+                    imagenes = mapOf(urlOgImage to png1x1),
+                ),
+            ),
+            ServicioOEmbed(cliente = clienteOEmbedFalso(emptyMap())),
+            directorioMiniaturas,
+            motorClasificacion = MotorPalabrasClave,
+            analizadorVisual = AnalizadorFalso(senales),
+            clasificadorVision = ClasificadorVision(MotorPalabrasClave),
+            servicioPosterResuelto = poster,
+        )
+    }
+
+    /** Póster falso sin og:image pero con .mp4: extrae el cuadro escribiendo el PNG. */
+    private class PosterSoloMp4Falso : ServicioPosterResuelto() {
+        override suspend fun resolver(urlEnlace: String): PosterResuelto? {
+            if (urlEnlace != "https://www.facebook.com/reel/1168661422485798/") {
+                return null
+            }
+            return PosterResuelto(
+                vistaPrevia = VistaPrevia(titulo = "Mira esto"),
+                urlsVideo = listOf(
+                    "https://video-sjc3-1.xx.fbcdn.net/o1/v/t2/f2/m412/def.mp4?oe=6B0A93AD",
+                ),
+            )
+        }
+
+        override suspend fun extraerCuadroDeVideo(
+            urlVideo: String,
+            destino: File,
+        ): Boolean {
+            destino.parentFile?.mkdirs()
+            destino.writeBytes(
+                java.util.Base64.getDecoder().decode(
+                    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+                ),
+            )
+            return true
+        }
+    }
+
+    /**
+     * El póster resuelto de un reel canónico guarda el título real,
+     * la foto real en local y clasifica por el título: la vista
+     * previa normal era el muro de login.
+     */
+    @Test
+    fun `agregarEnlace con poster resuelto guarda titulo real imagen local y clasifica`() =
+        runBlocking {
+            val repo = repositorioConPoster(htmlRastreadorPaella)
+
+            val resultado = repo.agregarEnlace(urlReel)
+
+            assertTrue(resultado is ResultadoAgregarEnlace.Exito)
+            val id = (resultado as ResultadoAgregarEnlace.Exito).id
+            val guardado = enlaceDao.obtenerPorId(id)!!
+            assertEquals("Receta de paella valenciana paso a paso", guardado.titulo)
+            assertEquals("La receta tradicional paso a paso.", guardado.descripcion)
+            assertEquals(cocinaId, guardado.categoriaId)
+            assertTrue(guardado.imagenLocal?.isNotBlank() == true)
+            assertTrue(File(guardado.imagenLocal!!).exists())
+        }
+
+    /**
+     * El póster resuelto sin título útil clasifica por visión + OCR
+     * de la foto real: el enlace sale de "Otros" a Cocina por el
+     * texto quemado en el vídeo, y ese texto queda como descripción.
+     */
+    @Test
+    fun `agregarEnlace con poster sin titulo util clasifica por vision OCR de la foto real`() =
+        runBlocking {
+            val repo = repositorioConPoster(
+                htmlRastreadorMiraEsto,
+                SenalesVisuales(
+                    etiquetas = emptyList(),
+                    textoOcr = "Receta de pasta casera en 15 minutos",
+                ),
+            )
+
+            val resultado = repo.agregarEnlace(urlReel)
+
+            assertTrue(resultado is ResultadoAgregarEnlace.Exito)
+            val id = (resultado as ResultadoAgregarEnlace.Exito).id
+            val guardado = enlaceDao.obtenerPorId(id)!!
+            assertEquals("Mira esto", guardado.titulo)
+            assertEquals(cocinaId, guardado.categoriaId)
+            assertEquals("Receta de pasta casera en 15 minutos", guardado.descripcion)
+            assertTrue(guardado.imagenLocal?.isNotBlank() == true)
+            assertTrue(File(guardado.imagenLocal!!).exists())
+        }
+
+    /**
+     * Un `/share/r/` no resuelve póster (el hueco pendiente: su
+     * redirección no revela la URL canónica): el enlace se guarda
+     * con el dominio, en "Otros" y sin imagen local, como antes.
+     */
+    @Test
+    fun `agregarEnlace share r no resuelve poster y guarda con el dominio`() =
+        runBlocking {
+            val repo = repositorioConPoster(htmlRastreadorPaella)
+
+            val resultado =
+                repo.agregarEnlace("https://www.facebook.com/share/r/1JqVPz7de")
+
+            assertTrue(resultado is ResultadoAgregarEnlace.Exito)
+            val id = (resultado as ResultadoAgregarEnlace.Exito).id
+            val guardado = enlaceDao.obtenerPorId(id)!!
+            assertEquals("facebook.com", guardado.titulo)
+            assertEquals(otrosId, guardado.categoriaId)
+            assertNull(guardado.imagenLocal)
+        }
+
+    /**
+     * Sin `og:image` pero con `.mp4` directo, el cuadro extraído del
+     * vídeo se guarda como miniatura local y la visión + OCR de ese
+     * cuadro clasifica el enlace.
+     */
+    @Test
+    fun `agregarEnlace con poster solo mp4 guarda el cuadro extraido y clasifica por vision`() =
+        runBlocking {
+            val repo = repositorioConPoster(
+                paginaRastreador = null,
+                senales = SenalesVisuales(
+                    etiquetas = emptyList(),
+                    textoOcr = "Receta de pasta casera en 15 minutos",
+                ),
+                servicioPoster = PosterSoloMp4Falso(),
+            )
+
+            val resultado = repo.agregarEnlace(urlReel)
+
+            assertTrue(resultado is ResultadoAgregarEnlace.Exito)
+            val id = (resultado as ResultadoAgregarEnlace.Exito).id
+            val guardado = enlaceDao.obtenerPorId(id)!!
+            assertEquals("Mira esto", guardado.titulo)
+            assertEquals(cocinaId, guardado.categoriaId)
+            assertTrue(guardado.imagenLocal?.isNotBlank() == true)
+            assertTrue(File(guardado.imagenLocal!!).exists())
+            assertTrue(guardado.imagenLocal!!.endsWith(".jpg"))
         }
 }
