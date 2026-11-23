@@ -305,4 +305,73 @@ class ServicioVistaPreviaTest {
         )
         assertEquals(1, llamadas.get())
     }
+
+    // ---- Fix 4, bug 3: resolución de la URL canónica ----
+
+    /**
+     * Un enlace corto de Facebook redirige (302) a su destino: la
+     * canónica es la URL final, no la corta. El interceptor simula
+     * la redirección medida con curl (302 a m.facebook.com, luego
+     * 200): OkHttp sigue los redirects también con interceptores.
+     */
+    @Test
+    fun `resolverUrlCanonica sigue la redireccion hasta la URL final`() = runBlocking {
+        val cliente = OkHttpClient.Builder()
+            .addInterceptor { cadena ->
+                val url = cadena.request().url.toString()
+                if (url == "https://www.facebook.com/share/r/1JqVPz7de") {
+                    Response.Builder()
+                        .request(cadena.request())
+                        .protocol(Protocol.HTTP_1_1)
+                        .code(302)
+                        .message("Found")
+                        .header("Location", "https://m.facebook.com/share/r/1JqVPz7de")
+                        .body("".toResponseBody("text/html; charset=utf-8".toMediaType()))
+                        .build()
+                } else {
+                    Response.Builder()
+                        .request(cadena.request())
+                        .protocol(Protocol.HTTP_1_1)
+                        .code(200)
+                        .message("OK")
+                        .body("".toResponseBody("text/html; charset=utf-8".toMediaType()))
+                        .build()
+                }
+            }
+            .build()
+        val servicio = ServicioVistaPrevia(cliente = cliente)
+
+        val canonica = servicio.resolverUrlCanonica(
+            "https://www.facebook.com/share/r/1JqVPz7de",
+        )
+
+        assertEquals("https://m.facebook.com/share/r/1JqVPz7de", canonica)
+    }
+
+    @Test
+    fun `resolverUrlCanonica sin redireccion devuelve la misma URL`() = runBlocking {
+        val servicio = ServicioVistaPrevia(cliente = clienteQueResponde(200, "<html></html>"))
+
+        assertEquals(
+            "https://ejemplo.com/pagina",
+            servicio.resolverUrlCanonica("https://ejemplo.com/pagina"),
+        )
+    }
+
+    @Test
+    fun `resolverUrlCanonica con fallo de red devuelve la URL tal cual`() = runBlocking {
+        val servicio = ServicioVistaPrevia(cliente = clienteQueFalla(UnknownHostException("x")))
+
+        assertEquals(
+            "https://www.facebook.com/share/r/1JqVPz7de",
+            servicio.resolverUrlCanonica("https://www.facebook.com/share/r/1JqVPz7de"),
+        )
+    }
+
+    @Test
+    fun `resolverUrlCanonica con URL invalida la devuelve sin tocar la red`() = runBlocking {
+        val servicio = ServicioVistaPrevia(cliente = clienteQueFalla(UnknownHostException("x")))
+
+        assertEquals("no-es-una-url", servicio.resolverUrlCanonica("no-es-una-url"))
+    }
 }

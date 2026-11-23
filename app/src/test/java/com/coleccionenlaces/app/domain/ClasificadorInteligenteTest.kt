@@ -122,4 +122,87 @@ class ClasificadorInteligenteTest {
         )
         assertEquals("Cocina", motorSinModelo(cabeza).clasificarEnlace(enlace))
     }
+
+    // ---- Fix 4, bug 2: el texto que es solo un dominio ----
+
+    @Test
+    fun `esTextoSoloDominio detecta solo dominios`() {
+        assertTrue(esTextoSoloDominio("facebook.com"))
+        assertTrue(esTextoSoloDominio("www.youtube.com"))
+        assertTrue(esTextoSoloDominio("  facebook.com  "))
+        assertFalse(esTextoSoloDominio("facebook.com/video"))
+        assertFalse(esTextoSoloDominio("Mira este video"))
+        assertFalse(esTextoSoloDominio("facebook"))
+        assertFalse(esTextoSoloDominio(""))
+        assertFalse(esTextoSoloDominio("facebook.com es lo mejor"))
+    }
+
+    /**
+     * El caso exacto de Javier: título "facebook.com", descripción
+     * vacía. Sin cabeza entrenada, va a "Otros": el modelo nunca
+     * debe decidir sobre un dominio solo (medido con el .tflite
+     * real: "facebook.com" -> "Tecnología y celulares" 0,624).
+     */
+    @Test
+    fun `un titulo que es solo el dominio va a Otros sin cabeza entrenada`() {
+        assertEquals(
+            Clasificador.OTROS,
+            motorSinModelo().clasificar(
+                "facebook.com",
+                "",
+                "https://www.facebook.com/share/r/1Bo58NQ",
+            ),
+        )
+        assertEquals(
+            Clasificador.OTROS,
+            motorSinModelo().clasificar(
+                "youtube.com",
+                "",
+                "https://www.youtube.com/watch?v=x",
+            ),
+        )
+    }
+
+    /**
+     * Y con la cabeza entrenada (el movimiento manual de Javier:
+     * ese enlace de "facebook.com" a "Juegos"), la corrección SÍ
+     * se aplica: antes del Fix 4 el modelo decidía primero (0,624
+     * para Tecnología) y la cabeza nunca llegaba a hablar.
+     */
+    @Test
+    fun `un titulo que es solo el dominio lo decide la cabeza aprendida`() {
+        val cabeza = CabezaAprendizaje(etiquetas)
+        repeat(5) {
+            cabeza.aprenderEnLinea("facebook.com", "Juegos")
+        }
+        assertEquals(
+            "Juegos",
+            motorSinModelo(cabeza).clasificar(
+                "facebook.com",
+                "",
+                "https://www.facebook.com/share/r/1Bo58NQ",
+            ),
+        )
+    }
+
+    /**
+     * Un título real con palabras sigue el camino normal
+     * (modelo -> cabeza -> "Otros"): el atajo de dominio solo
+     * actúa cuando el texto ES solo el dominio.
+     */
+    @Test
+    fun `un titulo real con palabras no usa el atajo de dominio`() {
+        val cabeza = CabezaAprendizaje(etiquetas)
+        repeat(5) {
+            cabeza.aprenderEnLinea("Receta de pastel de chocolate", "Cocina")
+        }
+        assertEquals(
+            "Cocina",
+            motorSinModelo(cabeza).clasificar(
+                "Receta de pastel de chocolate",
+                "",
+                "https://ejemplo.com/receta",
+            ),
+        )
+    }
 }

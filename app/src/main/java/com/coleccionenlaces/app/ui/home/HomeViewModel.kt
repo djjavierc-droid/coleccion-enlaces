@@ -177,8 +177,6 @@ private data class ControlesUi(
 
 class HomeViewModel(
     private val repositorio: RepositorioEnlaces,
-) : ViewModel() {
-
     /**
      * Bloqueo por carpeta (Fase 9): qué categorías están
      * desbloqueadas en esta sesión. Vive solo en memoria (ver
@@ -186,8 +184,14 @@ class HomeViewModel(
      * a estar bloqueado. Se expone para que la UI lo consulte y
      * para las pruebas; el desbloqueo real lo pide la UI con huella
      * y luego llama a [desbloquearCategoria].
+     *
+     * Fix 4, requisito 4: la instancia la crea el contenedor y la
+     * comparte con el observador de ciclo de vida, que bloquea todo
+     * al pasar a segundo plano. En las pruebas se puede pasar una
+     * propia (valor por defecto: una nueva).
      */
-    val bloqueo = BloqueoCarpetas()
+    val bloqueo: BloqueoCarpetas = BloqueoCarpetas(),
+) : ViewModel() {
 
     private val controles = MutableStateFlow(ControlesUi())
 
@@ -575,12 +579,13 @@ class HomeViewModel(
 /** Factoría manual del [HomeViewModel] (sin Hilt ni Koin). */
 class HomeViewModelFactory(
     private val repositorio: RepositorioEnlaces,
+    private val bloqueo: BloqueoCarpetas = BloqueoCarpetas(),
 ) : ViewModelProvider.Factory {
 
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(HomeViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return HomeViewModel(repositorio) as T
+            return HomeViewModel(repositorio, bloqueo) as T
         }
         throw IllegalArgumentException("ViewModel desconocido: ${modelClass.name}")
     }

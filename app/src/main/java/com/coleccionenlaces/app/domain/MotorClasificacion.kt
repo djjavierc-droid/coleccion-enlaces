@@ -66,6 +66,25 @@ class ClasificadorInteligente(
     override fun clasificar(titulo: String, descripcion: String, url: String): String {
         val texto = "$titulo $descripcion".trim()
         if (texto.isBlank()) return Clasificador.OTROS
+        // Fix 4, bug 2: el texto es SOLO un dominio ("facebook.com").
+        // Facebook no dio título y el modelo nunca vio dominios
+        // sueltos en entrenamiento: su respuesta es espuria (medido
+        // con el .tflite real: "facebook.com" -> "Tecnología y
+        // celulares" 0,624, "Juegos" 0,222; "youtube.com" ->
+        // "Juegos" 0,674). El modelo NO decide aquí: solo la cabeza
+        // aprendida (la corrección manual de Javier) y, si no ha
+        // aprendido nada sobre ese dominio, "Otros".
+        if (esTextoSoloDominio(texto)) {
+            val prediccionCabeza = try {
+                cabeza.predecir(texto)
+            } catch (_: Exception) {
+                null
+            }
+            if (prediccionCabeza != null && prediccionCabeza.confianza >= umbralCabeza) {
+                return etiquetas[prediccionCabeza.indiceClase]
+            }
+            return Clasificador.OTROS
+        }
         // 1. El modelo DistilBERT.
         val resultadoModelo = try {
             modelo?.clasificar(texto)
@@ -96,3 +115,18 @@ class ClasificadorInteligente(
         const val UMBRAL_CABEZA = 0.6f
     }
 }
+
+/**
+ * True si [texto] es SOLO un dominio (p. ej. "facebook.com" o
+ * "www.youtube.com"): un único token con al menos un punto, sin
+ * espacios ni ruta. Es el título de respaldo que pone el repositorio
+ * cuando el sitio no dio título: no describe ningún contenido y el
+ * modelo no debe decidir sobre él (ver [ClasificadorInteligente]).
+ */
+fun esTextoSoloDominio(texto: String): Boolean {
+    val limpio = texto.trim().lowercase()
+    if (limpio.isEmpty() || limpio.contains(' ') || limpio.contains('/')) return false
+    return DOMINIO_REGEX.matches(limpio)
+}
+
+private val DOMINIO_REGEX = Regex("^[a-z0-9-]+(\\.[a-z0-9-]+)+$")

@@ -128,6 +128,46 @@ class ServicioVistaPrevia(
     }
 
     /**
+     * Resuelve [url] a su URL final siguiendo las redirecciones
+     * (Fix 4, bug 3). OkHttp sigue los redirects por defecto, así
+     * que la URL de la petición que responde es la canónica: un
+     * enlace corto de Facebook (`facebook.com/share/r/...`) resuelve
+     * a su destino real (p. ej. `m.facebook.com/share/r/...`) y esa
+     * es la URL que se le pasa al oEmbed, no la corta.
+     *
+     * Medido 2026-11-23 con un `/share/r/` real: 302 a
+     * `m.facebook.com/share/r/...` y luego 400 (muro de login, sin
+     * og tags). La resolución por sí sola NO arregla la vista
+     * previa: el destino sigue siendo un muro. Lo que arregla el
+     * bug es la detección del error en el WebView (ver
+     * [com.coleccionenlaces.app.domain.detectarVideoNoDisponible]);
+     * esto solo le da al oEmbed la URL más estable que se conoce.
+     *
+     * Nunca lanza: con URL inválida o cualquier fallo de red
+     * devuelve la URL tal cual (el oEmbed se intenta igual con la
+     * corta, que es lo que hacía antes). Un solo GET, sin reintentos.
+     */
+    suspend fun resolverUrlCanonica(url: String): String =
+        withContext(Dispatchers.IO) {
+            val urlLimpia = url.trim()
+            if (!esUrlHttpValida(urlLimpia)) return@withContext urlLimpia
+            try {
+                val peticion = Request.Builder()
+                    .url(urlLimpia)
+                    .header("User-Agent", USER_AGENT)
+                    .build()
+                cliente.newCall(peticion).execute().use { respuesta ->
+                    // La URL final es la de la petición que respondió
+                    // (OkHttp ya siguió los redirects); el cuerpo se
+                    // descarta: aquí solo interesa adónde llegó.
+                    respuesta.request.url.toString()
+                }
+            } catch (_: Exception) {
+                urlLimpia
+            }
+        }
+
+    /**
      * Descarga los bytes de [url] (una imagen de vista previa para
      * guardarla en local). Devuelve null si la URL no es válida, si
      * el servidor no responde 200 o si hay cualquier fallo de red.

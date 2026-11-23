@@ -152,6 +152,20 @@ TITULOS_EXTRA = {
         "El asistente de IA que vende por WhatsApp",
         "Robot vendiendo tacos en la feria",
         "La IA que hace la tarea y vende en internet",
+        # Fix 4, bug 2 (contrapeso): tecnología con celular/móvil
+        # SIN juego. El modelo debe aprender que "celular" solo
+        # no basta: con "juego"/"videojuego"/"gameplay" el tema es
+        # Juegos; sin ellos, sigue siendo Tecnología.
+        "El celular con mejor cámara de 2026",
+        "Cómo liberar espacio en tu celular",
+        "La actualización de Android que cambia todo",
+        "Mi celular nuevo: primera impresión",
+        "El teléfono con mejor batería del mercado",
+        "Trucos de Android que no conocías",
+        "La IA del celular que te organiza el día",
+        "Comparando celulares de gama media",
+        "El iPhone nuevo: qué trae de nuevo",
+        "Cómo alargar la batería del móvil",
     ],
     "Autos y motos": [
         "El auto eléctrico más barato del mercado",
@@ -191,6 +205,42 @@ TITULOS_EXTRA = {
         "Jugando con el mando nuevo",
         "Speedrun del nivel más difícil",
         "Mi partida en multijugador con amigos",
+        # Fix 4, bug 2: juegos que mencionan palabras de tecnología
+        # (celular, móvil, Android, iPhone, IA). Medido con el
+        # .tflite real: "Nuevo juego para celular gratis" iba a
+        # "Tecnología y celulares" con 0,93, porque en el
+        # entrenamiento "celular" solo aparecía con Tecnología y
+        # nunca con Juegos. El juego manda sobre el aparato.
+        "Nuevo juego para celular gratis",
+        "El mejor juego para celular de 2026",
+        "Juego gratis para Android que tienes que probar",
+        "Jugando en mi celular al nuevo videojuego",
+        "Gameplay en el móvil: el juego del momento",
+        "El videojuego para iPhone que está de moda",
+        "Probando el nuevo videojuego en mi celular gamer",
+        "La IA juega Minecraft mejor que yo",
+        "Videojuego con inteligencia artificial: probando el modo historia",
+        "El juego de celular con mejores gráficos",
+        "Mi partida en el juego de moda para Android",
+        "Trucos para el juego nuevo de celular",
+        "Descargando el videojuego gratis en mi teléfono",
+        "El torneo de videojuegos en el celular",
+        "Jugando con el mando en el celular",
+        "Gameplay del juego de terror para móvil",
+        "El juego online que juego con mis amigos en el celular",
+        "Review del videojuego para Android",
+        "El nuevo juego de carreras para celular",
+        "Probando juegos nuevos en mi teléfono",
+        "El videojuego más descargado para celular",
+        "Jugando Minecraft en el celular con amigos",
+        "El juego de fútbol para móvil que todos juegan",
+        "Gameplay en Android del juego del año",
+        "Cómo el videojuego usa la IA para crear niveles",
+        "El juego con IA que aprende cómo juegas",
+        "Streamer jugando al videojuego nuevo en directo",
+        "Mi colección de juegos para el celular",
+        "El juego de estrategia para móvil gratis",
+        "El mejor juego de aventuras para Android",
     ],
     "Hazlo tú mismo (DIY)": [
         "Mueble casero con madera reciclada",

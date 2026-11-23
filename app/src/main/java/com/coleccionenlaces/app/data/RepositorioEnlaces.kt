@@ -7,6 +7,7 @@ import com.coleccionenlaces.app.domain.MotorPalabrasClave
 import com.coleccionenlaces.app.domain.ResultadoOEmbed
 import com.coleccionenlaces.app.domain.ResultadoVistaPrevia
 import com.coleccionenlaces.app.domain.TipoErrorVistaPrevia
+import com.coleccionenlaces.app.domain.esUrlCortaFacebookCompartida
 import com.coleccionenlaces.app.domain.proveedorOEmbedDe
 import com.coleccionenlaces.app.util.esUrlImagenFirmada
 import com.coleccionenlaces.app.util.primeraLinea
@@ -219,12 +220,25 @@ class RepositorioEnlaces(
         val urlLimpia = url.trim()
         val resultado = servicioVistaPrevia.obtenerVistaPrevia(urlLimpia)
         val oembed = if (resultado.vistaPrevia.estaVacia) {
-            obtenerOEmbed(urlLimpia)
+            obtenerOEmbed(urlParaOEmbed(urlLimpia))
         } else {
             null
         }
         return EnlacePreparado(resultado, oembed)
     }
+
+    /**
+     * URL que se le pasa al oEmbed (Fix 4, bug 3): un enlace corto de
+     * compartir de Facebook se resuelve primero a su URL final; el
+     * resto se usa tal cual. La resolución nunca rompe el flujo: si
+     * falla, devuelve la URL original.
+     */
+    private suspend fun urlParaOEmbed(urlLimpia: String): String =
+        if (esUrlCortaFacebookCompartida(urlLimpia)) {
+            servicioVistaPrevia.resolverUrlCanonica(urlLimpia)
+        } else {
+            urlLimpia
+        }
 
     /**
      * Pide el oEmbed de una URL si su proveedor lo tiene (YouTube,
@@ -303,7 +317,7 @@ class RepositorioEnlaces(
             }
             val vistaPrevia = resultadoVistaPrevia.vistaPrevia
             val oembed = if (vistaPrevia.estaVacia) {
-                preparado?.oembed ?: obtenerOEmbed(urlLimpia)
+                preparado?.oembed ?: obtenerOEmbed(urlParaOEmbed(urlLimpia))
             } else {
                 null
             }

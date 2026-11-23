@@ -77,6 +77,11 @@ private enum class EstadoImagen { CARGANDO, OK, ERROR }
  * > reproductor oEmbed (WebView) > imagen de la vista previa >
  * respaldo con aviso.
  *
+ * Fix 4, bug 3: si el reproductor muestra la página de error de
+ * Facebook ("Video no disponible"), el WebView NO captura el cuadro
+ * y la tarjeta muestra su marcador propio ("Video no disponible")
+ * en vez de la página de error como imagen.
+ *
  * La animación de entrada (fade y leve desplazamiento) se ejecuta
  * una vez por enlace: el estado vive en `remember` y la cuadrícula
  * usa la clave del id, así que al filtrar no se vuelve a animar.
@@ -200,8 +205,12 @@ private fun ImagenTarjeta(
     // reproductor o a la remota, y si la remota falla al respaldo.
     var estadoLocal by remember(imagenLocal) { mutableStateOf(EstadoImagen.CARGANDO) }
     var estadoRemota by remember(urlImagen) { mutableStateOf(EstadoImagen.CARGANDO) }
+    // Fix 4, bug 3: el reproductor mostró la página de error de
+    // Facebook ("Video no disponible"): se esconde el WebView y se
+    // muestra el marcador propio, nunca la página de error.
+    var videoNoDisponible by remember(htmlVideo) { mutableStateOf(false) }
     val mostrarLocal = imagenLocal != null && estadoLocal != EstadoImagen.ERROR
-    val mostrarWebView = !mostrarLocal && htmlVideo != null
+    val mostrarWebView = !mostrarLocal && htmlVideo != null && !videoNoDisponible
     val mostrarRemota = !mostrarLocal && !mostrarWebView &&
         urlImagen != null && estadoRemota != EstadoImagen.ERROR
     val mostrarRespaldo = !mostrarLocal && !mostrarWebView && !mostrarRemota
@@ -228,6 +237,7 @@ private fun ImagenTarjeta(
                 baseUrl = url,
                 onMiniaturaCapturada = onMiniaturaCapturada,
                 onTextoDetectado = onTextoDetectado,
+                onVideoNoDisponible = { videoNoDisponible = true },
                 modifier = Modifier.fillMaxSize(),
             )
         } else if (mostrarRemota) {
@@ -260,7 +270,13 @@ private fun ImagenTarjeta(
                     )
                     Spacer(modifier = Modifier.height(Espaciado.xs))
                     Text(
-                        text = stringResource(R.string.card_no_preview),
+                        text = stringResource(
+                            if (videoNoDisponible) {
+                                R.string.card_video_no_disponible
+                            } else {
+                                R.string.card_no_preview
+                            },
+                        ),
                         style = ColeccionTipografia.etiqueta,
                         color = colorCategoria,
                     )

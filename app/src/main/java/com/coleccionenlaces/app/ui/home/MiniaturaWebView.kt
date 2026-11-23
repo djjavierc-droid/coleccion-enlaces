@@ -13,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
+import com.coleccionenlaces.app.domain.detectarVideoNoDisponible
 import org.json.JSONTokener
 
 /**
@@ -29,22 +30,24 @@ import org.json.JSONTokener
  * HTML resuelven contra su origen.
  *
  * Al terminar de cargar la página espera unos 2 segundos a que el
- * reproductor se pinte y captura el cuadro con `draw(Canvas)`. Si
- * el cuadro sale en blanco (página aún sin pintar), reintenta una
- * vez más a los 2 segundos; si sigue en blanco, se rinde y deja el
- * WebView visible como reproductor, para que el usuario pueda ver
- * el vídeo tocándolo. La captura se entrega UNA sola vez con
- * [onMiniaturaCapturada]: quien llama la guarda en local.
+ * reproductor se pinte, lee primero su texto visible y SOLO captura
+ * el cuadro si ese texto no es la página de error de Facebook (Fix
+ * 4, bug 3): si el reproductor muestra "Video no disponible", el
+ * cuadro NO se captura ni se guarda, y se avisa con
+ * [onVideoNoDisponible] para que la tarjeta muestre su marcador
+ * propio en vez de la página de error como imagen. Antes la captura
+ * solo rechazaba bitmaps en blanco, y la página de error (que no es
+ * en blanco) se guardaba como miniatura local.
  *
- * También lee el texto visible del reproductor (autor y texto de la
- * publicación) con JavaScript (`document.body.innerText`) y lo
- * entrega UNA sola vez con [onTextoDetectado]: es la tercera fuente
- * automática de título (corrección 1.0.1). El texto vive dentro de
- * un iframe de otro origen y el WebView no siempre lo puede leer:
- * si sale vacío, no se entrega nada y el título se queda como
- * estaba. La lectura del texto y la captura del cuadro no se
- * pueden probar en pruebas unitarias: solo verificable en
- * dispositivo.
+ * La lectura del texto y la captura del cuadro no se pueden probar
+ * en pruebas unitarias: solo verificable en dispositivo. Lo que SÍ
+ * se prueba en la JVM es la decisión ([detectarVideoNoDisponible]).
+ *
+ * El texto vive dentro de un iframe y el WebView no siempre lo puede
+ * leer (otro origen): si sale vacío, no se detecta nada y la captura
+ * procede como antes. Es un límite honesto: la detección funciona
+ * cuando el texto es legible, que es el caso medido (baseUrl del
+ * propio enlace, mismo origen que el iframe del reproductor).
  */
 @Composable
 fun MiniaturaWebView(
@@ -52,11 +55,13 @@ fun MiniaturaWebView(
     baseUrl: String,
     onMiniaturaCapturada: (Bitmap) -> Unit,
     onTextoDetectado: (String) -> Unit,
+    onVideoNoDisponible: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var capturaEntregada by remember { mutableStateOf(false) }
     var textoEntregado by remember { mutableStateOf(false) }
     var reintentado by remember { mutableStateOf(false) }
+    var errorAvisado by remember { mutableStateOf(false) }
 
     AndroidView(
         factory = { contexto ->
@@ -75,8 +80,11 @@ fun MiniaturaWebView(
                             marcarTextoEntregado = { textoEntregado = true },
                             reintentado = { reintentado },
                             marcarReintentado = { reintentado = true },
+                            errorAvisado = { errorAvisado },
+                            marcarErrorAvisado = { errorAvisado = true },
                             onMiniaturaCapturada = onMiniaturaCapturada,
                             onTextoDetectado = onTextoDetectado,
+                            onVideoNoDisponible = onVideoNoDisponible,
                         )
                     }
                 }
@@ -98,7 +106,7 @@ fun MiniaturaWebView(
     )
 }
 
-/** Espera a que el reproductor se pinte y luego captura el cuadro y lee el texto. */
+/** Espera a que el reproductor se pinte, lee su texto visible y, solo si no es la página de error, captura el cuadro. */
 private fun programarCaptura(
     view: WebView,
     entregada: () -> Boolean,
@@ -107,42 +115,58 @@ private fun programarCaptura(
     marcarTextoEntregado: () -> Unit,
     reintentado: () -> Boolean,
     marcarReintentado: () -> Unit,
+    errorAvisado: () -> Boolean,
+    marcarErrorAvisado: () -> Unit,
     onMiniaturaCapturada: (Bitmap) -> Unit,
     onTextoDetectado: (String) -> Unit,
+    onVideoNoDisponible: () -> Unit,
 ) {
     Handler(Looper.getMainLooper()).postDelayed({
         if (view.width <= 0 || view.height <= 0) return@postDelayed
-        if (!entregada()) {
-            val bitmap = capturarCuadro(view)
-            if (bitmap != null) {
-                marcarEntregada()
-                onMiniaturaCapturada(bitmap)
-            } else if (!reintentado()) {
-                // En blanco: se le da una oportunidad más al
-                // reproductor para pintar, y ahí se rinde.
-                marcarReintentado()
-                programarCaptura(
-                    view = view,
-                    entregada = entregada,
-                    marcarEntregada = marcarEntregada,
-                    textoEntregado = textoEntregado,
-                    marcarTextoEntregado = marcarTextoEntregado,
-                    reintentado = reintentado,
-                    marcarReintentado = marcarReintentado,
-                    onMiniaturaCapturada = onMiniaturaCapturada,
-                    onTextoDetectado = onTextoDetectado,
-                )
-            }
-        }
-        if (!textoEntregado()) {
-            view.evaluateJavascript(
-                "(function(){return document.body ? document.body.innerText : '';})();",
-            ) { resultado ->
-                val texto = decodificarCadenaJs(resultado)?.trim().orEmpty()
-                if (texto.isNotBlank()) {
-                    marcarTextoEntregado()
-                    onTextoDetectado(texto)
+        // Primero el texto: si el reproductor muestra la página de
+        // error ("Video no disponible"), NO se captura nada. El
+        // texto se lee antes que el cuadro a propósito: capturar
+        // primero y preguntar después es como se guardó la página
+        // de error como miniatura en la v1.0.2.
+        view.evaluateJavascript(
+            "(function(){return document.body ? document.body.innerText : '';})();",
+        ) { resultado ->
+            val texto = decodificarCadenaJs(resultado)?.trim().orEmpty()
+            if (detectarVideoNoDisponible(texto)) {
+                if (!errorAvisado()) {
+                    marcarErrorAvisado()
+                    onVideoNoDisponible()
                 }
+                return@evaluateJavascript
+            }
+            if (!entregada()) {
+                val bitmap = capturarCuadro(view)
+                if (bitmap != null) {
+                    marcarEntregada()
+                    onMiniaturaCapturada(bitmap)
+                } else if (!reintentado()) {
+                    // En blanco: se le da una oportunidad más al
+                    // reproductor para pintar, y ahí se rinde.
+                    marcarReintentado()
+                    programarCaptura(
+                        view = view,
+                        entregada = entregada,
+                        marcarEntregada = marcarEntregada,
+                        textoEntregado = textoEntregado,
+                        marcarTextoEntregado = marcarTextoEntregado,
+                        reintentado = reintentado,
+                        marcarReintentado = marcarReintentado,
+                        errorAvisado = errorAvisado,
+                        marcarErrorAvisado = marcarErrorAvisado,
+                        onMiniaturaCapturada = onMiniaturaCapturada,
+                        onTextoDetectado = onTextoDetectado,
+                        onVideoNoDisponible = onVideoNoDisponible,
+                    )
+                }
+            }
+            if (!textoEntregado() && texto.isNotBlank()) {
+                marcarTextoEntregado()
+                onTextoDetectado(texto)
             }
         }
     }, ESPERA_PINTADO_MS)

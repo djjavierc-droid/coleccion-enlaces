@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -84,6 +86,70 @@ fun itemsMenuLateral(
 }
 
 /**
+ * Una fila del menú lateral, en el orden en que se dibuja. Función
+ * pura: el composable [MenuLateral] solo la dibuja con un
+ * [LazyColumn], así que TODAS las filas son alcanzables desplazando
+ * (Fix 4, bug 1: antes el contenido era un [Column] sin scroll y las
+ * categorías a partir de "Hazlo tú mismo (DIY)" quedaban cortadas en
+ * el borde inferior, con "Acerca de" inalcanzable).
+ */
+sealed interface FilaMenuLateral {
+    /** Encabezado: título de la app y total de enlaces. */
+    data object Encabezado : FilaMenuLateral
+
+    /** Fila "Todos · N". */
+    data object Todos : FilaMenuLateral
+
+    /** Fila "Favoritos". */
+    data object Favoritos : FilaMenuLateral
+
+    /** Separador horizontal. */
+    data object Separador : FilaMenuLateral
+
+    /** Una categoría (predefinida o propia). */
+    data class Categoria(val item: ItemMenuCategoria) : FilaMenuLateral
+
+    /** Fila "Nueva carpeta". */
+    data object NuevaCarpeta : FilaMenuLateral
+
+    /** Título de sección ("Acerca de"). */
+    data object TituloAcercaDe : FilaMenuLateral
+
+    /** Una entrada de "Acerca de" (legal). */
+    data class Legal(val tipo: TipoLegal) : FilaMenuLateral
+}
+
+/**
+ * Construye las filas del menú lateral en orden: encabezado, "Todos",
+ * "Favoritos", las categorías (predefinidas + propias, en su orden),
+ * "Nueva carpeta" y la sección "Acerca de" con sus tres entradas.
+ * Función pura: las pruebas comprueban que ninguna categoría ni
+ * entrada legal se pierde, sea cual sea el número de carpetas.
+ */
+fun filasMenuLateral(
+    categorias: List<Categoria>,
+    contadores: Map<Long, Int>,
+    desbloqueadas: Set<Long>,
+): List<FilaMenuLateral> {
+    val filas = mutableListOf<FilaMenuLateral>()
+    filas += FilaMenuLateral.Encabezado
+    filas += FilaMenuLateral.Todos
+    filas += FilaMenuLateral.Favoritos
+    filas += FilaMenuLateral.Separador
+    for (item in itemsMenuLateral(categorias, contadores, desbloqueadas)) {
+        filas += FilaMenuLateral.Categoria(item)
+    }
+    filas += FilaMenuLateral.Separador
+    filas += FilaMenuLateral.NuevaCarpeta
+    filas += FilaMenuLateral.Separador
+    filas += FilaMenuLateral.TituloAcercaDe
+    for (tipo in TipoLegal.entries) {
+        filas += FilaMenuLateral.Legal(tipo)
+    }
+    return filas
+}
+
+/**
  * Contenido del menú lateral deslizante (corrección 1.0.1, punto 2):
  * sustituye a la fila horizontal de chips, que se cortaba en el
  * borde. Las categorías van en vertical, cada una con su ícono, su
@@ -116,116 +182,127 @@ fun MenuLateral(
     onGestionarCarpeta: (Categoria) -> Unit,
     onAbrirLegal: (TipoLegal) -> Unit,
 ) {
-    val items = itemsMenuLateral(categorias, contadores, categoriasDesbloqueadas)
     val porId = categorias.associateBy { it.id }
+    val filas = filasMenuLateral(categorias, contadores, categoriasDesbloqueadas)
     ModalDrawerSheet {
-        Column(
+        // Fix 4, bug 1: LazyColumn en vez de Column. El cajón tiene
+        // 17 categorías + carpetas propias + "Acerca de": en un
+        // Column sin scroll las últimas filas quedaban cortadas en
+        // el borde inferior y no se podía bajar. Con LazyColumn
+        // todo el contenido es alcanzable desplazando.
+        LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = Espaciado.s, vertical = Espaciado.m),
         ) {
-            Text(
-                text = stringResource(R.string.home_title),
-                style = ColeccionTipografia.tituloGrande,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(
-                    start = Espaciado.m,
-                    bottom = Espaciado.xs,
-                ),
-            )
-            Text(
-                text = when (totalEnlaces) {
-                    0 -> stringResource(R.string.home_total_none)
-                    1 -> stringResource(R.string.home_total_one)
-                    else -> stringResource(R.string.home_total_many, totalEnlaces)
-                },
-                style = ColeccionTipografia.etiqueta,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(
-                    start = Espaciado.m,
-                    bottom = Espaciado.m,
-                ),
-            )
-            FilaMenu(
-                nombre = "${stringResource(R.string.home_chip_todos)} · $totalEnlaces",
-                icono = Icons.Filled.Link,
-                colorCirculo = MaterialTheme.colorScheme.primary,
-                colorIcono = MaterialTheme.colorScheme.onPrimary,
-                seleccionado = categoriaSeleccionadaId == null && !soloFavoritos,
-                bloqueada = false,
-                onClick = onSeleccionarTodos,
-                onLongClick = null,
-            )
-            FilaMenu(
-                nombre = stringResource(R.string.home_chip_favoritos),
-                icono = Icons.Filled.Favorite,
-                colorCirculo = MaterialTheme.colorScheme.secondary,
-                colorIcono = MaterialTheme.colorScheme.onSecondary,
-                seleccionado = soloFavoritos,
-                bloqueada = false,
-                onClick = onAlternarSoloFavoritos,
-                onLongClick = null,
-            )
-            HorizontalDivider(
-                modifier = Modifier.padding(vertical = Espaciado.s),
-            )
-            for (item in items) {
-                val categoria = porId[item.categoriaId]
-                val color = colorCategoria(
-                    categoria ?: Categoria(
-                        id = item.categoriaId,
-                        nombre = item.nombre,
-                        color = item.color,
-                        icono = item.icono,
-                        esPredefinida = item.esPredefinida,
-                        orden = 0,
-                    ),
-                )
-                FilaMenu(
-                    nombre = "${item.nombre} · ${item.cantidad}",
-                    icono = iconoCategoria(item.icono),
-                    colorCirculo = color,
-                    colorIcono = colorSobreCategoria(color),
-                    seleccionado = categoriaSeleccionadaId == item.categoriaId,
-                    bloqueada = item.bloqueada,
-                    onClick = { onSeleccionarCategoria(item.categoriaId) },
-                    onLongClick = if (item.esPredefinida || categoria == null) {
-                        null
-                    } else {
-                        { onGestionarCarpeta(categoria) }
-                    },
-                )
-            }
-            HorizontalDivider(
-                modifier = Modifier.padding(vertical = Espaciado.s),
-            )
-            FilaMenu(
-                nombre = stringResource(R.string.carpeta_add_chip),
-                icono = Icons.Filled.Add,
-                colorCirculo = MaterialTheme.colorScheme.surfaceVariant,
-                colorIcono = MaterialTheme.colorScheme.onSurfaceVariant,
-                seleccionado = false,
-                bloqueada = false,
-                onClick = onCrearCarpeta,
-                onLongClick = null,
-            )
-            HorizontalDivider(
-                modifier = Modifier.padding(vertical = Espaciado.s),
-            )
-            TituloSeccionMenu(stringResource(R.string.menu_about))
-            for (tipo in TipoLegal.entries) {
-                FilaMenu(
-                    nombre = stringResource(tituloLegalRes(tipo)),
-                    icono = iconoLegal(tipo),
-                    colorCirculo = MaterialTheme.colorScheme.surfaceVariant,
-                    colorIcono = MaterialTheme.colorScheme.onSurfaceVariant,
-                    seleccionado = false,
-                    bloqueada = false,
-                    onClick = { onAbrirLegal(tipo) },
-                    onLongClick = null,
-                )
+            itemsIndexed(filas, key = { indice, _ -> indice }) { _, fila ->
+                when (fila) {
+                    FilaMenuLateral.Encabezado -> EncabezadoMenu(totalEnlaces)
+                    FilaMenuLateral.Todos -> FilaMenu(
+                        nombre = "${stringResource(R.string.home_chip_todos)} · $totalEnlaces",
+                        icono = Icons.Filled.Link,
+                        colorCirculo = MaterialTheme.colorScheme.primary,
+                        colorIcono = MaterialTheme.colorScheme.onPrimary,
+                        seleccionado = categoriaSeleccionadaId == null && !soloFavoritos,
+                        bloqueada = false,
+                        onClick = onSeleccionarTodos,
+                        onLongClick = null,
+                    )
+                    FilaMenuLateral.Favoritos -> FilaMenu(
+                        nombre = stringResource(R.string.home_chip_favoritos),
+                        icono = Icons.Filled.Favorite,
+                        colorCirculo = MaterialTheme.colorScheme.secondary,
+                        colorIcono = MaterialTheme.colorScheme.onSecondary,
+                        seleccionado = soloFavoritos,
+                        bloqueada = false,
+                        onClick = onAlternarSoloFavoritos,
+                        onLongClick = null,
+                    )
+                    FilaMenuLateral.Separador -> HorizontalDivider(
+                        modifier = Modifier.padding(vertical = Espaciado.s),
+                    )
+                    is FilaMenuLateral.Categoria -> {
+                        val item = fila.item
+                        val categoria = porId[item.categoriaId]
+                        val color = colorCategoria(
+                            categoria ?: Categoria(
+                                id = item.categoriaId,
+                                nombre = item.nombre,
+                                color = item.color,
+                                icono = item.icono,
+                                esPredefinida = item.esPredefinida,
+                                orden = 0,
+                            ),
+                        )
+                        FilaMenu(
+                            nombre = "${item.nombre} · ${item.cantidad}",
+                            icono = iconoCategoria(item.icono),
+                            colorCirculo = color,
+                            colorIcono = colorSobreCategoria(color),
+                            seleccionado = categoriaSeleccionadaId == item.categoriaId,
+                            bloqueada = item.bloqueada,
+                            onClick = { onSeleccionarCategoria(item.categoriaId) },
+                            onLongClick = if (item.esPredefinida || categoria == null) {
+                                null
+                            } else {
+                                { onGestionarCarpeta(categoria) }
+                            },
+                        )
+                    }
+                    FilaMenuLateral.NuevaCarpeta -> FilaMenu(
+                        nombre = stringResource(R.string.carpeta_add_chip),
+                        icono = Icons.Filled.Add,
+                        colorCirculo = MaterialTheme.colorScheme.surfaceVariant,
+                        colorIcono = MaterialTheme.colorScheme.onSurfaceVariant,
+                        seleccionado = false,
+                        bloqueada = false,
+                        onClick = onCrearCarpeta,
+                        onLongClick = null,
+                    )
+                    FilaMenuLateral.TituloAcercaDe ->
+                        TituloSeccionMenu(stringResource(R.string.menu_about))
+                    is FilaMenuLateral.Legal -> FilaMenu(
+                        nombre = stringResource(tituloLegalRes(fila.tipo)),
+                        icono = iconoLegal(fila.tipo),
+                        colorCirculo = MaterialTheme.colorScheme.surfaceVariant,
+                        colorIcono = MaterialTheme.colorScheme.onSurfaceVariant,
+                        seleccionado = false,
+                        bloqueada = false,
+                        onClick = { onAbrirLegal(fila.tipo) },
+                        onLongClick = null,
+                    )
+                }
             }
         }
+    }
+}
+
+/** Encabezado del menú: título de la app y total de enlaces. */
+@Composable
+private fun EncabezadoMenu(totalEnlaces: Int) {
+    Column {
+        Text(
+            text = stringResource(R.string.home_title),
+            style = ColeccionTipografia.tituloGrande,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(
+                start = Espaciado.m,
+                bottom = Espaciado.xs,
+            ),
+        )
+        Text(
+            text = when (totalEnlaces) {
+                0 -> stringResource(R.string.home_total_none)
+                1 -> stringResource(R.string.home_total_one)
+                else -> stringResource(R.string.home_total_many, totalEnlaces)
+            },
+            style = ColeccionTipografia.etiqueta,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(
+                start = Espaciado.m,
+                bottom = Espaciado.m,
+            ),
+        )
     }
 }
 

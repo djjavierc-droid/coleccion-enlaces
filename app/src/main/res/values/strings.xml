@@ -21,6 +21,7 @@
     <string name="home_favorite_add">Marcar como favorito</string>
     <string name="home_favorite_remove">Quitar de favoritos</string>
     <string name="card_no_preview">Sin vista previa</string>
+    <string name="card_video_no_disponible">Video no disponible</string>
     <string name="home_empty_title">Tu colección está vacía</string>
     <string name="home_empty_body">Pega tu primer enlace con el botón de abajo y aparecerá aquí con su vista previa.</string>
     <string name="home_no_results_title">Sin resultados</string>

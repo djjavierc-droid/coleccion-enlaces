@@ -1,0 +1,242 @@
+{
+  "fecha": "2026-11-23T15:08:26.056Z",
+  "pregunta": "Eres un ingeniero Android. Responde en español, de forma concisa y concreta, a estas DOS preguntas de diagnóstico de una app Android (Kotlin/Compose, sin servidor, sin token, sin cuenta):\n\nCONTEXTO: app \"Colección de enlaces\" guarda enlaces de video (mayoría Facebook Reels) con título automático y miniatura. Flujo actual: (1) descarga la página con OkHttp y parsea og:title/og:image (Facebook devuelve HTTP 400 muro de login, sin og tags); (2) si la vista previa está vacía, pide oEmbed sin token a graph.facebook.com/v27.0/oembed_video?url=... y recibe solo el HTML del reproductor (div fb-video + SDK JS), sin título ni miniatura; (3) carga ese HTML en un WebView sin autoplay y a los 2 s captura el cuadro con view.draw(Canvas) si no sale en blanco, guardándolo como miniatura local PNG; (4) lee document.body.innerText del WebView para el título.\n\nPREGUNTA A — VISTA PREVIA DE FACEBOOK /share/r/: dos videos públicos de Facebook compartidos como https://www.facebook.com/share/r/XXXX terminaron guardados con título solo \"facebook.com\" y como miniatura la pantalla de error de Facebook \"Video no disponible — Es posible que este video ya no exista o que no tengas permiso para verlo\" capturada como imagen. ¿Por qué falla este flujo exactamente (qué hace /share/r/, qué devuelve oEmbed para esa URL corta, por qué el WebView pinta la página de error en vez del video, por qué innerText no da el título)? ¿Cómo se captura el cuadro REAL del video de forma fiable en el dispositivo (resolución de la URL corta a canónica, verificación de que el reproductor cargó de verdad antes de capturar, detección del texto de error para no guardarlo)? Si un video es de verdad privado o eliminado, ¿qué marcador propio se debe mostrar en vez de la página de error?\n\nPREGUNTA B — CLASIFICADOR: un DistilBERT afinado (16 clases, títulos+descripciones en español) clasifica enlaces. Un video de un JUEGO, guardado con título \"facebook.com\" y descripción vacía (porque Facebook no dio título), fue clasificado en \"Tecnología y celulares\" en vez de \"Juegos\". ¿Por qué puede pasar eso cuando el único texto es el dominio \"facebook.com\"? ¿Qué señal ve el modelo (tokens del dominio, sesgos de clase, palabras genéricas)? ¿Cómo se arregla sin inventar datos: más ejemplos de juegos, contrapesos, qué hacer cuando el texto es solo un dominio genérico (umbral de confianza, clase \"Otros\")?",
+  "resultados": [
+    {
+      "modelo": "auto/best-free",
+      "ok": false,
+      "error": "TimeoutError: The operation was aborted due to timeout"
+    },
+    {
+      "modelo": "ddgw/claude-haiku-4-5",
+      "ok": true,
+      "respuesta": "**A.** Falla porque `https://www.facebook.com/share/r/...` es una URL corta de redirección y, en muchos casos, termina resolviendo a una página de acceso/restricción o a una vista intermedia, no al video embebible. Ese endpoint de `oEmbed` para Facebook suele devolver solo el HTML del reproductor/placeholder, no metadatos útiles; si la URL ya apunta a algo no accesible, el HTML resultante es una caja vacía o un contenedor que luego Facebook reemplaza con el mensaje de error. El `WebView` pinta esa página de error porque realmente eso es lo que recibió/cargó al no poder acceder al contenido del video. Y `document.body.innerText` no da el título porque en esa página no hay título del video: solo texto de error, o un shell de JS que no expone el nombre real.\n\nPara capturar el cuadro real, no uses la página `share/r` como fuente final. Resuelve primero la URL corta a la canónica final, verifica que el HTML cargado contiene señales de reproductor real antes de capturar, y solo entonces extrae miniatura. Si ves texto como “Video no disponible”, “No tienes permiso”, “Inicia sesión”, o no aparecen elementos de reproducción/metadata reales, no guardes esa captura. Si el video es privado o eliminado, muestra un marcador propio tipo **“Video no disponible”** o **“Privado o eliminado”**, con miniatura genérica de enlace roto, no la captura de Facebook.\n\n**B.** Puede pasar porque el modelo ve prácticamente solo el token `facebook.com`, que es una señal demasiado genérica y sesgada hacia patrones aprendidos de entrenamiento; sin texto del título ni descripción, el clasificador termina decidiendo por correlaciones débiles. Además, si en el entrenamiento hay pocas muestras de “Juegos” y muchas de clases como “Tecnología y celulares”, el sesgo de prior o de frecuencia puede arrastrarlo ahí.\n\nArreglo práctico:\n- añadir más ejemplos reales de “Juegos”, especialmente casos cortos o ambiguos;\n- balancear clases o usar pesos de clase;\n- tratar texto vacío o genérico como caso especial;\n- si el input queda en algo tipo “facebook.com”, no forzar una clase: usar **umbral de confianza** y devolver **“Otros”** o “Sin categoría suficiente”;\n- no alimentar al modelo con dominios solos si no hay contenido útil: mejor metadata adicional, o fallback a reglas.",
+      "crudo": {
+        "id": "chatcmpl-2489dbfd951c484e9ddc278a8ebd7",
+        "object": "chat.completion",
+        "created": 1795446480,
+        "model": "claude-haiku-4-5",
+        "choices": [
+          {
+            "index": 0,
+            "finish_reason": "stop",
+            "message": {
+              "role": "assistant",
+              "content": "**A.** Falla porque `https://www.facebook.com/share/r/...` es una URL corta de redirección y, en muchos casos, termina resolviendo a una página de acceso/restricción o a una vista intermedia, no al video embebible. Ese endpoint de `oEmbed` para Facebook suele devolver solo el HTML del reproductor/placeholder, no metadatos útiles; si la URL ya apunta a algo no accesible, el HTML resultante es una caja vacía o un contenedor que luego Facebook reemplaza con el mensaje de error. El `WebView` pinta esa página de error porque realmente eso es lo que recibió/cargó al no poder acceder al contenido del video. Y `document.body.innerText` no da el título porque en esa página no hay título del video: solo texto de error, o un shell de JS que no expone el nombre real.\n\nPara capturar el cuadro real, no uses la página `share/r` como fuente final. Resuelve primero la URL corta a la canónica final, verifica que el HTML cargado contiene señales de reproductor real antes de capturar, y solo entonces extrae miniatura. Si ves texto como “Video no disponible”, “No tienes permiso”, “Inicia sesión”, o no aparecen elementos de reproducción/metadata reales, no guardes esa captura. Si el video es privado o eliminado, muestra un marcador propio tipo **“Video no disponible”** o **“Privado o eliminado”**, con miniatura genérica de enlace roto, no la captura de Facebook.\n\n**B.** Puede pasar porque el modelo ve prácticamente solo el token `facebook.com`, que es una señal demasiado genérica y sesgada hacia patrones aprendidos de entrenamiento; sin texto del título ni descripción, el clasificador termina decidiendo por correlaciones débiles. Además, si en el entrenamiento hay pocas muestras de “Juegos” y muchas de clases como “Tecnología y celulares”, el sesgo de prior o de frecuencia puede arrastrarlo ahí.\n\nArreglo práctico:\n- añadir más ejemplos reales de “Juegos”, especialmente casos cortos o ambiguos;\n- balancear clases o usar pesos de clase;\n- tratar texto vacío o genérico como caso especial;\n- si el input queda en algo tipo “facebook.com”, no forzar una clase: usar **umbral de confianza** y devolver **“Otros”** o “Sin categoría suficiente”;\n- no alimentar al modelo con dominios solos si no hay contenido útil: mejor metadata adicional, o fallback a reglas."
+            }
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 914,
+          "completion_tokens": 652,
+          "total_tokens": 1566,
+          "estimated": true,
+          "usage_evidence": {
+            "input": {
+              "source": "estimated",
+              "method": "request_body_heuristic"
+            },
+            "output": {
+              "source": "estimated",
+              "method": "observed_characters"
+            },
+            "cacheRead": {
+              "source": "unknown"
+            },
+            "cacheCreation": {
+              "source": "unknown"
+            }
+          }
+        }
+      }
+    },
+    {
+      "modelo": "ddgw/gpt-5.4-mini",
+      "ok": true,
+      "respuesta": "**A.** Falla por tres puntos: `/share/r/` es una URL corta/redirección de Facebook que normalmente termina en una página canónica o en una página intermedia; para videos públicos muchas veces no expone `og:title`/`og:image` si no hay sesión o si bloquea bots. El `oEmbed` sin token para esa URL corta suele devolver solo el contenedor/HTML del reproductor, no metadatos útiles. Tu `WebView` entonces no está mostrando el video real, sino la página de fallback/error de Facebook, y `innerText` lee ese texto de error porque es lo único que el DOM tiene cargado. Para capturar bien, primero resuelve la URL corta a la URL canónica final, verifica que el reproductor realmente cargó (p. ej. que exista iframe/video válido, que no haya texto de error, que cambie el estado del player y que la primera pinta no sea una página de error), y solo entonces captura. Si detectas “Video no disponible” o similares, guarda un marcador propio tipo **“video no disponible”** / **“privado o eliminado”** y no una miniatura falsa.\n\n**B.** Pasa porque `facebook.com` es una señal casi vacía y sesgada: el modelo no ve contenido del juego, solo tokens genéricos del dominio, que pueden correlacionar con clases más frecuentes como “Tecnología y celulares”. Además, si “Juegos” está menos representada o tiene vocabulario más específico, el clasificador se va a la clase con mayor prior implícito. Arreglo: más ejemplos reales de juegos, balanceo/ponderación de clases, y una regla para texto pobre: si solo hay dominio genérico o la confianza es baja, devolver **“Otros”** o **“No clasificable”** en vez de forzar una clase. También ayuda añadir features de URL/dominio como entrada separada o filtrar dominios genéricos antes del modelo.",
+      "crudo": {
+        "id": "chatcmpl-b1724836c7254b789af05dbb8ba86",
+        "object": "chat.completion",
+        "created": 1795446485,
+        "model": "gpt-5.4-mini",
+        "choices": [
+          {
+            "index": 0,
+            "finish_reason": "stop",
+            "message": {
+              "role": "assistant",
+              "content": "**A.** Falla por tres puntos: `/share/r/` es una URL corta/redirección de Facebook que normalmente termina en una página canónica o en una página intermedia; para videos públicos muchas veces no expone `og:title`/`og:image` si no hay sesión o si bloquea bots. El `oEmbed` sin token para esa URL corta suele devolver solo el contenedor/HTML del reproductor, no metadatos útiles. Tu `WebView` entonces no está mostrando el video real, sino la página de fallback/error de Facebook, y `innerText` lee ese texto de error porque es lo único que el DOM tiene cargado. Para capturar bien, primero resuelve la URL corta a la URL canónica final, verifica que el reproductor realmente cargó (p. ej. que exista iframe/video válido, que no haya texto de error, que cambie el estado del player y que la primera pinta no sea una página de error), y solo entonces captura. Si detectas “Video no disponible” o similares, guarda un marcador propio tipo **“video no disponible”** / **“privado o eliminado”** y no una miniatura falsa.\n\n**B.** Pasa porque `facebook.com` es una señal casi vacía y sesgada: el modelo no ve contenido del juego, solo tokens genéricos del dominio, que pueden correlacionar con clases más frecuentes como “Tecnología y celulares”. Además, si “Juegos” está menos representada o tiene vocabulario más específico, el clasificador se va a la clase con mayor prior implícito. Arreglo: más ejemplos reales de juegos, balanceo/ponderación de clases, y una regla para texto pobre: si solo hay dominio genérico o la confianza es baja, devolver **“Otros”** o **“No clasificable”** en vez de forzar una clase. También ayuda añadir features de URL/dominio como entrada separada o filtrar dominios genéricos antes del modelo."
+            }
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 914,
+          "completion_tokens": 493,
+          "total_tokens": 1407,
+          "estimated": true,
+          "usage_evidence": {
+            "input": {
+              "source": "estimated",
+              "method": "request_body_heuristic"
+            },
+            "output": {
+              "source": "estimated",
+              "method": "observed_characters"
+            },
+            "cacheRead": {
+              "source": "unknown"
+            },
+            "cacheCreation": {
+              "source": "unknown"
+            }
+          }
+        }
+      }
+    },
+    {
+      "modelo": "cohere/command-a-03-2025",
+      "ok": false,
+      "error": "Error: OmniRoute /v1/chat/completions HTTP 429"
+    },
+    {
+      "modelo": "groq/qwen/qwen3.8-27b",
+      "ok": true,
+      "respuesta": "Aquí tienes el diagnóstico y la solución técnica para ambas preguntas.\n\n### PREGUNTA A — VISTA PREVIA DE FACEBOOK /share/r/\n\n**1. ¿Por qué falla el flujo actual?**\n*   **Naturaleza de `/share/r/`:** Es una URL corta (redirect) que apunta a un video específico. Facebook exige autenticación o cookies de sesión válidas para resolver la redirección final y servir el contenido del reproductor.\n*   **Respuesta de oEmbed:** Al llamar a `graph.facebook.com/oembed_video` con una URL `/share/r/` sin token, la API devuelve un error o un payload mínimo porque no puede resolver el ID del video sin contexto de sesión. No devuelve el HTML del reproductor funcional, sino una estructura vacía o de error.\n*   **WebView y Captura:** El WebView carga la URL. Al no tener cookies de sesión, Facebook redirige a la página de \"Video no disponible\" o \"Inicia sesión\". Tu código espera 2 segundos y captura `view.draw(Canvas)`. Como la página de error carga rápido (es estática), capturas ese error en lugar del video.\n*   **`innerText`:** La página de error no contiene el título del video, sino textos genéricos de error o el dominio, por lo que extraes \"facebook.com\" o texto vacío.\n\n**2. ¿Cómo capturar el cuadro REAL de forma fiable?**\n*   **Resolución de URL:** No intentes cargar `/share/r/` directamente en el WebView para capturar. Primero, usa OkHttp para hacer un `HEAD` o `GET` con `followRedirects=true` y extraer la URL canónica final (ej. `https://www.facebook.com/watch/?v=123456...`).\n*   **Verificación de Carga:**\n    1.  Inyecta JavaScript en el WebView para escuchar el evento `onLoaded` del reproductor de video (`<video>` o `<div class=\"fb-video\">`).\n    2.  Espera a que el video tenga `currentTime > 0` o que el elemento `<video>` tenga `readyState >= 2` (HAVE_CURRENT_DATA).\n    3.  **No uses un timer fijo de 2s.** Usa un callback de JavaScript a Kotlin (`evaluateJavascript`) para saber cuándo el video está realmente listo.\n*   **Detección de Error:** Antes de capturar, evalúa `document.body.innerText`. Si contiene substrings como \"no disponible\", \"error\", \"inicia sesión\", o si el elemento `<video>` no existe, **aborta la captura**.\n*   **Captura:** Solo si el video está listo y no hay error, ejecuta `view.draw(Canvas)` sobre el elemento del video específico (no la pantalla completa) para obtener la miniatura nítida.\n\n**3. Marcador para videos privados/eliminados:**\n*   Si la detección de error se activa o si la URL canónica no resuelve a un video válido, **no guardes la captura de error**.\n*   Genera una imagen local genérica (placeholder) con el texto \"Video no disponible\" o un icono de \"Prohibido/Privado\".\n*   Guarda en la base de datos un flag `isAvailable = false` para que la UI muestre este marcador en lugar de una imagen corrupta o de error.\n\n---\n\n### PREGUNTA B — CLASIFICADOR\n\n**1. ¿Por qué clasifica \"facebook.com\" como \"Tecnología y celulares\"?**\n*   **Señal del Modelo:** El modelo ve el token `facebook.com`. En el entrenamiento, \"facebook\" suele asociarse con redes sociales, pero si la clase \"Juegos\" tiene pocos ejemplos con el dominio \"facebook.com\" y la clase \"Tecnología\" tiene muchos ejemplos de apps, redes o dominios genéricos, el modelo aprende un sesgo: *dominio genérico de red social → Tecnología/General*.\n*   **Falta de Contexto:** Sin título ni descripción, el modelo no tiene señales semánticas de \"juego\". El dominio \"facebook.com\" es un ruido para distinguir entre \"Juegos\" y \"Tecnología\" si no hay ejemplos específicos de juegos en Facebook en el set de entrenamiento.\n*   **Sesgo de Clase:** Si \"Tecnología\" es una clase más frecuente o tiene ejemplos más \"limpios\" (sin ruido de dominios genéricos), el modelo tiende a predicciones más conservadoras hacia esa clase cuando la entrada es ambigua.\n\n**2. ¿Cómo se arregla sin inventar datos?**\n*   **Aumentar Ejemplos de Juegos en Facebook:** Añade al set de entrenamiento ejemplos reales de videos de juegos en Facebook con títulos/descripciones que contengan palabras clave de juegos (\"juego\", \"game\", \"play\", \"nintendo\", \"ps5\", etc.). Esto enseña al modelo que \"facebook.com\" + contexto de juego = \"Juegos\".\n*   **Contrapesos (Weighting):** Si no puedes añadir muchos datos, aumenta el peso de los ejemplos de \"Juegos\" que tengan dominios genéricos o vacíos, para que el modelo no los ignore.\n*   **Manejo de Entradas Genéricas (Dominio solo):**\n    *   **Umbral de Confianza:** Implementa un umbral de probabilidad (ej. 0.7). Si la confianza de la predicción es baja (porque el texto es solo un dominio genérico), no fuerces una clase.\n    *   **Clase \"Otros\" o \"Sin Clasificar\":** Crea una clase explícita \"Otros\" o \"Sin Clasificar\". Entrena al modelo para que, cuando el texto sea solo un dominio genérico (como \"facebook.com\", \"youtube.com\") sin palabras clave, prediga \"Otros\".\n    *   **Post-procesamiento:** Si la entrada es solo un dominio, devuelve \"Otros\" por defecto en la lógica de la app, independientemente de la salida del modelo, hasta que se tenga más contexto.\n\n**Resumen de acciones:**\n1.  **A:** Resolver URL canónica, esperar evento JS de video listo, detectar texto de error, usar placeholder local si falla.\n2.  **B:** Añadir ejemplos de juegos en Facebook, crear clase \"Otros\" para entradas genéricas, aplicar umbral de confianza para no clasificar dominios solos.",
+      "crudo": {
+        "id": "chatcmpl-edf640c7-ef79-434a-9cd6-37b5dd647d41",
+        "object": "chat.completion",
+        "created": 1795446489,
+        "model": "qwen/qwen3.8-27b",
+        "choices": [
+          {
+            "index": 0,
+            "finish_reason": "stop",
+            "message": {
+              "role": "assistant",
+              "content": "Aquí tienes el diagnóstico y la solución técnica para ambas preguntas.\n\n### PREGUNTA A — VISTA PREVIA DE FACEBOOK /share/r/\n\n**1. ¿Por qué falla el flujo actual?**\n*   **Naturaleza de `/share/r/`:** Es una URL corta (redirect) que apunta a un video específico. Facebook exige autenticación o cookies de sesión válidas para resolver la redirección final y servir el contenido del reproductor.\n*   **Respuesta de oEmbed:** Al llamar a `graph.facebook.com/oembed_video` con una URL `/share/r/` sin token, la API devuelve un error o un payload mínimo porque no puede resolver el ID del video sin contexto de sesión. No devuelve el HTML del reproductor funcional, sino una estructura vacía o de error.\n*   **WebView y Captura:** El WebView carga la URL. Al no tener cookies de sesión, Facebook redirige a la página de \"Video no disponible\" o \"Inicia sesión\". Tu código espera 2 segundos y captura `view.draw(Canvas)`. Como la página de error carga rápido (es estática), capturas ese error en lugar del video.\n*   **`innerText`:** La página de error no contiene el título del video, sino textos genéricos de error o el dominio, por lo que extraes \"facebook.com\" o texto vacío.\n\n**2. ¿Cómo capturar el cuadro REAL de forma fiable?**\n*   **Resolución de URL:** No intentes cargar `/share/r/` directamente en el WebView para capturar. Primero, usa OkHttp para hacer un `HEAD` o `GET` con `followRedirects=true` y extraer la URL canónica final (ej. `https://www.facebook.com/watch/?v=123456...`).\n*   **Verificación de Carga:**\n    1.  Inyecta JavaScript en el WebView para escuchar el evento `onLoaded` del reproductor de video (`<video>` o `<div class=\"fb-video\">`).\n    2.  Espera a que el video tenga `currentTime > 0` o que el elemento `<video>` tenga `readyState >= 2` (HAVE_CURRENT_DATA).\n    3.  **No uses un timer fijo de 2s.** Usa un callback de JavaScript a Kotlin (`evaluateJavascript`) para saber cuándo el video está realmente listo.\n*   **Detección de Error:** Antes de capturar, evalúa `document.body.innerText`. Si contiene substrings como \"no disponible\", \"error\", \"inicia sesión\", o si el elemento `<video>` no existe, **aborta la captura**.\n*   **Captura:** Solo si el video está listo y no hay error, ejecuta `view.draw(Canvas)` sobre el elemento del video específico (no la pantalla completa) para obtener la miniatura nítida.\n\n**3. Marcador para videos privados/eliminados:**\n*   Si la detección de error se activa o si la URL canónica no resuelve a un video válido, **no guardes la captura de error**.\n*   Genera una imagen local genérica (placeholder) con el texto \"Video no disponible\" o un icono de \"Prohibido/Privado\".\n*   Guarda en la base de datos un flag `isAvailable = false` para que la UI muestre este marcador en lugar de una imagen corrupta o de error.\n\n---\n\n### PREGUNTA B — CLASIFICADOR\n\n**1. ¿Por qué clasifica \"facebook.com\" como \"Tecnología y celulares\"?**\n*   **Señal del Modelo:** El modelo ve el token `facebook.com`. En el entrenamiento, \"facebook\" suele asociarse con redes sociales, pero si la clase \"Juegos\" tiene pocos ejemplos con el dominio \"facebook.com\" y la clase \"Tecnología\" tiene muchos ejemplos de apps, redes o dominios genéricos, el modelo aprende un sesgo: *dominio genérico de red social → Tecnología/General*.\n*   **Falta de Contexto:** Sin título ni descripción, el modelo no tiene señales semánticas de \"juego\". El dominio \"facebook.com\" es un ruido para distinguir entre \"Juegos\" y \"Tecnología\" si no hay ejemplos específicos de juegos en Facebook en el set de entrenamiento.\n*   **Sesgo de Clase:** Si \"Tecnología\" es una clase más frecuente o tiene ejemplos más \"limpios\" (sin ruido de dominios genéricos), el modelo tiende a predicciones más conservadoras hacia esa clase cuando la entrada es ambigua.\n\n**2. ¿Cómo se arregla sin inventar datos?**\n*   **Aumentar Ejemplos de Juegos en Facebook:** Añade al set de entrenamiento ejemplos reales de videos de juegos en Facebook con títulos/descripciones que contengan palabras clave de juegos (\"juego\", \"game\", \"play\", \"nintendo\", \"ps5\", etc.). Esto enseña al modelo que \"facebook.com\" + contexto de juego = \"Juegos\".\n*   **Contrapesos (Weighting):** Si no puedes añadir muchos datos, aumenta el peso de los ejemplos de \"Juegos\" que tengan dominios genéricos o vacíos, para que el modelo no los ignore.\n*   **Manejo de Entradas Genéricas (Dominio solo):**\n    *   **Umbral de Confianza:** Implementa un umbral de probabilidad (ej. 0.7). Si la confianza de la predicción es baja (porque el texto es solo un dominio genérico), no fuerces una clase.\n    *   **Clase \"Otros\" o \"Sin Clasificar\":** Crea una clase explícita \"Otros\" o \"Sin Clasificar\". Entrena al modelo para que, cuando el texto sea solo un dominio genérico (como \"facebook.com\", \"youtube.com\") sin palabras clave, prediga \"Otros\".\n    *   **Post-procesamiento:** Si la entrada es solo un dominio, devuelve \"Otros\" por defecto en la lógica de la app, independientemente de la salida del modelo, hasta que se tenga más contexto.\n\n**Resumen de acciones:**\n1.  **A:** Resolver URL canónica, esperar evento JS de video listo, detectar texto de error, usar placeholder local si falla.\n2.  **B:** Añadir ejemplos de juegos en Facebook, crear clase \"Otros\" para entradas genéricas, aplicar umbral de confianza para no clasificar dominios solos."
+            },
+            "logprobs": null
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 596,
+          "completion_tokens": 1390,
+          "total_tokens": 1986,
+          "usage_evidence": {
+            "input": {
+              "source": "reported"
+            },
+            "output": {
+              "source": "reported"
+            },
+            "cacheRead": {
+              "source": "unknown"
+            },
+            "cacheCreation": {
+              "source": "unknown"
+            }
+          }
+        },
+        "system_fingerprint": "fp_c14f15bfae"
+      }
+    },
+    {
+      "modelo": "nvidia/nvidia/nemotron-3.5-lightning-30b-a3b",
+      "ok": true,
+      "respuesta": "**A — Vista previa /share/r/**\n\n*Por qué falla:*\n- `/share/r/XXXX` es un acortador/intersticial de Facebook para seguimiento de compartidos. Al solicitarlo directamente con OkHttp (sin navegador, UA ni cookies), Facebook devuelve HTTP 400 o una página de muro; no hay etiquetas `og:`.\n- El endpoint `oembed_video` para esa URL corta devuelve solo el `<div class=\"fb-video\">` con el SDK JS, sin `og:title/og:image`. Para videos restringidos, eliminados o con bloqueo geográfico, el SDK renderiza el cartel \"Video no disponible\".\n- El WebView carga ese HTML. Al esperar 2 segundos",
+      "crudo": {
+        "id": "chatcmpl-09ada224-ebdb-4483-8da3-d8798511b23a",
+        "object": "chat.completion",
+        "created": 1795446490,
+        "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+        "choices": [
+          {
+            "index": 0,
+            "finish_reason": "length",
+            "message": {
+              "role": "assistant",
+              "refusal": null,
+              "content": "**A — Vista previa /share/r/**\n\n*Por qué falla:*\n- `/share/r/XXXX` es un acortador/intersticial de Facebook para seguimiento de compartidos. Al solicitarlo directamente con OkHttp (sin navegador, UA ni cookies), Facebook devuelve HTTP 400 o una página de muro; no hay etiquetas `og:`.\n- El endpoint `oembed_video` para esa URL corta devuelve solo el `<div class=\"fb-video\">` con el SDK JS, sin `og:title/og:image`. Para videos restringidos, eliminados o con bloqueo geográfico, el SDK renderiza el cartel \"Video no disponible\".\n- El WebView carga ese HTML. Al esperar 2 segundos",
+              "reasoning_content": "Here's a thinking process:\n\n1.  **Analyze User Request:**\n   - Role: Android Engineer\n   - Language: Spanish\n   - Tone/Style: Concise and concrete\n   - Content: Two diagnostic questions about an Android app (Kotlin/Compose, offline/off-server, no auth/token)\n   - Questions: A (Facebook /share/r/ preview failure) and B (DistilBERT classifier misclassification)\n\n2.  **Deconstruct Question A:**\n   - Context: Saves Facebook video links. Current flow: OkHttp fetch -> parse og:title/image -> if empty, fetch oembed_video -> get HTML div fb-video + SDK JS -> load in WebView -> after 2s capture Canvas as PNG -> read innerText for title.\n   - Problem: Public videos shared via https://www.facebook.com/share/r/XXXX saved with title \"facebook.com\" and thumbnail = Facebook error screen \"Video no disponible — Es posible que este video ya no exista o que no tengas permiso para verlo\".\n   - Sub-questions:\n     a. Why exactly does this flow fail? What does /share/r/ do? What does oEmbed return for that URL? Why does WebView paint error page instead of video? Why no title from innerText?\n     b. How to reliably capture the actual video frame on device? (URL short to canonical resolution, verify player loaded before capture, detect error text to avoid saving it)\n     c. If video is truly private/deleted, what custom marker should show instead of error page?\n\n3.  **Deconstruct Question B:**\n   - Context: DistilBERT fine-tuned (16 classes, Spanish titles/descriptions). A video saved with title \"facebook.com\" and empty description (because FB wouldn't give title) was classified as \"Tecnología y celulares\" instead of \"Juegos\".\n   - Sub-questions:\n     a. Why does this happen when the only text is \"facebook.com\"? What signal does the model see (domain tokens, class biases, generic words)?\n     b. How to fix without inventing data? More game examples, class rebalancing, what to do when text is just a generic domain (confidence threshold, \"Otros\" class)?\n\n4.  **Formulate Answers (Android Engineer Persona, Concise & Concrete, Spanish):**\n\n   *Question A Analysis:*\n   - `/share/r/` is Facebook's \"share redirect\" URL shortener. It doesn't host video metadata itself; it's a redirect/interstitial that Facebook uses for sharing tracking. When OkHttp fetches it directly, Facebook returns HTTP 400 with login wall or no og:tags because it detects a bot/non-browser context or the URL is a redirect without proper user-agent/cookies.\n   - oEmbed `graph.facebook.com/v27.0/oembed_video?url=...` for `/share/r/XXXX`: Facebook's oEmbed video endpoint typically returns only the `<div class=\"fb-video\">` with embedded SDK JS, not og:title/image. For `/share/r/` links, it often returns the error placeholder because the redirect hasn't resolved to the canonical watch URL, or the video is age-restricted/private/removed.\n   - WebView loads that HTML. The `fb-video` div initially shows a placeholder/loading state, but if the SDK can't load (no cookie/login/geo restriction), it renders the \"Video no disponible\" UI. Since we capture after fixed 2s, we snap that error UI.\n   - `document.body.innerText` picks up the error message text, not a title, because there's no title element/meta in that HTML.\n   - Fix strategy:\n     1. Resolve `/share/r/` to canonical URL: fetch with proper UA, follow redirects, get the actual `facebook.com/.../watch?v=` URL.\n     2. After loading HTML in WebView, check for error class/text (e.g., `.fb-error-msg`, or \"Video no disponible\" in innerText). If present, don't capture; mark as unavailable.\n     3. Only capture Canvas after confirming the player iframe has loaded/has content (e.g., wait for `onPageFinished`, check iframe height/width > 0, or detect `fb-video` without error class).\n     4. Use `WebViewClient` overrides to intercept load state.\n     5. For truly private/deleted videos: instead of error screenshot, show a placeholder icon with custom text \"Video privado/eliminado\" (own marker), don't save the error screenshot as thumbnail.\n\n   *Question B Analysis:*\n   - Model sees literally the string \"facebook.com\". DistilBERT tokenizes it as `[UNK]` or a known token for \"facebook\". Since there's no title/description, the input embedding is extremely sparse.\n   - Reasons for misclassification:\n     * The model was trained on data where \"facebook.com\" appeared in or near \"Tecnología y celulares\" class (many tech articles shared from FB).\n     * Class imbalance: \"Tecnología y celulares\" might be overrepresented.\n     * Token-level bias: The embedding for the domain token alone is weak; the classifier defaults to the most frequent class seen with that token during training.\n     * No semantic content → model relies on statistical co-occurrence in training set.\n   - Fixes without fabricating data:\n     * Add explicit negative examples: links with just `facebook.com` labeled as \"Otros\" or appropriate class.\n     * Add a dedicated \"Dominio genérico\" or \"Otros\" class (17th class).\n     * Apply confidence thresholding: if max prob < X (e.g., 0.4), route to \"Otros\".\n     * Data augmentation: back-translate, synonym replacement in Spanish, but keep domain text minimal.\n     * Feature engineering: add URL-length, presence of specific path patterns, or a pre-filter that detects \"just domain\" inputs and diverts to a safe path.\n     * Retrain/fine-tune with a balanced set of \"domain-only\" inputs across all 16 classes, or reduce classes if \"facebook.com\" is a degenerate case.\n\n   Now, structure the response: Spanish, concise, concrete, Android engineer tone. Two separate sections or clearly separated answers. Must be concise but cover all sub-questions. Let's draft.⟧"
+            },
+            "logprobs": null
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 630,
+          "completion_tokens": 1500,
+          "total_tokens": 2130,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 1344
+          },
+          "usage_evidence": {
+            "input": {
+              "source": "reported"
+            },
+            "output": {
+              "source": "reported"
+            },
+            "cacheRead": {
+              "source": "reported"
+            },
+            "cacheCreation": {
+              "source": "unknown"
+            }
+          }
+        }
+      }
+    },
+    {
+      "modelo": "auto/best-fast",
+      "ok": true,
+      "respuesta": "Aquí tienes el diagnóstico y las soluciones técnicas para ambas preguntas:\n\n### PREGUNTA A — VISTA PREVIA DE FACEBOOK `/share/r/`\n\n**¿Por qué falla el flujo actual?**\n1.  **Naturaleza de `/share/r/`:** Es una URL corta (redirect) que requiere JavaScript para resolver la redirección a la URL canónica (`/watch?v=...` o `/reel/...`). OkHttp no ejecuta JS, por lo que obtiene el HTML de la página de carga o error, no el contenido final.\n2.  **oEmbed con URL corta:** La API `graph.facebook.com/oembed_video` **no resuelve redirecciones JS**. Si le pasas la URL corta, devuelve un error o un reproductor genérico que, al no tener el ID de video válido en el contexto de sesión, muestra el estado de \"no disponible\".\n3.  **WebView y Captura:** El WebView carga el HTML de oEmbed. Al no haber un video real cargado (solo el contenedor vacío o el mensaje de error), `view.draw()` captura lo que hay en pantalla: el mensaje de error de Facebook. `innerText` captura ese mismo texto de error, no un título.\n\n**Solución Técnica (Flujo Corregido):**\n\n1.  **Resolución de URL (Pre-proceso):**\n    *   Antes de llamar a oEmbed o WebView, usa `OkHttp` con `followRedirects(true)` y un `User-Agent` de navegador móvil.\n    *   *Nota:* Facebook suele bloquear redirecciones simples para `/share/r/`. La solución robusta es usar la API de **Facebook Graph** con el parámetro `fields=permalink_url` si tienes el ID, o usar un servicio de resolución de URLs externas (aunque para FB es difícil sin token).\n    *   *Alternativa práctica:* Si no puedes resolver la URL canónica, **no intentes capturar**. Marca el enlace como \"Requiere verificación manual\" o usa una miniatura genérica de Facebook.\n\n2.  **Verificación de Carga en WebView (Si insistes en capturar):**\n    *   No captures a los 2 segundos ciegamente.\n    *   Inyecta JavaScript en el WebView para verificar el estado del reproductor:\n        ```kotlin\n        webView.evaluateJavascript(\n            \"document.querySelector('video')?.readyState === 4 ? 'loaded' : 'not_loaded'\"\n        ) { result ->\n            if (result == \"\\\"loaded\\\"\") {\n                // Espera 500ms más para que se pinte el primer frame\n                handler.postDelayed({\n                    // Captura la vista\n                }, 500)\n            } else {\n                // No capturar, usar fallback\n            }\n        }\n        ```\n    *   **Detección de Error:** Antes de capturar, lee `document.body.innerText`. Si contiene substrings como `\"no disponible\"`, `\"no existe\"`, `\"permiso\"`, **aborta la captura** y guarda la miniatura de fallback.\n\n3.  **Marcador para Videos Privados/Eliminados:**\n    *   Si la verificación falla o detecta texto de error, **no guardes la captura**.\n    *   Genera una miniatura local estática (PNG) con el logo de Facebook y el texto \"Video no disponible\" o \"Enlace roto\".\n    *   Guarda en la base de datos un flag `isBroken = true` para filtrarlos en la UI.\n\n---\n\n### PREGUNTA B — CLASIFICADOR (DistilBERT)\n\n**¿Por qué clasifica \"facebook.com\" como \"Tecnología\"?**\n1.  **Señal Débil y Sesgo:** El modelo ve el token `facebook.com` (o `facebook` + `com`). En el entrenamiento, \"Facebook\" está fuertemente asociado a redes sociales, tecnología y plataformas digitales. Si no hay contexto de \"juego\", el modelo recurre a la asociación más fuerte del dominio.\n2.  **Falta de Contrapeso:** Si el dataset de entrenamiento tenía pocos ejemplos de juegos *sin* título descriptivo (solo dominio), el modelo no aprendió a mapear \"facebook.com\" -> \"Juegos\" cuando no hay otras palabras.\n3.  **Tokens Genéricos:** \"facebook.com\" es un token genérico de plataforma, no de contenido. El modelo interpreta la *plataforma* (Tecnología) en lugar del *contenido* (Juego), porque no tiene señal de contenido.\n\n**Solución sin inventar datos:**\n\n1.  **Pre-procesamiento del Texto:**\n    *   Si el título es solo un dominio genérico (`facebook.com`, `instagram.com`, etc.) y la descripción está vacía, **no pases ese texto al clasificador**.\n    *   En su lugar, pasa una cadena especial como `\"UNKNOWN_CONTENT\"` o simplemente omite la clasificación automática.\n\n2.  **Clase \"Otros\" o \"Sin Clasificar\":**\n    *   Añade una clase `OTHER` o `UNCLASSIFIED` al modelo.\n    *   Entrena el modelo para que, cuando el texto sea muy corto (< 5 tokens) o solo un dominio, prediga `OTHER` con alta confianza.\n    *   En la UI, muestra estos enlaces en una sección \"Sin clasificar\" o permite al usuario clasificarlos manualmente.\n\n3.  **Umbral de Confianza:**\n    *   Implementa un umbral de probabilidad (ej. 0.7). Si la confianza de la clase predicha es baja, o si el texto es solo un dominio, asigna la clase `OTHER`.\n    *   Ejemplo:\n        ```kotlin\n        val prediction = model.classify(text)\n        if (text.trim().length < 10 || prediction.confidence < 0.7) {\n            category = \"OTHER\"\n        } else {\n            category = prediction.label\n        }\n        ```\n\n4.  **Mejora del Dataset (Si es posible):**\n    *   Añade ejemplos sintéticos de juegos con título \"facebook.com\" y descripción vacía, etiquetados como \"Juegos\", **solo si** tienes una forma de verificar que esos enlaces eran juegos. Si no, no lo hagas, ya que contaminarías el modelo.\n    *   Mejor: Añade ejemplos de \"facebook.com\" con descripción vacía etiquetados como \"Otros\" para que el modelo aprenda que \"solo dominio\" no es señal suficiente para una categoría específica.\n\n**Resumen de Acción Inmediata:**\n*   **A:** No captures pantallas de error. Verifica `video.readyState` y `innerText` antes de capturar. Usa miniatura genérica si falla.\n*   **B:** Si el texto es solo un dominio, no clasifiques. Asigna a \"Otros\" o",
+      "crudo": {
+        "id": "chatcmpl-4874db75-8534-480d-81fd-e7c5a18e19b5",
+        "object": "chat.completion",
+        "created": 1795446521,
+        "model": "qwen/qwen3.8-27b",
+        "choices": [
+          {
+            "index": 0,
+            "finish_reason": "length",
+            "message": {
+              "role": "assistant",
+              "content": "Aquí tienes el diagnóstico y las soluciones técnicas para ambas preguntas:\n\n### PREGUNTA A — VISTA PREVIA DE FACEBOOK `/share/r/`\n\n**¿Por qué falla el flujo actual?**\n1.  **Naturaleza de `/share/r/`:** Es una URL corta (redirect) que requiere JavaScript para resolver la redirección a la URL canónica (`/watch?v=...` o `/reel/...`). OkHttp no ejecuta JS, por lo que obtiene el HTML de la página de carga o error, no el contenido final.\n2.  **oEmbed con URL corta:** La API `graph.facebook.com/oembed_video` **no resuelve redirecciones JS**. Si le pasas la URL corta, devuelve un error o un reproductor genérico que, al no tener el ID de video válido en el contexto de sesión, muestra el estado de \"no disponible\".\n3.  **WebView y Captura:** El WebView carga el HTML de oEmbed. Al no haber un video real cargado (solo el contenedor vacío o el mensaje de error), `view.draw()` captura lo que hay en pantalla: el mensaje de error de Facebook. `innerText` captura ese mismo texto de error, no un título.\n\n**Solución Técnica (Flujo Corregido):**\n\n1.  **Resolución de URL (Pre-proceso):**\n    *   Antes de llamar a oEmbed o WebView, usa `OkHttp` con `followRedirects(true)` y un `User-Agent` de navegador móvil.\n    *   *Nota:* Facebook suele bloquear redirecciones simples para `/share/r/`. La solución robusta es usar la API de **Facebook Graph** con el parámetro `fields=permalink_url` si tienes el ID, o usar un servicio de resolución de URLs externas (aunque para FB es difícil sin token).\n    *   *Alternativa práctica:* Si no puedes resolver la URL canónica, **no intentes capturar**. Marca el enlace como \"Requiere verificación manual\" o usa una miniatura genérica de Facebook.\n\n2.  **Verificación de Carga en WebView (Si insistes en capturar):**\n    *   No captures a los 2 segundos ciegamente.\n    *   Inyecta JavaScript en el WebView para verificar el estado del reproductor:\n        ```kotlin\n        webView.evaluateJavascript(\n            \"document.querySelector('video')?.readyState === 4 ? 'loaded' : 'not_loaded'\"\n        ) { result ->\n            if (result == \"\\\"loaded\\\"\") {\n                // Espera 500ms más para que se pinte el primer frame\n                handler.postDelayed({\n                    // Captura la vista\n                }, 500)\n            } else {\n                // No capturar, usar fallback\n            }\n        }\n        ```\n    *   **Detección de Error:** Antes de capturar, lee `document.body.innerText`. Si contiene substrings como `\"no disponible\"`, `\"no existe\"`, `\"permiso\"`, **aborta la captura** y guarda la miniatura de fallback.\n\n3.  **Marcador para Videos Privados/Eliminados:**\n    *   Si la verificación falla o detecta texto de error, **no guardes la captura**.\n    *   Genera una miniatura local estática (PNG) con el logo de Facebook y el texto \"Video no disponible\" o \"Enlace roto\".\n    *   Guarda en la base de datos un flag `isBroken = true` para filtrarlos en la UI.\n\n---\n\n### PREGUNTA B — CLASIFICADOR (DistilBERT)\n\n**¿Por qué clasifica \"facebook.com\" como \"Tecnología\"?**\n1.  **Señal Débil y Sesgo:** El modelo ve el token `facebook.com` (o `facebook` + `com`). En el entrenamiento, \"Facebook\" está fuertemente asociado a redes sociales, tecnología y plataformas digitales. Si no hay contexto de \"juego\", el modelo recurre a la asociación más fuerte del dominio.\n2.  **Falta de Contrapeso:** Si el dataset de entrenamiento tenía pocos ejemplos de juegos *sin* título descriptivo (solo dominio), el modelo no aprendió a mapear \"facebook.com\" -> \"Juegos\" cuando no hay otras palabras.\n3.  **Tokens Genéricos:** \"facebook.com\" es un token genérico de plataforma, no de contenido. El modelo interpreta la *plataforma* (Tecnología) en lugar del *contenido* (Juego), porque no tiene señal de contenido.\n\n**Solución sin inventar datos:**\n\n1.  **Pre-procesamiento del Texto:**\n    *   Si el título es solo un dominio genérico (`facebook.com`, `instagram.com`, etc.) y la descripción está vacía, **no pases ese texto al clasificador**.\n    *   En su lugar, pasa una cadena especial como `\"UNKNOWN_CONTENT\"` o simplemente omite la clasificación automática.\n\n2.  **Clase \"Otros\" o \"Sin Clasificar\":**\n    *   Añade una clase `OTHER` o `UNCLASSIFIED` al modelo.\n    *   Entrena el modelo para que, cuando el texto sea muy corto (< 5 tokens) o solo un dominio, prediga `OTHER` con alta confianza.\n    *   En la UI, muestra estos enlaces en una sección \"Sin clasificar\" o permite al usuario clasificarlos manualmente.\n\n3.  **Umbral de Confianza:**\n    *   Implementa un umbral de probabilidad (ej. 0.7). Si la confianza de la clase predicha es baja, o si el texto es solo un dominio, asigna la clase `OTHER`.\n    *   Ejemplo:\n        ```kotlin\n        val prediction = model.classify(text)\n        if (text.trim().length < 10 || prediction.confidence < 0.7) {\n            category = \"OTHER\"\n        } else {\n            category = prediction.label\n        }\n        ```\n\n4.  **Mejora del Dataset (Si es posible):**\n    *   Añade ejemplos sintéticos de juegos con título \"facebook.com\" y descripción vacía, etiquetados como \"Juegos\", **solo si** tienes una forma de verificar que esos enlaces eran juegos. Si no, no lo hagas, ya que contaminarías el modelo.\n    *   Mejor: Añade ejemplos de \"facebook.com\" con descripción vacía etiquetados como \"Otros\" para que el modelo aprenda que \"solo dominio\" no es señal suficiente para una categoría específica.\n\n**Resumen de Acción Inmediata:**\n*   **A:** No captures pantallas de error. Verifica `video.readyState` y `innerText` antes de capturar. Usa miniatura genérica si falla.\n*   **B:** Si el texto es solo un dominio, no clasifiques. Asigna a \"Otros\" o"
+            },
+            "logprobs": null
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 596,
+          "completion_tokens": 1500,
+          "total_tokens": 2096,
+          "usage_evidence": {
+            "input": {
+              "source": "reported"
+            },
+            "output": {
+              "source": "reported"
+            },
+            "cacheRead": {
+              "source": "unknown"
+            },
+            "cacheCreation": {
+              "source": "unknown"
+            }
+          }
+        },
+        "system_fingerprint": "fp_2166f87c46"
+      },
+      "reintento": true
+    },
+    {
+      "modelo": "cohere/command-r-08-2024",
+      "ok": false,
+      "error": "Error: OmniRoute /v1/chat/completions HTTP 429",
+      "reintento": true
+    }
+  ]
+}

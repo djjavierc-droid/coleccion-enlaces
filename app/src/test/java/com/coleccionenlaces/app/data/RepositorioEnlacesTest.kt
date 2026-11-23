@@ -2,6 +2,7 @@ package com.coleccionenlaces.app.data
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.coleccionenlaces.app.domain.CabezaAprendizaje
 import com.coleccionenlaces.app.domain.ResultadoOEmbed
 import com.coleccionenlaces.app.domain.ResultadoVistaPrevia
 import com.coleccionenlaces.app.domain.TipoErrorVistaPrevia
@@ -47,6 +48,7 @@ class RepositorioEnlacesTest {
     private var entretenimientoId: Long = 0
     private var tecnologiaId: Long = 0
     private var otrosId: Long = 0
+    private var juegosId: Long = 0
 
     /** URLs oEmbed pedidas en cada prueba (para probar que no se piden de más). */
     private val oembedPedidas = mutableListOf<String>()
@@ -106,6 +108,7 @@ class RepositorioEnlacesTest {
         entretenimientoId = categoriaDao.obtenerPorNombre("Entretenimiento")!!.id
         tecnologiaId = categoriaDao.obtenerPorNombre("Tecnología y celulares")!!.id
         otrosId = categoriaDao.obtenerPorNombre("Otros")!!.id
+        juegosId = categoriaDao.obtenerPorNombre("Juegos")!!.id
         oembedPedidas.clear()
         directorioMiniaturas = Files.createTempDirectory("miniaturas-test").toFile()
     }
@@ -967,5 +970,149 @@ class RepositorioEnlacesTest {
             )
             assertEquals(cocinaId, guardado.categoriaId)
             assertTrue(guardado.categoriaManual)
+        }
+
+    // ---- Fix 4, bug 3: oEmbed con la URL canónica ----
+
+    /**
+     * prepararEnlace con un /share/r/ resuelve la URL antes de pedir
+     * el oEmbed: el endpoint oEmbed se llama con la URL final
+     * (m.facebook.com), no con la corta. El interceptor simula la
+     * redirección 302 medida con curl.
+     */
+    @Test
+    fun `prepararEnlace pide el oEmbed con la URL canonica de un share de Facebook`() =
+        runBlocking {
+            val clienteVistaPrevia = OkHttpClient.Builder()
+                .addInterceptor { cadena ->
+                    val url = cadena.request().url.toString()
+                    if (url == "https://www.facebook.com/share/r/1JqVPz7de") {
+                        Response.Builder()
+                            .request(cadena.request())
+                            .protocol(Protocol.HTTP_1_1)
+                            .code(302)
+                            .message("Found")
+                            .header("Location", "https://m.facebook.com/share/r/1JqVPz7de")
+                            .body("".toResponseBody("text/html; charset=utf-8".toMediaType()))
+                            .build()
+                    } else {
+                        Response.Builder()
+                            .request(cadena.request())
+                            .protocol(Protocol.HTTP_1_1)
+                            .code(200)
+                            .message("OK")
+                            .body("".toResponseBody("text/html; charset=utf-8".toMediaType()))
+                            .build()
+                    }
+                }
+                .build()
+            val repo = RepositorioEnlaces(
+                enlaceDao,
+                categoriaDao,
+                ServicioVistaPrevia(cliente = clienteVistaPrevia),
+                ServicioOEmbed(cliente = clienteOEmbedFalso(mapOf(
+                    "https://graph.facebook.com/v27.0/oembed_video" to (200 to jsonFacebook),
+                ))),
+            )
+
+            val preparado = repo.prepararEnlace("https://www.facebook.com/share/r/1JqVPz7de")
+
+            assertTrue(preparado.oembed is ResultadoOEmbed.Exito)
+            // La URL pedida al oEmbed lleva la canónica (m.facebook),
+            // no la corta (www.facebook.com/share).
+            assertTrue(oembedPedidas.any { it.contains("m.facebook.com") })
+            assertFalse(oembedPedidas.any { it.contains("www.facebook.com") })
+        }
+
+    // ---- Fix 4, bug 2: el movimiento manual actualiza los pesos en Room ----
+
+    /**
+     * El caso exacto de Javier: el enlace del juego, guardado con
+     * título "facebook.com" y clasificado en Tecnología, se mueve a
+     * mano a "Juegos". El movimiento guarda la corrección y los
+     * pesos en Room, y una cabeza nueva cargada desde esos pesos
+     * predice "Juegos" para ese mismo texto: el aprendizaje sobrevive
+     * al reinicio de la app.
+     *
+     * Simulación del algoritmo (cubos 710/385, sin colisión): un
+     * paso en línea deja "Juegos" como argmax con confianza 0,23
+     * (por debajo del umbral 0,6 del motor); tras el reentrenamiento
+     * en reposo (10 épocas) sube a ~0,64 y supera el umbral. Por
+     * eso el test comprueba el argmax tras el movimiento y la
+     * confianza tras el reentrenamiento.
+     */
+    @Test
+    fun `mover un enlace a mano guarda la correccion y los pesos en Room`() =
+        runBlocking {
+            val etiquetas = listOf(
+                "Cocina", "Videos de mecánica", "Videos de construcción",
+                "Contenido XXX", "Entretenimiento", "Tecnología y celulares",
+                "Autos y motos", "Salud y ejercicio", "Dinero y finanzas",
+                "Noticias", "Juegos", "Hazlo tú mismo (DIY)",
+                "Jardín y plantas", "Pesca y campo", "Moda y ropa", "Viajes",
+            )
+            val cabeza = CabezaAprendizaje(etiquetas)
+            val servicioAprendizaje = ServicioAprendizaje(db.aprendizajeDao(), cabeza)
+            val repo = RepositorioEnlaces(
+                enlaceDao,
+                categoriaDao,
+                ServicioVistaPrevia(cliente = clienteFalso(emptyMap())),
+                ServicioOEmbed(cliente = clienteOEmbedFalso(emptyMap())),
+                servicioAprendizaje = servicioAprendizaje,
+            )
+            val id = enlaceDao.insertar(
+                Enlace(
+                    url = "https://www.facebook.com/share/r/1Bo58NQ",
+                    titulo = "facebook.com",
+                    descripcion = "",
+                    categoriaId = tecnologiaId,
+                    categoriaManual = false,
+                ),
+            )
+
+            assertTrue(repo.cambiarCategoriaManual(id, juegosId))
+
+            val guardado = enlaceDao.obtenerPorId(id)!!
+            assertEquals(juegosId, guardado.categoriaId)
+            assertTrue(guardado.categoriaManual)
+            assertEquals(1, servicioAprendizaje.contarCorrecciones())
+            // Los pesos están en Room y la cabeza ya aprendió en
+            // línea: su argmax para ese texto es "Juegos".
+            val pesosGuardados = db.aprendizajeDao().obtenerPesos()
+            assertTrue(pesosGuardados != null)
+            val prediccion = cabeza.predecir("facebook.com")
+            assertTrue(prediccion != null)
+            assertEquals("Juegos", etiquetas[prediccion!!.indiceClase])
+            // Un SEGUNDO movimiento también persiste los pesos (Fix 4:
+            // guardarPesos era @Insert sin REPLACE y la segunda
+            // corrección chocaba con la PK id=1).
+            val id2 = enlaceDao.insertar(
+                Enlace(
+                    url = "https://www.facebook.com/share/r/1JqVPz7de",
+                    titulo = "facebook.com",
+                    descripcion = "",
+                    categoriaId = tecnologiaId,
+                    categoriaManual = false,
+                ),
+            )
+            assertTrue(repo.cambiarCategoriaManual(id2, juegosId))
+            assertEquals(2, servicioAprendizaje.contarCorrecciones())
+            assertTrue(db.aprendizajeDao().obtenerPesos() != null)
+            // Tras el reentrenamiento en reposo, la confianza supera
+            // el umbral del motor (0,6): la corrección se aplica.
+            assertEquals(2, servicioAprendizaje.reentrenarEnReposo())
+            val trasReposo = cabeza.predecir("facebook.com")
+            assertTrue(trasReposo != null)
+            assertEquals("Juegos", etiquetas[trasReposo!!.indiceClase])
+            assertTrue(trasReposo.confianza >= 0.6f)
+            // Y una cabeza nueva cargada SOLO desde los pesos de Room
+            // predice lo mismo: el aprendizaje sobrevive al reinicio.
+            val cabezaNueva = CabezaAprendizaje.desdeBytes(
+                etiquetas,
+                db.aprendizajeDao().obtenerPesos()?.pesos,
+            )
+            val prediccionNueva = cabezaNueva.predecir("facebook.com")
+            assertTrue(prediccionNueva != null)
+            assertEquals("Juegos", etiquetas[prediccionNueva!!.indiceClase])
         }
 }

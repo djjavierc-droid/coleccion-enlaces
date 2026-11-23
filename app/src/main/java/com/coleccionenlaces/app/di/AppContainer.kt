@@ -6,9 +6,11 @@ import com.coleccionenlaces.app.data.RepositorioEnlaces
 import com.coleccionenlaces.app.data.ServicioAprendizaje
 import com.coleccionenlaces.app.data.ServicioOEmbed
 import com.coleccionenlaces.app.data.ServicioVistaPrevia
+import com.coleccionenlaces.app.domain.BloqueoCarpetas
 import com.coleccionenlaces.app.domain.CabezaAprendizaje
 import com.coleccionenlaces.app.domain.ClasificadorInteligente
 import com.coleccionenlaces.app.domain.ClasificadorModelo
+import com.coleccionenlaces.app.domain.ObservadorBloqueoApp
 import com.coleccionenlaces.app.ui.home.HomeViewModelFactory
 import com.coleccionenlaces.app.work.ReentrenamientoWorker
 import java.io.File
@@ -115,6 +117,23 @@ class AppContainer(context: Context) {
 
     /** Factoría del ViewModel principal. */
     val homeViewModelFactory: HomeViewModelFactory by lazy {
-        HomeViewModelFactory(repositorio)
+        HomeViewModelFactory(repositorio, bloqueoCarpetas)
+    }
+
+    /**
+     * Bloqueo por carpeta (Fase 9): UNA sola instancia para toda la
+     * app. La comparten el ViewModel (la UI desbloquea con huella) y
+     * el observador de ciclo de vida ([ObservadorBloqueoApp], que
+     * bloquea todo al pasar a segundo plano, Fix 4 requisito 4).
+     * Antes el ViewModel creaba la suya propia y nadie más podía
+     * bloquear desde fuera.
+     */
+    val bloqueoCarpetas: BloqueoCarpetas by lazy {
+        BloqueoCarpetas()
+    }
+
+    /** Observador de bloqueo automático (Fix 4, requisito 4). */
+    val observadorBloqueoApp: ObservadorBloqueoApp by lazy {
+        ObservadorBloqueoApp(bloqueoCarpetas)
     }
 }

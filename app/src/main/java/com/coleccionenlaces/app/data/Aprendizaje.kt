@@ -3,6 +3,7 @@ package com.coleccionenlaces.app.data
 import androidx.room.Dao
 import androidx.room.Entity
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
 
@@ -52,8 +53,19 @@ interface AprendizajeDao {
     @Query("SELECT COUNT(*) FROM correcciones_aprendizaje")
     suspend fun contarCorrecciones(): Int
 
-    /** Guarda los pesos (una sola fila; REPLACE). */
-    @Insert
+    /**
+     * Guarda los pesos (una sola fila; REPLACE).
+     *
+     * Fix 4: REPLACE explícito. Antes era un @Insert sin estrategia
+     * (ABORT por defecto): la PRIMERA corrección guardaba los pesos
+     * bien, pero la SEGUNDA chocaba con la PK id=1 y lanzaba
+     * SQLiteConstraintException — el `catch` de
+     * [ServicioAprendizaje.registrarCorreccion] lo tragaba y los
+     * pesos dejaban de persistir (la cabeza en memoria sí aprendía,
+     * pero al reiniciar la app se perdía todo lo aprendido después
+     * de la primera corrección).
+     */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun guardarPesos(pesos: PesosCabeza)
 
     /** Los pesos guardados, o null si aún no hay. */

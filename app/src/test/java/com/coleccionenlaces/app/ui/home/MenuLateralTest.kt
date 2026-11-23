@@ -117,4 +117,60 @@ class MenuLateralTest {
 
         assertEquals(listOf(1L, 17L, 18L), items.map { it.categoriaId })
     }
+
+    /**
+     * Fix 4, bug 1: las filas del menú incluyen TODAS las categorías
+     * (17 predefinidas + propias) y la sección "Acerca de" completa.
+     * Es lo que dibuja el LazyColumn: si una fila faltara aquí, el
+     * cajón no la mostraría ni desplazando (eso es lo que pasó en la
+     * v1.0.2: "Hazlo tú mismo (DIY)" quedaba cortada y "Acerca de"
+     * era inalcanzable).
+     */
+    @Test
+    fun `las filas del menu incluyen las 17 categorias las propias y Acerca de`() {
+        val diecisiete = (1..17).map { i ->
+            Categoria(
+                id = i.toLong(), nombre = "Categoría $i",
+                color = 0xFF000000, icono = "category",
+                esPredefinida = true, orden = i - 1,
+            )
+        }
+        val propias = listOf(
+            Categoria(
+                id = 18, nombre = "Mis cosas", color = 0xFF7E57C2,
+                icono = "star", esPredefinida = false, orden = 17,
+            ),
+            Categoria(
+                id = 19, nombre = "Trabajo", color = 0xFF00897B,
+                icono = "work", esPredefinida = false, orden = 18,
+            ),
+        )
+        val filas = filasMenuLateral(
+            diecisiete + propias,
+            emptyMap(),
+            desbloqueadas = emptySet(),
+        )
+
+        val filasCategoria = filas.filterIsInstance<FilaMenuLateral.Categoria>()
+        assertEquals(19, filasCategoria.size)
+        assertEquals(
+            (1L..19L).toList(),
+            filasCategoria.map { it.item.categoriaId },
+        )
+        // "Acerca de" al final, con sus tres entradas y en orden.
+        val legales = filas.filterIsInstance<FilaMenuLateral.Legal>()
+        assertEquals(3, legales.size)
+        assertEquals(
+            com.coleccionenlaces.app.ui.legal.TipoLegal.entries,
+            legales.map { it.tipo },
+        )
+        assertTrue(filas.contains(FilaMenuLateral.TituloAcercaDe))
+        assertTrue(filas.indexOf(FilaMenuLateral.TituloAcercaDe) < filas.indexOf(legales.first()))
+        // "Nueva carpeta" está entre las categorías y "Acerca de".
+        val indiceNueva = filas.indexOf(FilaMenuLateral.NuevaCarpeta)
+        assertTrue(indiceNueva > filas.indexOf(filasCategoria.last()))
+        assertTrue(indiceNueva < filas.indexOf(FilaMenuLateral.TituloAcercaDe))
+        assertTrue(filas.contains(FilaMenuLateral.Todos))
+        assertTrue(filas.contains(FilaMenuLateral.Favoritos))
+    }
 }

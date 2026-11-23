@@ -4,11 +4,12 @@ Fecha: 2026-11-23 ~06:20 CST (MobileBERT bloqueado) y ~13:30 CST (DistilBERT
 verificado). Agente: subagente clasificador (93af6d88 y continuación 3c5e5184).
 **Decisión del padre: opción A (DistilBERT en TF). MobileBERT queda bloqueado
 con la evidencia de la sección 2. No se usaron las opciones B ni C.**
-**Estado FINAL (2026-11-23 ~14:16 CST): modelo entrenado, convertido y
-verificado en Python; CI EN VERDE (run 45191077134, commit 58ebec8);
-APK con clasificador verificado por mí (105.094.755 bytes, SHA-256
-8640f4df...). NO entregado a Javier: falta decidir la versión (choca
-con la v1.0.1 retenida) y la entrega es del padre.**
+**Estado FINAL (2026-11-23 ~14:30 CST): versión subida a 1.0.2
+(commit 4757577, "Versión 1.0.2: clasificador LiteRT incluido"); CI EN
+VERDE (run 45193562687, success); APK 1.0.2 VERIFICADO POR MÍ
+(105.094.755 bytes, SHA-256 c5e82f5075..., versionCode 3, versionName
+1.0.2, modelo .tflite con el hash verificado). NO entregado a Javier:
+la entrega es del padre.**
 
 ## 1. Descarga del modelo: COMPLETA y verificada
 
@@ -379,3 +380,30 @@ tokenizador WordPiece; solo cambian los pesos y el vocabulario).
   scripts entrenamiento/*.py (generar_datos, entrenar, convertir,
   diagnosticar-distilbert, verificar, diagnosticar-conversion,
   medir-confianza, convertir-experimento) y este fix-3-resumen.md.
+
+## 6. VERSIÓN 1.0.2 — clasificador LiteRT incluido (run 45193562687)
+
+Resuelve el choque de versión de 5.10: la versión subió a versionCode 3
+/ versionName 1.0.2 (commit 4757577, "Versión 1.0.2: clasificador
+LiteRT incluido"). Run **45193562687 SUCCESS** (iniciado 08:22 CST,
+completado ~08:25 CST), artefacto `coleccion-debug`.
+
+**APK VERIFICADO POR MÍ (descargado del artefacto, subagente de
+verificación)**: `Coleccion-v1.0.2-debug.apk`, **105.094.755 bytes**,
+SHA-256
+`c5e82f50752437de7fd3862affabf4564f7ecd440006b1becb68976a307329ac`,
+package `com.coleccionenlaces.app`, versionCode **3**, versionName
+**1.0.2**, minSdk 26, targetSdk **36**, MainActivity lanzable
+(`com.coleccionenlaces.app.MainActivity`), apksigner Verifies (v2
+true, 1 firmante), **0 fuentes empaquetadas**.
+`assets/modelo_clasificador.tflite` dentro del APK: 67.822.864 bytes,
+SHA-256 `6cf9abb8dbd4271e15b1be739362a1f84335fe2942cf7cfe7fa6f39250104669`
+= **el mismo .tflite ya verificado en Python** (EterniCodIA →
+"Tecnología y celulares" 0,873; validación 0,931). También dentro:
+assets/vocab.txt (231.508 B) y assets/etiquetas.txt (244 B).
+Archivo guardado en
+`~/workspace/coleccion-enlaces/Coleccion-v1.0.2-debug.apk`.
+
+La v1.0.1 retenida (21.575.398 bytes, SHA c29f924f...) queda
+reemplazada por esta 1.0.2 como versión completa con el clasificador.
+NO entregado a Javier: la entrega es del padre.
