@@ -9,7 +9,7 @@ Documento de trabajo para los agentes de cada fase. Léelo completo antes de emp
 - Cambios de Javier: `~/workspace/coleccion-enlaces/ESPECIFICACION.md` — 17 categorías predefinidas, carpetas propias del usuario, mover enlaces entre carpetas (la elección manual tiene prioridad y NO se sobrescribe), cada carpeta se abre con huella dactilar, NO se crean categorías automáticamente, máximo 20 categorías.
 
 ## Repo y copia de trabajo
-- Repo PRIVADO: https://github.com/djjavierc-droid/coleccion-enlaces.git (cuenta djjavierc-droid).
+- Repo PÚBLICO desde 2026-11-23 (antes privado; público para que GitHub Actions sea gratis e ilimitado): https://github.com/djjavierc-droid/coleccion-enlaces.git (cuenta djjavierc-droid).
 - Copia de trabajo local: `~/workspace/coleccion-enlaces/` (aquí mismo; este archivo vive en el repo).
 - Rama: `main`. Antes de cualquier push, verificar con `git ls-remote` que la conexión funciona.
 - Auth GitHub: el token está en `~/.git-credentials`. Para `gh`, exportar `GH_TOKEN` extraído de ahí (nunca imprimir el token):

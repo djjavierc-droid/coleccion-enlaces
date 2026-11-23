@@ -1,0 +1,203 @@
+{
+  "took_ms": 24588,
+  "results": [
+    {
+      "model": "ddgw/gpt-5.4-mini",
+      "ok": true,
+      "ms": 14193,
+      "text": "Método: usa un pipeline en el teléfono de `detección de lenguaje + extracción de OCR de miniaturas/títulos + embeddings ligeros + clasificador pequeño` (por ejemplo, TensorFlow Lite o ONNX Runtime Mobile) con reglas para URL/metadata y una capa de re-clasificación por confianza.  \nPor qué funciona sin servidor: todo corre on-device con modelos cuantizados, aprovechando texto visible, nombre del video, captions y señales visuales sin enviar nada fuera del móvil.  \nPunto débil: el ~99% real es difícil en contenido corto y ambiguo; la mayor falla será clasificar mal videos sin texto claro, con jerga, o cuando la miniatura engaña al modelo."
+    },
+    {
+      "model": "ddgw/gpt-5.6-luna",
+      "ok": true,
+      "ms": 11005,
+      "text": "Método: extraer 1–3 fotogramas + título/descripcion/hashtags del enlace, y pasar todo a un clasificador on-device pequeño (p. ej. embeddings multimodales + MLP o un modelo tipo MobileNet/CLIP cuantizado) afinado con tus categorías.  \nPor qué funciona sin servidor: todo corre en el teléfono con modelos TFLite/ONNX cuantizados, sin enviar datos fuera; además la metadata y las imágenes ya dan suficiente señal para una clasificación temática bastante buena.  \nPunto débil: 99% realista solo con categorías muy bien definidas y entrenamiento propio; los Reels/Shorts sin texto útil, con mucho ruido visual o temas mixtos bajan bastante la precisión."
+    },
+    {
+      "model": "ddgw/claude-haiku-4-5",
+      "ok": true,
+      "ms": 11579,
+      "text": "Método: un pipeline on-device que extrae miniaturas + OCR + metadatos del enlace, y las clasifica con un modelo ligero tipo MobileNet/EfficientNet-Lite afinado con un clasificador de texto pequeño (TFLite/ONNX Runtime).  \nSin servidor: todo corre en el teléfono usando APIs locales para leer Open Graph/thumbnail, OCR y un modelo cuantizado; no necesitas enviar el video ni el texto a la nube.  \nPunto débil: 99% real es muy difícil en videos ambiguos o sin pistas visuales/texuales; la precisión cae si el reel está borroso, es clickbait o mezcla varias categorías."
+    },
+    {
+      "model": "ddgw/mistral-small-2603",
+      "ok": true,
+      "ms": 9978,
+      "text": "**Método:** Usar un modelo TinyML (TensorFlow Lite) con *transfer learning* desde MobileBERT o DistilBERT, entrenado con datos etiquetados de títulos/descripciones de videos.\n\n**Sin servidor:** El modelo se ejecuta localmente en el dispositivo (Android NDK o TensorFlow Lite), evitando dependencia de APIs externas.\n\n**Punto débil:** Requiere un dataset de entrenamiento grande y etiquetado manualmente para alcanzar ~99% de precisión, lo que es costoso en tiempo."
+    },
+    {
+      "model": "ddgw/tinfoil/gpt-oss-120b",
+      "ok": true,
+      "ms": 11082,
+      "text": "**Método:** Usa un modelo de *on‑device* de clasificación de texto / multimodal (por ejemplo, TensorFlow Lite + MobileBERT finamente ajustado con embeddings de títulos, descripciones y, si se permite, miniaturas extraídas).  \n\n**Por qué sin servidor:** El modelo está compilado en .tflite y ejecuta inferencias localmente en la CPU/GPU del teléfono; no necesita API externa ni conexión de red, por lo que todo el procesamiento (tokenización, vectorizado y clasificación) ocurre offline.  \n\n**Punto débil:** Requiere una buena cantidad de datos de entrenamiento y optimización para alcanzar ~99 % de precisión; el tamaño del modelo y el consumo de memoria/batería pueden ser limitados en dispositivos de gama baja."
+    },
+    {
+      "model": "ddgw/tinfoil/gemma4-31b",
+      "ok": true,
+      "ms": 11601,
+      "text": "Usa un modelo de lenguaje pequeño (SLM) cuantizado como **Gemma-2B** o **Phi-3** ejecutado localmente con **ML Kit** o **TensorFlow Lite**.\nFunciona sin servidor porque el modelo reside en el almacenamiento del teléfono y procesa el texto (títulos/etiquetas) usando la NPU/GPU del dispositivo.\nEl punto débil es que alcanzar un 99% de precisión es improbable solo con metadatos; requeriría analizar el audio/video, lo que agotaría la batería y la RAM."
+    },
+    {
+      "model": "cohere/command-a-reasoning-08-2025",
+      "ok": true,
+      "ms": 12807,
+      "text": "Okay, the user wants an Android app that can automatically categorize video links (like Reels, TikTok, Shorts) into categories such as cooking, mechanics, technology, etc., with 99% accuracy. The constraints are no server, no costs, everything on the phone. Let me think about how to approach this.\n\nFirst, they need a method that works entirely on-device. So, using a pre-trained machine learning model makes sense. Maybe a model trained on text classification since the app would need to analyze the video's metadata, like title and description. But wait, can the app access the video content itself? If it's just the link, maybe the metadata is all that's available. Alternatively, if the app can download the video, perhaps using the thumbnail or some frames for image classification. But that might be more complex.\n\nWait, the user mentioned links to videos. So maybe the app can extract metadata from the link, like the title, description, tags, or maybe even the transcript if available. Then use natural language processing (NLP) to classify the text. That would be feasible without a server. Using a lightweight NLP model optimized for mobile, like TensorFlow Lite or ML Kit.\n\nBut how to get 99% accuracy? That's very high. Maybe using a model trained on a large dataset of categorized text. The model would need to be pre-trained and then fine-tuned on specific categories. However, without a"
+    },
+    {
+      "model": "cohere/command-a-vision-07-2025",
+      "ok": true,
+      "ms": 12485,
+      "text": "**Método recomendado:** Utilizar un modelo de aprendizaje automático local, como un clasificador de texto o un modelo de visión por computadora pre-entrenado, para analizar los enlaces y clasificarlos en categorías.\n\n**Por qué funciona sin servidor:** El modelo se ejecuta directamente en el dispositivo Android, lo que permite la clasificación sin necesidad de enviar datos a un servidor externo. Esto garantiza la privacidad de los datos y evita costos asociados con el uso de servicios en la nube.\n\n**Punto débil:** La precisión de la clasificación dependerá de la calidad y especificidad del modelo utilizado. Además, el modelo deberá ser actualizado periódicamente para adaptarse a nuevas tendencias y categorías de contenido, lo que puede requerir una conexión a Internet."
+    },
+    {
+      "model": "cohere/command-a-03-2025",
+      "ok": true,
+      "ms": 13066,
+      "text": "**Método:** Utilizar un modelo de clasificación de texto pre-entrenado (como MobileBERT) con TensorFlow Lite, que analice el título, descripción y hashtags de los videos para categorizarlos.  \n\n**Por qué funciona sin servidor:** El modelo se ejecuta localmente en el dispositivo, procesando los datos sin necesidad de conexión a un servidor externo, lo que garantiza privacidad y funcionamiento offline.  \n\n**Punto débil:** Depende de la calidad de los metadatos del video; si estos son escasos o ambiguos, la precisión disminuye significativamente, incluso por debajo del 99% requerido."
+    },
+    {
+      "model": "cohere/command-r7b-12-2024",
+      "ok": true,
+      "ms": 12606,
+      "text": "Un enfoque viable para lograr la clasificación automática de videos en categorías sin servidor y sin costo adicional en el teléfono es utilizar un modelo de aprendizaje automático preentrenado y una API de clasificación de imágenes.\n\n**Método:** Utiliza un modelo de visión por computadora preentrenado como MobileNetV2 o EfficientNet, que puede clasificar imágenes con un alto rendimiento. Luego, extrae fotogramas de los videos y los clasifica utilizando la API de clasificación de imágenes de TensorFlow o PyTorch.\n\n**Por qué funciona sin servidor:** Los modelos preentrenados y las APIs están diseñados para funcionar en dispositivos móviles, y la clasificación de imágenes es un proceso relativamente ligero que puede ejecutarse en el teléfono sin requerir una conexión a Internet.\n\n**Punto débil:** La precisión de la clasificación puede variar dependiendo de la calidad de los fotogramas extraídos y la complejidad de los videos. Además, la clasificación de videos en tiempo real puede ser más desafiante que la clasificación de imágenes estáticas."
+    },
+    {
+      "model": "cohere/command-r-plus-08-2024",
+      "ok": true,
+      "ms": 12190,
+      "text": "**Método:** Utilizar modelos de aprendizaje automático pre-entrenados y optimizados para dispositivos móviles, como MobileNet o EfficientNet.\n\n**Funcionamiento sin servidor:** Estos modelos pueden ejecutarse localmente en el dispositivo Android, ya que están diseñados para ser ligeros y eficientes en términos de recursos computacionales. Pueden clasificarse los videos localmente sin necesidad de enviar datos a un servidor externo.\n\n**Punto débil:** El principal desafío es la necesidad de un conjunto de datos de entrenamiento etiquetado y variado para cada categoría, lo que puede ser difícil de obtener y mantener actualizado. Además, la precisión del 99% es un objetivo ambicioso y podría requerir una cantidad significativa de ajuste y entrenamiento específico para cada dominio."
+    },
+    {
+      "model": "cohere/command-r-08-2024",
+      "ok": true,
+      "ms": 10910,
+      "text": "Método: Visión por Computadora con modelos pre-entrenados.\nSin servidor: Los modelos de visión por computadora pueden ejecutarse localmente en el dispositivo, sin necesidad de conexión a internet ni servidores externos.\nPunto débil: La precisión puede disminuir con contenido variado o poco común, ya que los modelos pueden estar sesgados hacia categorías específicas."
+    },
+    {
+      "model": "groq/groq/compound",
+      "ok": false,
+      "ms": 12324,
+      "error": "Error: OmniRoute /v1/chat/completions HTTP 404"
+    },
+    {
+      "model": "groq/allam-2-7b",
+      "ok": true,
+      "ms": 13495,
+      "text": "Para clasificar los enlaces de videos sin servidor, puedo sugerir el uso de modelos de aprendizaje automático específicamente diseñados para la clasificación de contenido multimedia. Aquí tres pasos básicos:\n\n1. Extraer características relevantes: Utilice la inteligencia artificial para extraer características relevantes del contenido multimedia, como la duración, la frecuencia de movimiento, la intensidad de colores y la presencia de temas específicos (por ejemplo, cocina, mecánica, tecnología).\n2. Clasificación de contenido: Utilice modelos de aprendizaje automático, como árboles de decisión o máquinas de vectores de soporte (SVM), para clasificar los enlaces de videos en las categorías deseadas. Estos modelos pueden aprender de conjuntos de datos de videos previamente clasificados y utilizar esos conocimientos para predecir la categoría de videos nuevos.\n3. Ajuste del modelo: Para asegurar un buen rend"
+    },
+    {
+      "model": "groq/openai/gpt-oss-120b",
+      "ok": true,
+      "ms": 13733,
+      "text": ""
+    },
+    {
+      "model": "groq/openai/gpt-oss-20b",
+      "ok": true,
+      "ms": 13593,
+      "text": ""
+    },
+    {
+      "model": "groq/qwen/qwen3.6-27b",
+      "ok": false,
+      "ms": 11724,
+      "error": "Error: OmniRoute /v1/chat/completions HTTP 404"
+    },
+    {
+      "model": "nvidia/meta/muse-glimmer-30b",
+      "ok": false,
+      "ms": 20628,
+      "error": "TimeoutError: The operation was aborted due to timeout"
+    },
+    {
+      "model": "nvidia/poolside/laguna-xs-2.1",
+      "ok": true,
+      "ms": 14229,
+      "text": "Usar un modelo de clasificación de texto optimizado para dispositivos móviles (ej: BERT cuantizado o MobileBERT) entrenado con datos de metadatos y descripciones de videos. Funciona sin servidor al procesar localmente etiquetas, hashtags y texto alternativo almacenado en la app, evitando costos y dependencia externa. Su punto débil es la ambigüedad en metadatos o contenido no textual (ej: videos sin descripción o con lenguaje no estándar), reduciendo precisión por debajo del 99%."
+    },
+    {
+      "model": "nvidia/google/gemma-4-31b-it",
+      "ok": false,
+      "ms": 20639,
+      "error": "TimeoutError: The operation was aborted due to timeout"
+    },
+    {
+      "model": "nvidia/google/diffusiongemma-26b-a4b-it",
+      "ok": false,
+      "ms": 14433,
+      "error": "Error: OmniRoute /v1/chat/completions HTTP 410"
+    },
+    {
+      "model": "nvidia/nvidia/nemotron-3-ultra-550b-a55b",
+      "ok": true,
+      "ms": 18607,
+      "text": "**Método:** Modelo **MobileBERT** (o **DistilBERT**) cuantizado a **INT8/TFLite** entrenado *solo* con los metadatos textuales (título, descripción, hashtags, autor) del enlace, usando *transfer learning* desde un checkpoint multilingüe (ej. `bert-base-multilingual-cased`) fine-tuneado en el dispositivo o pre-entrenado y empaquetado en la app.  \n**Por qué funciona sin servidor:** La inferencia TFLite/INT8 corre en <50ms en CPU móvil (NPU opcional), el modelo pesa ~15-25 MB y no requiere conexión; el texto se extrae localmente via `PackageManager`/`Intent` o scraping *headless* mínimo del HTML público del enlace.  \n**Punto débil:** **Falla en videos sin texto descriptivo** (títulos genéricos, solo música, hashtags irrelevantes) porque ignora el contenido visual/auditivo real; requiere *fall"
+    },
+    {
+      "model": "gemini/gemini-3.8-flash",
+      "ok": false,
+      "ms": 20696,
+      "error": "TimeoutError: The operation was aborted due to timeout"
+    },
+    {
+      "model": "gemini/gemini-4-argon",
+      "ok": true,
+      "ms": 20581,
+      "text": ""
+    },
+    {
+      "model": "gemini/gemini-3.7-flash",
+      "ok": false,
+      "ms": 20703,
+      "error": "TimeoutError: The operation was aborted due to timeout"
+    },
+    {
+      "model": "auto/best-coding",
+      "ok": false,
+      "ms": 20703,
+      "error": "TimeoutError: The operation was aborted due to timeout"
+    },
+    {
+      "model": "auto/best-reasoning",
+      "ok": false,
+      "ms": 20706,
+      "error": "TimeoutError: The operation was aborted due to timeout"
+    },
+    {
+      "model": "auto/best-fast",
+      "ok": false,
+      "ms": 20702,
+      "error": "TimeoutError: The operation was aborted due to timeout"
+    },
+    {
+      "model": "auto/best-vision",
+      "ok": false,
+      "ms": 20703,
+      "error": "TimeoutError: The operation was aborted due to timeout"
+    },
+    {
+      "model": "auto/best-chat",
+      "ok": false,
+      "ms": 24069,
+      "error": "TimeoutError: The operation was aborted due to timeout"
+    },
+    {
+      "model": "auto/best-coding-fast",
+      "ok": false,
+      "ms": 24103,
+      "error": "TimeoutError: The operation was aborted due to timeout"
+    },
+    {
+      "model": "auto/pro-coding",
+      "ok": true,
+      "ms": 21667,
+      "text": "Okay, the user wants an Android app that can automatically categorize video links (like Reels, TikTok, Shorts) into categories such as cooking, mechanics, technology, etc., with 99% accuracy. The constraints are no server, no costs, everything on the phone. Let me break this down.\n\nFirst, the method. Since it's all on-device, machine learning is the way to go. Specifically, a pre-trained model that can classify text or maybe even process video content. But processing videos directly on the device might be resource-heavy. Alternatively, maybe using the video's metadata, like title, description, or tags. If the app can extract text from the video link's metadata, then a text classification model would work.\n\nWhy no server? Because the model runs locally on the device. Using TensorFlow Lite or ML Kit for Android allows deploying lightweight models that run on the phone without internet. The model would be downloaded once and then used offline. That fits the no-server requirement.\n\nWeakness. The main drawback is the model's size and accuracy trade-off. A model small enough to run efficiently on a phone might not achieve 99% accuracy, especially across many categories. Also, if the video metadata is insufficient or misleading, the classification could fail. Plus, updating the model would require app updates, which isn't ideal for adapting to new trends.\n\nWait, the user mentioned ~99% accuracy."
+    },
+    {
+      "model": "auto/pro-reasoning",
+      "ok": false,
+      "ms": 24180,
+      "error": "TimeoutError: The operation was aborted due to timeout"
+    }
+  ]
+}
