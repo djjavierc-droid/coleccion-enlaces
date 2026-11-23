@@ -123,4 +123,32 @@ class ExtraerUrlTest {
         assertFalse(esUrlValida("https://"))
         assertFalse(esUrlValida("https:///sin-host"))
     }
+
+    // ---- Fix 1, punto 3: detección de enlaces de Facebook ----
+
+    @Test
+    fun `esEnlaceFacebook acepta facebook com con y sin www y movil`() {
+        assertTrue(esEnlaceFacebook("https://www.facebook.com/share/r/1JqVPz7de"))
+        assertTrue(esEnlaceFacebook("https://facebook.com/EterniCodIA"))
+        assertTrue(esEnlaceFacebook("https://m.facebook.com/share/r/abc"))
+        assertTrue(esEnlaceFacebook("https://fb.watch/abc123/"))
+        assertTrue(esEnlaceFacebook("https://fb.com/pagina"))
+    }
+
+    @Test
+    fun `esEnlaceFacebook rechaza otros dominios y parecidos`() {
+        assertFalse(esEnlaceFacebook("https://www.youtube.com/watch?v=abc"))
+        assertFalse(esEnlaceFacebook("https://no-facebook.com/pagina"))
+        assertFalse(esEnlaceFacebook("https://facebook.com.ejemplo.com/pagina"))
+        assertFalse(esEnlaceFacebook("no-es-una-url"))
+        assertFalse(esEnlaceFacebook(""))
+    }
+
+    @Test
+    fun `extraerHost devuelve el host sin www y en minusculas`() {
+        assertEquals("facebook.com", extraerHost("https://WWW.Facebook.com/share/r/abc"))
+        assertEquals("ejemplo.com", extraerHost("https://ejemplo.com/pagina?q=1"))
+        assertNull(extraerHost("no-es-una-url"))
+        assertNull(extraerHost(""))
+    }
 }

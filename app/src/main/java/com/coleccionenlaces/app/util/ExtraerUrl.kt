@@ -58,3 +58,29 @@ fun esUrlValida(url: String): Boolean {
         false
     }
 }
+
+/** Host en minúsculas de una URL, sin el `www.` inicial, o null si no lo tiene. */
+fun extraerHost(url: String): String? {
+    val texto = url.trim().lowercase()
+    if (texto.isEmpty()) return null
+    return try {
+        URI(texto).host?.removePrefix("www.")
+    } catch (_: Exception) {
+        null
+    }?.takeIf { it.isNotBlank() }
+}
+
+/**
+ * ¿Es [url] un enlace de Facebook (facebook.com, m.facebook.com,
+ * fb.com, fb.watch)? Se usa en el diálogo de agregar (Fix 1,
+ * punto 3): Facebook no deja leer la vista previa de sus enlaces a
+ * nadie que no sea su propio rastreador, así que el aviso para esos
+ * enlaces lo dice claro. La coincidencia es por sufijo de host:
+ * `no-facebook.com` no cuenta.
+ */
+fun esEnlaceFacebook(url: String): Boolean {
+    val host = extraerHost(url) ?: return false
+    return host == "facebook.com" || host.endsWith(".facebook.com") ||
+        host == "fb.com" || host.endsWith(".fb.com") ||
+        host == "fb.watch" || host.endsWith(".fb.watch")
+}
