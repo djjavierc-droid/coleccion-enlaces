@@ -39,8 +39,11 @@ fun parsearHtml(html: String, urlBase: String): VistaPrevia {
         .selectFirst("meta[property=og:image]")
         ?.attr("content")?.sinBlancos()?.let { resolverUrl(it, urlBase) }
         ?: documento.select("img[src]")
-            .firstOrNull { it.absUrl("src").isNotBlank() }
-            ?.absUrl("src")
+            // El src crudo debe ser no vacío: absUrl("") resuelve a la
+            // propia URL base, así que una img con src vacío no se
+            // puede descartar solo con absUrl.
+            .firstOrNull { it.attr("src").isNotBlank() }
+            ?.absUrl("src")?.takeIf { it.isNotBlank() }
 
     return VistaPrevia(
         titulo = titulo,
