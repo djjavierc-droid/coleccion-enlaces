@@ -1,0 +1,22 @@
+# Android / Gradle
+*.iml
+.gradle
+/local.properties
+/.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+*.jks
+*.keystore
+
+# Build outputs
+app/build/
+build/
+
+# Palabras clave de la categoría sensible: NUNCA se commitea.
+# El archivo vive solo en la copia local; en CI se genera desde el
+# secreto XXX_KEYWORDS_B64 (lo crea la Fase 4).
+app/src/main/java/com/coleccionenlaces/app/domain/XxxKeywords.kt
