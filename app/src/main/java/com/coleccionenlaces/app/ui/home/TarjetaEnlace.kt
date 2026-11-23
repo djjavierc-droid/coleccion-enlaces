@@ -36,7 +36,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -166,6 +168,7 @@ private fun ImagenTarjeta(
     onAlternarFavorito: () -> Unit,
 ) {
     var estadoImagen by remember(urlImagen) { mutableStateOf(EstadoImagen.CARGANDO) }
+    val haptics = LocalHapticFeedback.current
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -222,7 +225,11 @@ private fun ImagenTarjeta(
                 ),
         )
         IconButton(
-            onClick = onAlternarFavorito,
+            onClick = {
+                // Feedback táctil al marcar/quitar favorito (Fase 9).
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                onAlternarFavorito()
+            },
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(Espaciado.s)

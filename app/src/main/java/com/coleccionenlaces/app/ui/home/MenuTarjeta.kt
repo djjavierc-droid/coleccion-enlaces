@@ -34,6 +34,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -75,6 +77,7 @@ fun MenuTarjeta(
     onCerrar: () -> Unit,
 ) {
     var mostrarConfirmarBorrar by remember { mutableStateOf(false) }
+    val haptics = LocalHapticFeedback.current
     val enlace = item.enlace
 
     ModalBottomSheet(onDismissRequest = onCerrar) {
@@ -167,6 +170,8 @@ fun MenuTarjeta(
                     colorIcono = if (enlace.esFavorito) Color(0xFFFF5C8A)
                     else MaterialTheme.colorScheme.onSurface,
                     onClick = {
+                        // Feedback táctil al marcar/quitar favorito (Fase 9).
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                         onAlternarFavorito()
                         onCerrar()
                     },
@@ -207,6 +212,8 @@ fun MenuTarjeta(
                 Button(
                     onClick = {
                         mostrarConfirmarBorrar = false
+                        // Feedback táctil al borrar (Fase 9).
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                         onBorrar()
                         onCerrar()
                     },

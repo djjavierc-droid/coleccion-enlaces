@@ -60,6 +60,9 @@ dependencies {
     implementation(libs.androidx.splashscreen)
     // Huella por carpeta (Fase 9). Única librería extra fuera del plan.
     implementation(libs.androidx.biometric)
+    // FragmentActivity para BiometricPrompt (Fase 9): el prompt exige
+    // una FragmentActivity o un Fragment; ComponentActivity no basta.
+    implementation(libs.androidx.fragment.ktx)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.bundles.compose)

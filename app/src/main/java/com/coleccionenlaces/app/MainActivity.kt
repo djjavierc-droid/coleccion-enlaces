@@ -2,11 +2,14 @@ package com.coleccionenlaces.app
 
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -14,16 +17,33 @@ import androidx.navigation.compose.rememberNavController
 import com.coleccionenlaces.app.ui.home.HomeScreen
 import com.coleccionenlaces.app.ui.home.HomeViewModel
 import com.coleccionenlaces.app.ui.theme.ColeccionTheme
+import com.coleccionenlaces.app.ui.theme.PreferenciasTema
 import com.coleccionenlaces.app.util.extraerUrl
 
-class MainActivity : ComponentActivity() {
+/**
+ * Actividad principal.
+ *
+ * Extiende [FragmentActivity] (y no solo ComponentActivity) porque
+ * el prompt de huella por carpeta (Fase 9, [BiometricPrompt]) exige
+ * una FragmentActivity o un Fragment para mostrarse.
+ */
+class MainActivity : FragmentActivity() {
 
     private lateinit var homeViewModel: HomeViewModel
+
+    /**
+     * Tema actual (Fase 9): se lee de SharedPreferences al arrancar
+     * (oscuro por defecto) y el interruptor del encabezado lo cambia
+     * y lo guarda. Es estado de Compose para que el tema se aplique
+     * en cuanto cambia, sin recrear la actividad.
+     */
+    private var temaOscuro by mutableStateOf(true)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        temaOscuro = PreferenciasTema.leerTemaOscuro(this)
         // ViewModel principal, creado con la factoría del contenedor
         // de inyección manual (Fase 5). La UI lo observa en la Fase 6.
         val contenedor = (application as ColeccionApplication).contenedor
@@ -32,8 +52,15 @@ class MainActivity : ComponentActivity() {
             contenedor.homeViewModelFactory,
         )[HomeViewModel::class.java]
         setContent {
-            ColeccionTheme(darkTheme = true) {
-                ColeccionNavHost(homeViewModel)
+            ColeccionTheme(darkTheme = temaOscuro) {
+                ColeccionNavHost(
+                    homeViewModel = homeViewModel,
+                    temaOscuro = temaOscuro,
+                    onAlternarTema = {
+                        temaOscuro = !temaOscuro
+                        PreferenciasTema.guardarTemaOscuro(this, temaOscuro)
+                    },
+                )
             }
         }
         // Arranque en frío con un enlace compartido (Fase 7).
@@ -72,9 +99,19 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun ColeccionNavHost(homeViewModel: HomeViewModel) {
+private fun ColeccionNavHost(
+    homeViewModel: HomeViewModel,
+    temaOscuro: Boolean,
+    onAlternarTema: () -> Unit,
+) {
     val navController = rememberNavController()
     NavHost(navController = navController, startDestination = "inicio") {
-        composable("inicio") { HomeScreen(homeViewModel) }
+        composable("inicio") {
+            HomeScreen(
+                viewModel = homeViewModel,
+                temaOscuro = temaOscuro,
+                onAlternarTema = onAlternarTema,
+            )
+        }
     }
 }

@@ -2,22 +2,32 @@ package com.coleccionenlaces.app.ui.home
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.CarRepair
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Checkroom
 import androidx.compose.material.icons.filled.Construction
 import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Flight
 import androidx.compose.material.icons.filled.Forest
 import androidx.compose.material.icons.filled.Handyman
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocalFlorist
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Newspaper
+import androidx.compose.material.icons.filled.Pets
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.SportsEsports
+import androidx.compose.material.icons.filled.SportsSoccer
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Work
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -52,6 +62,17 @@ fun iconoCategoria(clave: String): ImageVector = when (clave) {
     "checkroom" -> Icons.Filled.Checkroom
     "flight" -> Icons.Filled.Flight
     "category" -> Icons.Filled.Category
+    // Íconos ofrecidos para las carpetas propias (Fase 9).
+    "favorite" -> Icons.Filled.Favorite
+    "bookmark" -> Icons.Filled.Bookmark
+    "star" -> Icons.Filled.Star
+    "home" -> Icons.Filled.Home
+    "work" -> Icons.Filled.Work
+    "school" -> Icons.Filled.School
+    "music_note" -> Icons.Filled.MusicNote
+    "photo_camera" -> Icons.Filled.PhotoCamera
+    "pets" -> Icons.Filled.Pets
+    "sports_soccer" -> Icons.Filled.SportsSoccer
     else -> Icons.Filled.Category
 }
 
