@@ -127,6 +127,31 @@ class ServicioVistaPrevia(
         }
     }
 
+    /**
+     * Descarga los bytes de [url] (una imagen de vista previa para
+     * guardarla en local). Devuelve null si la URL no es válida, si
+     * el servidor no responde 200 o si hay cualquier fallo de red.
+     * Un solo intento, sin reintentos: si la miniatura no se pudo
+     * descargar, la tarjeta usa la URL remota como antes.
+     */
+    suspend fun descargarBytes(url: String): ByteArray? =
+        withContext(Dispatchers.IO) {
+            val urlLimpia = url.trim()
+            if (!esUrlHttpValida(urlLimpia)) return@withContext null
+            try {
+                val peticion = Request.Builder()
+                    .url(urlLimpia)
+                    .header("User-Agent", USER_AGENT)
+                    .build()
+                cliente.newCall(peticion).execute().use { respuesta ->
+                    if (!respuesta.isSuccessful) return@withContext null
+                    respuesta.body?.bytes()
+                }
+            } catch (_: Exception) {
+                null
+            }
+        }
+
     /** Solo URLs http(s) con host: lo demás es URL inválida sin tocar la red. */
     private fun esUrlHttpValida(url: String): Boolean {
         if (url.isBlank()) return false

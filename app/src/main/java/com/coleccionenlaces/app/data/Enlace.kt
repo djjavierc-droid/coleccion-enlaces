@@ -16,6 +16,16 @@ import androidx.room.PrimaryKey
  * puede crear carpetas propias (Fase 9) sin cambiar el modelo.
  *
  * - [urlImagen]: null cuando el sitio no ofreció imagen de vista previa.
+ * - [htmlVideo]: HTML del reproductor oEmbed (Facebook, TikTok) para
+ *   capturar su cuadro como miniatura en un WebView (corrección
+ *   1.0.1, punto 3). Solo lo tienen los vídeos de esos proveedores
+ *   con contenido público; null en el resto.
+ * - [imagenLocal]: ruta del archivo local con la miniatura guardada
+ *   (corrección 1.0.1, punto 3): el cuadro capturado del WebView o
+ *   una imagen de vista previa con firma temporal descargada al
+ *   guardar. La tarjeta prefiere este archivo a [urlImagen]: una
+ *   URL firmada (p. ej. `fbcdn.net?oe=...`) se rompe a los días y el
+ *   archivo local no. Null cuando no hay miniatura local.
  * - [categoriaId]: null solo si la carpeta del enlace se borró (la
  *   clave foránea usa `SET_NULL`); en ese caso el repositorio (Fase 5)
  *   lo tratará como "Otros". Las 17 predefinidas no se borran.
@@ -52,4 +62,6 @@ data class Enlace(
     val esFavorito: Boolean = false,
     val categoriaManual: Boolean = false,
     val fechaCreacion: Long = System.currentTimeMillis(),
+    val htmlVideo: String? = null,
+    val imagenLocal: String? = null,
 )

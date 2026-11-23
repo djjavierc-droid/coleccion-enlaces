@@ -71,6 +71,62 @@ fun extraerHost(url: String): String? {
 }
 
 /**
+ * Texto que acompaña a una URL en un texto compartido (corrección
+ * 1.0.1: título automático, sin edición manual). Al compartir desde
+ * la app de Facebook (o al pegar un texto con URL), el texto suele
+ * traer el texto de la publicación además de la URL; ese texto se
+ * usa automáticamente como título/descripción del enlace, sin que
+ * nadie lo escriba.
+ *
+ * Quita la URL del texto (la extraída con [extraerUrl] o la [url]
+ * dada), limpia las líneas vacías y las que son solo puntuación, y
+ * devuelve el resto unido por saltos de línea, o null si no queda
+ * nada. Un texto que es solo la URL devuelve null.
+ */
+fun extraerTextoAcompanante(texto: String?, url: String?): String? {
+    if (texto.isNullOrBlank()) return null
+    val urlExtraida = url ?: extraerUrl(texto)
+    var resto = texto
+    if (urlExtraida != null) {
+        resto = resto.replace(urlExtraida, " ")
+    }
+    val limpio = resto.lines()
+        .map { it.trim().replace(Regex("\\s+"), " ") }
+        .filter { linea -> linea.any { it.isLetterOrDigit() } }
+        .joinToString("\n")
+    return limpio.ifBlank { null }
+}
+
+/**
+ * Primera línea no vacía de [texto], recortada a 200 caracteres
+ * (para usarla como título automático). Null si no hay ninguna.
+ */
+fun primeraLinea(texto: String?): String? {
+    if (texto.isNullOrBlank()) return null
+    val linea = texto.lines().firstOrNull { it.isNotBlank() }?.trim()
+        ?: return null
+    return if (linea.length > 200) linea.take(200).trimEnd() else linea
+}
+
+/**
+ * El resto de [texto] tras su primera línea no vacía (las líneas
+ * siguientes, sin vacías, unidas por saltos de línea). Se usa como
+ * descripción automática cuando la primera línea se usó como
+ * título. Null si no queda nada.
+ */
+fun restoTrasPrimeraLinea(texto: String?): String? {
+    if (texto.isNullOrBlank()) return null
+    val lineas = texto.lines()
+    val primera = lineas.indexOfFirst { it.isNotBlank() }
+    if (primera == -1) return null
+    val resto = lineas.drop(primera + 1)
+        .map { it.trim() }
+        .filter { it.isNotBlank() }
+        .joinToString("\n")
+    return resto.ifBlank { null }
+}
+
+/**
  * ¿Es [url] un enlace de Facebook (facebook.com, m.facebook.com,
  * fb.com, fb.watch)? Se usa en el diálogo de agregar (Fix 1,
  * punto 3): Facebook no deja leer la vista previa de sus enlaces a
@@ -83,4 +139,27 @@ fun esEnlaceFacebook(url: String): Boolean {
     return host == "facebook.com" || host.endsWith(".facebook.com") ||
         host == "fb.com" || host.endsWith(".fb.com") ||
         host == "fb.watch" || host.endsWith(".fb.watch")
+}
+
+/**
+ * ¿Lleva [url] una firma temporal en su consulta? Las imágenes de
+ * Facebook (`fbcdn.net`) llevan `oe=` (y `oh=`) y se rompen a los
+ * días; lo mismo pasa con otras CDN que firman sus URLs (`sig=`,
+ * `signature=`, `expires=`...). Esas imágenes se descargan a local
+ * al guardar el enlace, en vez de referenciar la URL (corrección
+ * 1.0.1, punto 3). La coincidencia es por parámetro de consulta:
+ * un `oe=` dentro de la ruta no cuenta.
+ */
+fun esUrlImagenFirmada(url: String): Boolean {
+    val consulta = try {
+        URI(url.trim()).query
+    } catch (_: Exception) {
+        null
+    } ?: return false
+    val parametros = consulta.split("&")
+        .map { it.substringBefore("=").lowercase() }.toSet()
+    return "oe" in parametros || "oh" in parametros || "sig" in parametros ||
+        "signature" in parametros || "x-amz-signature" in parametros ||
+        "expires" in parametros || "exp" in parametros || "token" in parametros ||
+        "st" in parametros
 }

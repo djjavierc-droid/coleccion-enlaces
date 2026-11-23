@@ -4,15 +4,21 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 /**
- * Base de datos Room de la app (versión 1).
+ * Base de datos Room de la app (versión 2).
  *
  * Tablas: `enlaces` y `categorias`. En la primera creación se siembran
  * las 17 categorías predefinidas ([CategoriasPredefinidas.lista]); las
  * carpetas que el usuario cree a mano (Fase 9) se añaden como filas
  * nuevas de `categorias` con `esPredefinida = false`.
+ *
+ * Migración 1 → 2 (corrección 1.0.1, punto 3): la tabla `enlaces`
+ * gana `htmlVideo` (HTML del reproductor oEmbed) e `imagenLocal`
+ * (ruta de la miniatura guardada en local). Las dos son nullables,
+ * así que los enlaces ya guardados sobreviven tal cual.
  *
  * Singleton de la app: [obtenerInstancia]. Las pruebas usan
  * [crearEnMemoria], que construye una base en memoria (también
@@ -20,7 +26,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  */
 @Database(
     entities = [Enlace::class, Categoria::class],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -33,6 +39,17 @@ abstract class AppDatabase : RoomDatabase() {
         @Volatile
         private var instancia: AppDatabase? = null
 
+        /**
+         * Migración 1 → 2: añade las columnas del vídeo oEmbed y la
+         * miniatura local a `enlaces`, sin tocar ningún dato.
+         */
+        val MIGRACION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE enlaces ADD COLUMN htmlVideo TEXT")
+                db.execSQL("ALTER TABLE enlaces ADD COLUMN imagenLocal TEXT")
+            }
+        }
+
         fun obtenerInstancia(context: Context): AppDatabase =
             instancia ?: synchronized(this) {
                 instancia ?: Room.databaseBuilder(
@@ -41,6 +58,7 @@ abstract class AppDatabase : RoomDatabase() {
                     "coleccion-enlaces.db",
                 )
                     .addCallback(CallbackSiembra)
+                    .addMigrations(MIGRACION_1_2)
                     .build()
                     .also { instancia = it }
             }
