@@ -292,6 +292,71 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `abrirDialogoAgregar con URL compartida prellena el dialogo`() = runTest {
+        viewModel.abrirDialogoAgregar("https://youtu.be/dQw4w9WgXcQ")
+
+        val estado = esperarEstado { it.mostrarDialogoAgregar }
+
+        assertTrue(estado.mostrarDialogoAgregar)
+        assertEquals("https://youtu.be/dQw4w9WgXcQ", estado.urlInicialDialogo)
+    }
+
+    @Test
+    fun `cerrarDialogoAgregar cierra y limpia la URL inicial`() = runTest {
+        viewModel.abrirDialogoAgregar("https://ejemplo.com/receta")
+        esperarEstado { it.mostrarDialogoAgregar }
+
+        viewModel.cerrarDialogoAgregar()
+
+        val estado = esperarEstado { !it.mostrarDialogoAgregar }
+        assertFalse(estado.mostrarDialogoAgregar)
+        assertEquals(null, estado.urlInicialDialogo)
+    }
+
+    @Test
+    fun `abrirDialogoAgregar limpia un error anterior`() = runTest {
+        viewModel.agregarEnlace("no-es-una-url")
+        advanceUntilIdle()
+        esperarEstado { it.errorAgregar != null }
+
+        viewModel.abrirDialogoAgregar()
+
+        val estado = esperarEstado { it.mostrarDialogoAgregar && it.errorAgregar == null }
+        assertTrue(estado.mostrarDialogoAgregar)
+        assertEquals(null, estado.errorAgregar)
+    }
+
+    @Test
+    fun `agregarEnlace con exito cierra el dialogo`() = runTest {
+        viewModel.abrirDialogoAgregar("https://ejemplo.com/receta")
+        esperarEstado { it.mostrarDialogoAgregar }
+
+        viewModel.agregarEnlace("https://ejemplo.com/receta")
+        advanceUntilIdle()
+
+        val estado = esperarEstado {
+            it.totalEnlaces == 1 && !it.guardandoEnlace && !it.mostrarDialogoAgregar
+        }
+        assertFalse(estado.mostrarDialogoAgregar)
+        assertEquals(null, estado.urlInicialDialogo)
+        assertEquals(1, estado.totalEnlaces)
+    }
+
+    @Test
+    fun `agregarEnlace con URL invalida mantiene el dialogo abierto con error`() = runTest {
+        viewModel.abrirDialogoAgregar("no-es-una-url")
+        esperarEstado { it.mostrarDialogoAgregar }
+
+        viewModel.agregarEnlace("no-es-una-url")
+        advanceUntilIdle()
+
+        val estado = esperarEstado { it.errorAgregar != null && !it.guardandoEnlace }
+        assertTrue(estado.mostrarDialogoAgregar)
+        assertEquals(TipoErrorAgregarEnlace.URL_INVALIDA, estado.errorAgregar)
+        assertEquals(0, estado.totalEnlaces)
+    }
+
+    @Test
     fun `la categoria manual no se sobrescribe al reclasificar desde el ViewModel`() =
         runTest {
             val id = (repositorio.agregarEnlace("https://ejemplo.com/receta")
