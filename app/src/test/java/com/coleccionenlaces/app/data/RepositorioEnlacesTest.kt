@@ -14,7 +14,6 @@ import com.coleccionenlaces.app.domain.ResultadoVistaPrevia
 import com.coleccionenlaces.app.domain.SenalesVisuales
 import com.coleccionenlaces.app.domain.TipoErrorVistaPrevia
 import com.coleccionenlaces.app.domain.VistaPrevia
-import com.coleccionenlaces.app.domain.VistaPrevia
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import okhttp3.MediaType.Companion.toMediaType
