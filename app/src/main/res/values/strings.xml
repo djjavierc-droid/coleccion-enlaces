@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Colección</string>
+    <string name="home_title">Colección</string>
+    <string name="home_subtitle">Tu colección de enlaces, organizada.</string>
+    <string name="home_empty">Todavía no hay enlaces guardados.\nToca + para pegar el primero.</string>
+    <string name="home_phase_marker">Fase 1 · Proyecto base listo</string>
+</resources>

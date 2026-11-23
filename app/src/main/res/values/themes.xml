@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tema de arranque (API SplashScreen de AndroidX). Tras instalar
+         el splash en MainActivity, Compose dibuja el tema real. -->
+    <style name="Theme.Coleccion.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="windowSplashScreenAnimationDuration">800</item>
+        <item name="postSplashScreenTheme">@style/Theme.Coleccion</item>
+    </style>
+
+    <!-- Tema base de la actividad (Compose dibuja todo lo demás). -->
+    <style name="Theme.Coleccion" parent="Theme.Material3.DayNight.NoActionBar" />
+</resources>

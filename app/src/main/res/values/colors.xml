@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Fondo de la pantalla de inicio: igual que el fondo oscuro del tema. -->
+    <color name="splash_background">#0E0F1A</color>
+    <color name="icon_background">#5B3DF5</color>
+</resources>
