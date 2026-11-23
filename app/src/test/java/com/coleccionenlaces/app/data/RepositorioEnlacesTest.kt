@@ -2,6 +2,9 @@ package com.coleccionenlaces.app.data
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.coleccionenlaces.app.domain.ResultadoVistaPrevia
+import com.coleccionenlaces.app.domain.TipoErrorVistaPrevia
+import com.coleccionenlaces.app.domain.VistaPrevia
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import okhttp3.MediaType.Companion.toMediaType
@@ -416,4 +419,116 @@ class RepositorioEnlacesTest {
             val id = (resultado as ResultadoAgregarEnlace.Exito).id
             assertEquals("https://ejemplo.com/receta", enlaceDao.obtenerPorId(id)!!.url)
         }
+
+    // ---- Fix 1: título y descripción editables sin vista previa ----
+
+    @Test
+    fun `agregarEnlace con vista previa fallida y titulo manual guarda el titulo editado y clasifica por el`() =
+        runBlocking {
+            val repo = repositorio()
+
+            val resultado = repo.agregarEnlace(
+                "https://www.facebook.com/share/r/1JqVPz7de",
+                tituloManual = "Receta de paella valenciana",
+                descripcionManual = "La receta tradicional paso a paso.",
+                preparado = null,
+            )
+
+            assertTrue(resultado is ResultadoAgregarEnlace.Exito)
+            val id = (resultado as ResultadoAgregarEnlace.Exito).id
+            val guardado = enlaceDao.obtenerPorId(id)!!
+            assertEquals("Receta de paella valenciana", guardado.titulo)
+            assertEquals("La receta tradicional paso a paso.", guardado.descripcion)
+            assertNull(guardado.urlImagen)
+            assertEquals(cocinaId, guardado.categoriaId)
+        }
+
+    @Test
+    fun `agregarEnlace con titulo manual vacio usa el titulo de la vista previa`() =
+        runBlocking {
+            val repo = repositorio(
+                mapOf("https://ejemplo.com/receta" to htmlReceta),
+            )
+
+            val resultado = repo.agregarEnlace(
+                "https://ejemplo.com/receta",
+                tituloManual = "   ",
+                descripcionManual = null,
+                preparado = null,
+            )
+
+            val id = (resultado as ResultadoAgregarEnlace.Exito).id
+            assertEquals("Receta de paella valenciana", enlaceDao.obtenerPorId(id)!!.titulo)
+        }
+
+    @Test
+    fun `agregarEnlace con vista previa ya comprobada la reutiliza sin descargar de nuevo`() =
+        runBlocking {
+            val repo = repositorioSinInternet()
+            val preparado = EnlacePreparado(
+                vistaPrevia = ResultadoVistaPrevia.Exito(
+                    VistaPrevia(
+                        titulo = "Receta de paella valenciana",
+                        descripcion = "La receta tradicional paso a paso.",
+                        urlImagen = "https://ejemplo.com/img/paella.jpg",
+                    ),
+                ),
+                tituloSugerido = "Receta de paella valenciana",
+            )
+
+            // Sin internet y sin redescargar: si intentara descargar,
+            // el cliente lanzaría UnknownHostException.
+            val resultado = repo.agregarEnlace(
+                "https://ejemplo.com/receta",
+                tituloManual = null,
+                descripcionManual = null,
+                preparado = preparado,
+            )
+
+            assertTrue(resultado is ResultadoAgregarEnlace.Exito)
+            val id = (resultado as ResultadoAgregarEnlace.Exito).id
+            val guardado = enlaceDao.obtenerPorId(id)!!
+            assertEquals("Receta de paella valenciana", guardado.titulo)
+            assertEquals(cocinaId, guardado.categoriaId)
+        }
+
+    @Test
+    fun `prepararEnlace con vista previa fallida devuelve el dominio como titulo sugerido`() =
+        runBlocking {
+            val repo = repositorio()
+
+            val preparado = repo.prepararEnlace("https://www.facebook.com/share/r/1JqVPz7de")
+
+            assertTrue(preparado.vistaPrevia is ResultadoVistaPrevia.Error)
+            assertEquals(
+                TipoErrorVistaPrevia.SIN_VISTA_PREVIA,
+                (preparado.vistaPrevia as ResultadoVistaPrevia.Error).tipo,
+            )
+            assertEquals("facebook.com", preparado.tituloSugerido)
+        }
+
+    @Test
+    fun `prepararEnlace con vista previa devuelve su titulo como sugerido`() =
+        runBlocking {
+            val repo = repositorio(
+                mapOf("https://ejemplo.com/receta" to htmlReceta),
+            )
+
+            val preparado = repo.prepararEnlace("https://ejemplo.com/receta")
+
+            assertTrue(preparado.vistaPrevia is ResultadoVistaPrevia.Exito)
+            assertEquals("Receta de paella valenciana", preparado.tituloSugerido)
+        }
+
+    @Test
+    fun `prepararEnlace con URL invalida devuelve URL_INVALIDA`() = runBlocking {
+        val repo = repositorio()
+
+        val preparado = repo.prepararEnlace("no-es-una-url")
+
+        assertEquals(
+            TipoErrorVistaPrevia.URL_INVALIDA,
+            (preparado.vistaPrevia as ResultadoVistaPrevia.Error).tipo,
+        )
+    }
 }

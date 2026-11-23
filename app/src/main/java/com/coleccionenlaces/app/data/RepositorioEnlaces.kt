@@ -26,7 +26,16 @@ enum class TipoErrorAgregarEnlace {
     ERROR_AL_GUARDAR,
 }
 
-/** Resultado de [RepositorioEnlaces.crearCarpeta] y [RepositorioEnlaces.renombrarCarpeta]. */
+/** Resultado de [RepositorioEnlaces.prepararEnlace]: la vista previa obtenida (o su
+ * fallo distinguido) y el título sugerido para el diálogo (el de la vista previa
+ * cuando lo hay; si no, el dominio). El diálogo usa esto para pedir al usuario
+ * el título y la descripción cuando la vista previa falló (Fix 1): un sitio
+ * como Facebook no deja leer el enlace, pero el enlace se guarda igual con
+ * los datos que escriba el usuario. */
+data class EnlacePreparado(
+    val vistaPrevia: ResultadoVistaPrevia,
+    val tituloSugerido: String,
+)
 sealed interface ResultadoCarpeta {
     data class Exito(val id: Long) : ResultadoCarpeta
     data class Error(val tipo: TipoErrorCarpeta) : ResultadoCarpeta
@@ -67,6 +76,10 @@ enum class TipoErrorCarpeta {
  *   ofreció título (o la descarga falló por cualquier motivo que no
  *   sea URL inválida), el enlace se guarda igual con el host de la
  *   URL como título y sin imagen. Solo `URL_INVALIDA` impide guardar.
+ *   (Fix 1: el diálogo comprueba primero la vista previa con
+ *   [prepararEnlace] y, si falló, deja que el usuario escriba el
+ *   título y la descripción antes de guardar con
+ *   [agregarEnlace] con título manual.)
  * - **Clasificación solo al agregar y al reclasificar.** Un enlace
  *   nuevo tiene `categoriaManual = false`, así que se clasifica con
  *   [Clasificador.clasificarEnlace] y el nombre resultante se
@@ -137,6 +150,26 @@ class RepositorioEnlaces(
     suspend fun obtenerEnlacePorId(id: Long): Enlace? = enlaceDao.obtenerPorId(id)
 
     /**
+     * Obtiene solo la vista previa de una URL, sin guardar nada.
+     *
+     * Es el primer paso del diálogo de agregar (Fix 1): con el
+     * resultado, la UI decide si guarda directamente (vista previa
+     * correcta) o si pide al usuario el título y la descripción
+     * (vista previa fallida: el sitio no dejó leer el enlace). El
+     * título sugerido es el de la vista previa cuando lo hay y el
+     * dominio en caso contrario. La URL inválida se distingue aquí
+     * igual que en [agregarEnlace]: con ella no se guarda nada.
+     */
+    suspend fun prepararEnlace(url: String): EnlacePreparado {
+        val urlLimpia = url.trim()
+        val resultado = servicioVistaPrevia.obtenerVistaPrevia(urlLimpia)
+        val tituloSugerido = resultado.vistaPrevia.titulo?.trim()
+            .takeUnless { it.isNullOrBlank() }
+            ?: extraerHost(urlLimpia) ?: urlLimpia
+        return EnlacePreparado(resultado, tituloSugerido)
+    }
+
+    /**
      * Agrega un enlace: valida la URL, obtiene la vista previa,
      * clasifica y guarda.
      *
@@ -148,10 +181,38 @@ class RepositorioEnlaces(
      * - La categoría es la del clasificador (el enlace nuevo no es
      *   manual); si el nombre no se resuelve en la base, "Otros".
      */
-    suspend fun agregarEnlace(url: String): ResultadoAgregarEnlace {
+    suspend fun agregarEnlace(url: String): ResultadoAgregarEnlace =
+        agregarEnlace(url, tituloManual = null, descripcionManual = null, preparado = null)
+
+    /**
+     * Agrega un enlace con título y descripción escritos por el
+     * usuario y/o con una vista previa ya comprobada (Fix 1).
+     *
+     * - [tituloManual] / [descripcionManual]: lo que el usuario
+     *   escribió en el diálogo cuando la vista previa falló. Un
+     *   título manual no vacío tiene prioridad sobre el de la vista
+     *   previa (y sobre el dominio); una descripción manual tiene
+     *   prioridad sobre la de la vista previa. Con ambos en null se
+     *   comporta exactamente como [agregarEnlace].
+     * - [preparado]: el resultado de [prepararEnlace] para esta
+     *   misma URL, para no descargar la página dos veces (una al
+     *   comprobar y otra al guardar). Con null, la vista previa se
+     *   descarga aquí.
+     * - El título y la descripción EFECTIVOS (manuales o de la vista
+     *   previa) son los que alimentan al clasificador: un título
+     *   escrito por el usuario clasifica igual que uno leído del
+     *   sitio.
+     */
+    suspend fun agregarEnlace(
+        url: String,
+        tituloManual: String?,
+        descripcionManual: String?,
+        preparado: EnlacePreparado?,
+    ): ResultadoAgregarEnlace {
         val urlLimpia = url.trim()
         return try {
-            val resultadoVistaPrevia = servicioVistaPrevia.obtenerVistaPrevia(urlLimpia)
+            val resultadoVistaPrevia = preparado?.vistaPrevia
+                ?: servicioVistaPrevia.obtenerVistaPrevia(urlLimpia)
             if (resultadoVistaPrevia is ResultadoVistaPrevia.Error &&
                 resultadoVistaPrevia.tipo == TipoErrorVistaPrevia.URL_INVALIDA
             ) {
@@ -159,11 +220,14 @@ class RepositorioEnlaces(
             }
             val vistaPrevia = resultadoVistaPrevia.vistaPrevia
             val host = extraerHost(urlLimpia) ?: urlLimpia
-            val titulo = vistaPrevia.titulo?.trim().takeUnless { it.isNullOrBlank() } ?: host
+            val titulo = tituloManual?.trim().takeUnless { it.isNullOrBlank() }
+                ?: vistaPrevia.titulo?.trim().takeUnless { it.isNullOrBlank() } ?: host
+            val descripcion = descripcionManual?.trim()
+                ?: vistaPrevia.descripcion?.trim().orEmpty()
             val enlaceSinCategoria = Enlace(
                 url = urlLimpia,
                 titulo = titulo,
-                descripcion = vistaPrevia.descripcion?.trim().orEmpty(),
+                descripcion = descripcion,
                 urlImagen = vistaPrevia.urlImagen,
                 categoriaId = null,
                 categoriaManual = false,
