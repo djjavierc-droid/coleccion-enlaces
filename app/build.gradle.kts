@@ -42,6 +42,13 @@ android {
     buildFeatures {
         compose = true
     }
+
+    testOptions {
+        unitTests {
+            // Robolectric necesita los recursos de Android en las pruebas unitarias.
+            isIncludeAndroidResources = true
+        }
+    }
 }
 
 dependencies {
@@ -68,4 +75,11 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
 
     testImplementation(libs.junit)
+    // Pruebas del DAO (Fase 2): Room en memoria con Robolectric, para que
+    // corran en testDebugUnitTest sin emulador. room-testing es el artefacto
+    // de pruebas de Room (migraciones y utilidades); Robolectric aporta el
+    // Context de Android que Room necesita en la JVM.
+    testImplementation(libs.androidx.room.testing)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.robolectric)
 }
