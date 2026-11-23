@@ -21,10 +21,14 @@ import com.coleccionenlaces.app.ui.theme.FondoDegradado
 /**
  * Pantalla mínima real de la Fase 1: encabezado con el título de la
  * app y texto de marcador. La cuadrícula, la búsqueda y los chips
- * llegan en la Fase 6.
+ * llegan en la Fase 6, que consumirá `viewModel.estado`.
+ *
+ * @param viewModel ViewModel principal (Fase 5): la Fase 6 observará
+ *   su estado único; en esta fase solo se recibe para dejar el
+ *   cableado hecho.
  */
 @Composable
-fun HomeScreen() {
+fun HomeScreen(viewModel: HomeViewModel) {
     FondoDegradado {
         Column(
             modifier = Modifier
