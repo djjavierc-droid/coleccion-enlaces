@@ -4,8 +4,11 @@ Fecha: 2026-11-23 ~06:20 CST (MobileBERT bloqueado) y ~13:30 CST (DistilBERT
 verificado). Agente: subagente clasificador (93af6d88 y continuación 3c5e5184).
 **Decisión del padre: opción A (DistilBERT en TF). MobileBERT queda bloqueado
 con la evidencia de la sección 2. No se usaron las opciones B ni C.**
-**Estado: modelo entrenado, convertido y verificado en Python. Falta CI en
-verde (commit + push pendientes). No se entregó nada a Javier.**
+**Estado FINAL (2026-11-23 ~14:16 CST): modelo entrenado, convertido y
+verificado en Python; CI EN VERDE (run 45191077134, commit 58ebec8);
+APK con clasificador verificado por mí (105.094.755 bytes, SHA-256
+8640f4df...). NO entregado a Javier: falta decidir la versión (choca
+con la v1.0.1 retenida) y la entrega es del padre.**
 
 ## 1. Descarga del modelo: COMPLETA y verificada
 
@@ -336,8 +339,31 @@ tokenizador WordPiece; solo cambian los pesos y el vocabulario).
   methods..."). `Class.forName` inicializa la clase sin lanzar.
   Corrección: el sondeo llama a `TensorFlowLite.init()` (público,
   idempotente) y salta si lanza UnsatisfiedLinkError.
-- Pendiente: run de CI tras esta corrección (debe quedar en verde,
-  con las 4 pruebas de modelo saltadas en la JVM).
+- **Run 45191077134 (commit 58ebec8): CI EN VERDE ✓.** BUILD
+  SUCCESSFUL en 3m 3s; los 8 pasos del job en success; 301 pruebas,
+  0 fallidas (las 4 de modelo saltadas por Assume en la JVM).
+- **APK VERIFICADO POR MÍ (descargado del artefacto
+  `coleccion-debug`, run 45191077134)**: `app-debug.apk`,
+  **105.094.755 bytes**, SHA-256
+  `8640f4df410c8aa9ea993143d2aefee4f5ffa9495a75a447fd9989210b907329`,
+  package `com.coleccionenlaces.app`, versionCode **2**,
+  versionName **1.0.1**, minSdk 26, targetSdk **36**, label
+  "Colección", MainActivity lanzable, apksigner Verifies (1 firmante
+  = Android Debug), permisos INTERNET/USE_BIOMETRIC/USE_FINGERPRINT/
+  WAKE_LOCK/ACCESS_NETWORK_STATE, **0 fuentes empaquetadas**.
+  `assets/modelo_clasificador.tflite` dentro del APK: 67.822.864
+  bytes, SHA-256 `6cf9abb8...04669` = el .tflite verificado en Python;
+  vocab.txt 231.508 B, etiquetas.txt 244 B. Archivo guardado en
+  `~/workspace/coleccion-enlaces/Coleccion-v1.0.1-con-clasificador-debug.apk`.
+  **ATENCIÓN — choque de versión: este APK es versionCode 2 /
+  1.0.1, LA MISMA versión que la v1.0.1 retenida (21.575.398 bytes,
+  SHA c29f924f...). El trabajo del Fix 3 no subió la versión. Antes
+  de entregar hay que decidir si se sube a versionCode 3 / 1.0.2.
+  NO ENTREGADO a Javier: la decisión de entrega y versión es del
+  padre.**
+- **Tamaño final**: el APK pasa de 21,5 MB a **105 MB** (modelo
+  67,8 MB + .so nativas de 4 ABIs ~15 MB + dex). Consecuencia de la
+  opción A; queda registrada para el padre.
 - `.gitignore` ya excluye entrenamiento/venv/, datos/, tmp/,
   .hf-cache/, modelo_tf/, modelo_clasificador.tflite, *.log, *.json.
   **modelo_base/ (157 MB MobileBERT) y modelo_base_distilbert/
