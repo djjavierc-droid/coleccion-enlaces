@@ -310,33 +310,40 @@ class ServicioVistaPreviaTest {
 
     /**
      * Un enlace corto de Facebook redirige (302) a su destino: la
-     * canónica es la URL final, no la corta. El interceptor simula
-     * la redirección medida con curl (302 a m.facebook.com, luego
-     * 200): OkHttp sigue los redirects también con interceptores.
+     * canónica es la URL final, no la corta. La resolución ES
+     * `respuesta.request.url`: OkHttp sigue los redirects por
+     * defecto y la petición que responde es la final.
+     *
+     * Por qué el test NO simula un 302 literal: no se puede con
+     * interceptores. Un interceptor de aplicación devuelve su
+     * respuesta ANTES de que `RetryAndFollowUpInterceptor` la vea
+     * (OkHttp no sigue ese 302) y uno de red DEBE llamar a
+     * `proceed()` exactamente una vez (no puede sintetizar
+     * respuestas: lanza `IllegalStateException`). Así que el test
+     * simula la respuesta DESPUÉS de que OkHttp siga el redirect
+     * (una 200 cuya petición es la URL final) y comprueba que el
+     * resolvedor devuelve esa URL final, no la pedida. Que OkHttp
+     * siga el 302 real está medido con curl contra Facebook
+     * (302 a `m.facebook.com`, ver fix-4-resumen.md): es
+     * comportamiento del framework, no de este código.
      */
     @Test
-    fun `resolverUrlCanonica sigue la redireccion hasta la URL final`() = runBlocking {
+    fun `resolverUrlCanonica devuelve la URL final tras la redireccion`() = runBlocking {
         val cliente = OkHttpClient.Builder()
             .addInterceptor { cadena ->
-                val url = cadena.request().url.toString()
-                if (url == "https://www.facebook.com/share/r/1JqVPz7de") {
-                    Response.Builder()
-                        .request(cadena.request())
-                        .protocol(Protocol.HTTP_1_1)
-                        .code(302)
-                        .message("Found")
-                        .header("Location", "https://m.facebook.com/share/r/1JqVPz7de")
-                        .body("".toResponseBody("text/html; charset=utf-8".toMediaType()))
-                        .build()
-                } else {
-                    Response.Builder()
-                        .request(cadena.request())
-                        .protocol(Protocol.HTTP_1_1)
-                        .code(200)
-                        .message("OK")
-                        .body("".toResponseBody("text/html; charset=utf-8".toMediaType()))
-                        .build()
-                }
+                // Respuesta como la que deja OkHttp tras seguir el
+                // 302: 200 y petición = URL final (m.facebook.com).
+                Response.Builder()
+                    .request(
+                        cadena.request().newBuilder()
+                            .url("https://m.facebook.com/share/r/1JqVPz7de")
+                            .build(),
+                    )
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(200)
+                    .message("OK")
+                    .body("".toResponseBody("text/html; charset=utf-8".toMediaType()))
+                    .build()
             }
             .build()
         val servicio = ServicioVistaPrevia(cliente = cliente)

@@ -977,8 +977,13 @@ class RepositorioEnlacesTest {
     /**
      * prepararEnlace con un /share/r/ resuelve la URL antes de pedir
      * el oEmbed: el endpoint oEmbed se llama con la URL final
-     * (m.facebook.com), no con la corta. El interceptor simula la
-     * redirección 302 medida con curl.
+     * (m.facebook.com), no con la corta.
+     *
+     * El cliente falso simula la respuesta DESPUÉS de que OkHttp
+     * siga el 302 (ver el comentario del test de
+     * `resolverUrlCanonica` en `ServicioVistaPreviaTest`): para la
+     * URL corta devuelve una 200 cuya petición es la URL final, con
+     * cuerpo vacío (vista previa vacía, como el muro de login real).
      */
     @Test
     fun `prepararEnlace pide el oEmbed con la URL canonica de un share de Facebook`() =
@@ -986,24 +991,20 @@ class RepositorioEnlacesTest {
             val clienteVistaPrevia = OkHttpClient.Builder()
                 .addInterceptor { cadena ->
                     val url = cadena.request().url.toString()
-                    if (url == "https://www.facebook.com/share/r/1JqVPz7de") {
-                        Response.Builder()
-                            .request(cadena.request())
-                            .protocol(Protocol.HTTP_1_1)
-                            .code(302)
-                            .message("Found")
-                            .header("Location", "https://m.facebook.com/share/r/1JqVPz7de")
-                            .body("".toResponseBody("text/html; charset=utf-8".toMediaType()))
+                    val peticionFinal = if (url == "https://www.facebook.com/share/r/1JqVPz7de") {
+                        cadena.request().newBuilder()
+                            .url("https://m.facebook.com/share/r/1JqVPz7de")
                             .build()
                     } else {
-                        Response.Builder()
-                            .request(cadena.request())
-                            .protocol(Protocol.HTTP_1_1)
-                            .code(200)
-                            .message("OK")
-                            .body("".toResponseBody("text/html; charset=utf-8".toMediaType()))
-                            .build()
+                        cadena.request()
                     }
+                    Response.Builder()
+                        .request(peticionFinal)
+                        .protocol(Protocol.HTTP_1_1)
+                        .code(200)
+                        .message("OK")
+                        .body("".toResponseBody("text/html; charset=utf-8".toMediaType()))
+                        .build()
                 }
                 .build()
             val repo = RepositorioEnlaces(
