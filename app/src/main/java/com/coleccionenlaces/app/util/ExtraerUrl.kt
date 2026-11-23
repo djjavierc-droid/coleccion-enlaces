@@ -91,8 +91,16 @@ fun extraerTextoAcompanante(texto: String?, url: String?): String? {
         resto = resto.replace(urlExtraida, " ")
     }
     val limpio = resto.lines()
-        .map { it.trim().replace(Regex("\\s+"), " ") }
-        .filter { linea -> linea.any { it.isLetterOrDigit() } }
+        .map { linea ->
+            // Se colapsan los espacios y se quitan los tokens que son
+            // solo puntuación (el "." que deja la URL al final de una
+            // frase, por ejemplo): el título no debe llevarlos.
+            linea.trim().replace(Regex("\\s+"), " ")
+                .split(" ")
+                .filter { token -> token.any { it.isLetterOrDigit() } }
+                .joinToString(" ")
+        }
+        .filter { it.isNotBlank() }
         .joinToString("\n")
     return limpio.ifBlank { null }
 }
