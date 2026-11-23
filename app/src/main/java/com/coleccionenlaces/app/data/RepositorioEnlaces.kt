@@ -442,8 +442,10 @@ class RepositorioEnlaces(
      */
     private suspend fun clasificarPorVisionSiOtros(enlace: Enlace, bitmap: Bitmap) {
         if (enlace.categoriaManual) return
-        val categoriaActual = categoriaDao.obtenerPorId(enlace.categoriaId)?.nombre
-        if (categoriaActual != Clasificador.OTROS) return
+        // categoriaId es Long? (null si la carpeta se borró): solo se
+        // actúa si el enlace está en "Otros" o sin carpeta.
+        val categoriaActual = enlace.categoriaId?.let { categoriaDao.obtenerPorId(it)?.nombre }
+        if (categoriaActual != null && categoriaActual != Clasificador.OTROS) return
         val vision = clasificadorVision ?: return
         val analizador = analizadorVisual ?: return
         val senales = try {
