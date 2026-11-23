@@ -7,6 +7,7 @@ import com.coleccionenlaces.app.domain.Clasificador
 import com.coleccionenlaces.app.domain.ClasificadorVision
 import com.coleccionenlaces.app.domain.MotorClasificacion
 import com.coleccionenlaces.app.domain.MotorPalabrasClave
+import com.coleccionenlaces.app.domain.PosterResuelto
 import com.coleccionenlaces.app.domain.ResultadoOEmbed
 import com.coleccionenlaces.app.domain.ResultadoVistaPrevia
 import com.coleccionenlaces.app.domain.TipoErrorVistaPrevia
