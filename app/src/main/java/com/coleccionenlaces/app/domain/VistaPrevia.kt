@@ -27,7 +27,7 @@ enum class TipoErrorVistaPrevia {
     /** La URL no es una http(s) válida (vacía, sin host, otro esquema). */
     URL_INVALIDA,
 
-    /** La descarga superó el timeout de 10 segundos. */
+    /** La descarga superó el timeout de 15 segundos (tras los reintentos). */
     TIEMPO_AGOTADO,
 
     /** El sitio respondió pero no ofreció vista previa usable. */

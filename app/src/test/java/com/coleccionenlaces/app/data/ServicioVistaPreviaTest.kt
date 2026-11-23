@@ -187,4 +187,122 @@ class ServicioVistaPreviaTest {
         assertEquals("Guía para ajustar los frenos.", vista.descripcion)
         assertEquals("https://ejemplo.com/img/bici.jpg", vista.urlImagen)
     }
+
+    // ---- Punto 3 de la corrección 1.0.1: reintentos ----
+
+    private fun clienteQueCuenta(responder: (Int) -> Response): Pair<OkHttpClient, java.util.concurrent.atomic.AtomicInteger> {
+        val llamadas = java.util.concurrent.atomic.AtomicInteger(0)
+        val cliente = OkHttpClient.Builder()
+            .addInterceptor { cadena ->
+                val numero = llamadas.incrementAndGet()
+                responder(numero)
+            }
+            .build()
+        return cliente to llamadas
+    }
+
+    private fun respuesta(codigo: Int, cuerpo: String, url: String): Response =
+        Response.Builder()
+            .request(okhttp3.Request.Builder().url(url).build())
+            .protocol(Protocol.HTTP_1_1)
+            .code(codigo)
+            .message("OK")
+            .body(cuerpo.toResponseBody("text/html; charset=utf-8".toMediaType()))
+            .build()
+
+    @Test
+    fun `error 500 dos veces y luego 200 devuelve Exito tras reintentar`() = runBlocking {
+        val html = """
+            <html><head>
+            <meta property="og:title" content="Receta de paella valenciana">
+            </head><body></body></html>
+        """.trimIndent()
+        val (cliente, llamadas) = clienteQueCuenta { numero ->
+            if (numero <= 2) {
+                respuesta(500, "Error del servidor", "https://ejemplo.com/receta")
+            } else {
+                respuesta(200, html, "https://ejemplo.com/receta")
+            }
+        }
+        val servicio = ServicioVistaPrevia(cliente = cliente)
+
+        val resultado = servicio.obtenerVistaPrevia("https://ejemplo.com/receta")
+
+        assertTrue(resultado is ResultadoVistaPrevia.Exito)
+        assertEquals(
+            "Receta de paella valenciana",
+            (resultado as ResultadoVistaPrevia.Exito).vistaPrevia.titulo,
+        )
+        assertEquals(3, llamadas.get())
+    }
+
+    @Test
+    fun `error 400 como el de Facebook no se reintenta`() = runBlocking {
+        val (cliente, llamadas) = clienteQueCuenta {
+            respuesta(400, "<title>Error</title>", "https://www.facebook.com/share/r/abc")
+        }
+        val servicio = ServicioVistaPrevia(cliente = cliente)
+
+        val resultado = servicio.obtenerVistaPrevia("https://www.facebook.com/share/r/abc")
+
+        assertEquals(
+            TipoErrorVistaPrevia.SIN_VISTA_PREVIA,
+            (resultado as ResultadoVistaPrevia.Error).tipo,
+        )
+        assertEquals(1, llamadas.get())
+    }
+
+    @Test
+    fun `timeout dos veces y luego 200 devuelve Exito tras reintentar`() = runBlocking {
+        val html = """
+            <html><head>
+            <meta property="og:title" content="Receta de paella valenciana">
+            </head><body></body></html>
+        """.trimIndent()
+        val (cliente, llamadas) = clienteQueCuenta { numero ->
+            if (numero <= 2) {
+                throw SocketTimeoutException("read timed out")
+            } else {
+                respuesta(200, html, "https://ejemplo.com/receta")
+            }
+        }
+        val servicio = ServicioVistaPrevia(cliente = cliente)
+
+        val resultado = servicio.obtenerVistaPrevia("https://ejemplo.com/receta")
+
+        assertTrue(resultado is ResultadoVistaPrevia.Exito)
+        assertEquals(3, llamadas.get())
+    }
+
+    @Test
+    fun `timeout siempre devuelve TIEMPO_AGOTADO tras 3 intentos`() = runBlocking {
+        val (cliente, llamadas) = clienteQueCuenta {
+            throw SocketTimeoutException("read timed out")
+        }
+        val servicio = ServicioVistaPrevia(cliente = cliente)
+
+        val resultado = servicio.obtenerVistaPrevia("https://ejemplo.com/lento")
+
+        assertEquals(
+            TipoErrorVistaPrevia.TIEMPO_AGOTADO,
+            (resultado as ResultadoVistaPrevia.Error).tipo,
+        )
+        assertEquals(3, llamadas.get())
+    }
+
+    @Test
+    fun `sin internet no se reintenta`() = runBlocking {
+        val (cliente, llamadas) = clienteQueCuenta {
+            throw UnknownHostException("ejemplo.com")
+        }
+        val servicio = ServicioVistaPrevia(cliente = cliente)
+
+        val resultado = servicio.obtenerVistaPrevia("https://ejemplo.com/")
+
+        assertEquals(
+            TipoErrorVistaPrevia.SIN_INTERNET,
+            (resultado as ResultadoVistaPrevia.Error).tipo,
+        )
+        assertEquals(1, llamadas.get())
+    }
 }

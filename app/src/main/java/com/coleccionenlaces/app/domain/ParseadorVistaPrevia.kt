@@ -12,6 +12,11 @@ import org.jsoup.Jsoup
  *
  * Reglas de extracción, en orden de prioridad:
  * - Título: `og:title`; respaldo: el `<title>` de la página.
+ *   Un título genérico (p. ej. "Error", "Error Facebook" o
+ *   "Facebook": lo que devuelve el muro de login de Facebook)
+ *   NO sirve como título del enlace y se descarta (null), para que
+ *   el enlace se guarde con el dominio o con el título que escriba
+ *   el usuario (punto 3 de la corrección 1.0.1).
  * - Descripción: `og:description`; respaldo: `meta name=description`.
  * - Imagen: `og:image`; respaldo: la primera `<img>` con `src` no
  *   vacío. Las URLs relativas se resuelven a absolutas contra [urlBase].
@@ -27,6 +32,10 @@ fun parsearHtml(html: String, urlBase: String): VistaPrevia {
         .selectFirst("meta[property=og:title]")
         ?.attr("content").sinBlancos()
         ?: documento.title().sinBlancos()
+    // Un título genérico no describe el enlace: se descarta para que
+    // el enlace se guarde con el dominio o con el título que escriba
+    // el usuario (ver TITULOS_GENERICOS).
+    val tituloUtil = titulo?.takeUnless { esTituloGenerico(it) }
 
     val descripcion = documento
         .selectFirst("meta[property=og:description]")
@@ -46,11 +55,41 @@ fun parsearHtml(html: String, urlBase: String): VistaPrevia {
             ?.absUrl("src")?.takeIf { it.isNotBlank() }
 
     return VistaPrevia(
-        titulo = titulo,
+        titulo = tituloUtil,
         descripcion = descripcion,
         urlImagen = urlImagen,
     )
 }
+
+/**
+ * Títulos que no describen el enlace y nunca se usan como título
+ * (punto 3 de la corrección 1.0.1). Son los que devuelve un muro de
+ * login o de error en vez de la página real: Facebook responde
+ * `<title>Error</title>` (escritorio) o `<title>Error Facebook</title>`
+ * (móvil) con HTTP 400 y cero og tags (ver fix-1-resumen.md), y un
+ * `og:title` con solo el nombre del sitio ("Facebook") tampoco dice
+ * nada del contenido. Comparación en minúsculas y sin espacios.
+ */
+private val TITULOS_GENERICOS = setOf(
+    "error",
+    "error facebook",
+    "facebook",
+    "log into facebook",
+    "log in to facebook",
+    "facebook - log in or sign up",
+    "facebook – log in or sign up",
+    "inicia sesion en facebook",
+    "iniciar sesion en facebook",
+    "accede a facebook",
+    "entrar a facebook",
+    "pagina no encontrada",
+    "page not found",
+    "404 not found",
+)
+
+/** True si el título es uno de los genéricos de [TITULOS_GENERICOS]. */
+private fun esTituloGenerico(titulo: String): Boolean =
+    titulo.trim().lowercase() in TITULOS_GENERICOS
 
 /**
  * Resuelve [url] contra [urlBase] cuando es relativa; si ya es

@@ -130,4 +130,54 @@ class ParseadorVistaPreviaTest {
         assertNull(vista.urlImagen)
         assertTrue(vista.estaVacia)
     }
+
+    // ---- Punto 3 de la corrección 1.0.1: títulos genéricos ----
+
+    @Test
+    fun `titulo Error de pagina de error no se usa como titulo`() {
+        val vista = parsearHtml(
+            "<html><head><title>Error</title></head><body></body></html>",
+            "https://www.facebook.com/share/r/abc",
+        )
+
+        assertNull(vista.titulo)
+        assertTrue(vista.estaVacia)
+    }
+
+    @Test
+    fun `titulo Error Facebook de pagina movil no se usa como titulo`() {
+        val vista = parsearHtml(
+            "<html><head><title>Error Facebook</title></head><body></body></html>",
+            "https://m.facebook.com/share/r/abc",
+        )
+
+        assertNull(vista.titulo)
+        assertTrue(vista.estaVacia)
+    }
+
+    @Test
+    fun `og title con solo el nombre del sitio no se usa como titulo`() {
+        val vista = parsearHtml(
+            """
+            <html><head>
+            <meta property="og:title" content="Facebook">
+            <meta property="og:description" content="Explore the things you love">
+            </head><body></body></html>
+            """.trimIndent(),
+            "https://www.facebook.com/",
+        )
+
+        assertNull(vista.titulo)
+        assertEquals("Explore the things you love", vista.descripcion)
+    }
+
+    @Test
+    fun `titulo generico no tapa un titulo real de otra pagina`() {
+        val vista = parsearHtml(
+            "<html><head><title>Error al cargar</title></head><body></body></html>",
+            "https://ejemplo.com/",
+        )
+
+        assertEquals("Error al cargar", vista.titulo)
+    }
 }
