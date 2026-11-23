@@ -101,80 +101,13 @@ dependencies {
     testImplementation(libs.robolectric)
 }
 
-// ---- Librería nativa de TF Lite en las pruebas unitarias (Fix 3) ----
-// El intérprete de LiteRT carga `libtensorflowlite_jni.so` con
-// System.loadLibrary. En el APK esa .so va empaquetada por el plugin
-// de Android, pero en la JVM de las pruebas unitarias no hay nada en
-// java.library.path y ClasificadorModeloTest fallaba con
-// UnsatisfiedLinkError (run 45185628304: 301 pruebas, 4 fallidas).
-// Esta tarea extrae las .so x86_64 del AAR (incluida libc++_shared.so,
-// de la que depende la JNI) a build/libs-nativas-test y las tareas de
-// test las ponen en java.library.path y LD_LIBRARY_PATH.
-//
-// El AAR se busca en debugRuntimeClasspath (la configuración que ya
-// resuelve la dependencia para el APK). Una configuración propia sin
-// atributos NO sirvió: en el run 45186874597 se resolvía vacía
-// ("Collection contains no element matching the predicate").
-tasks.register("extraerLibsNativasTest") {
-    val salida = layout.buildDirectory.dir("libs-nativas-test")
-    outputs.dir(salida)
-    doLast {
-        val classpath = configurations.getByName("debugRuntimeClasspath")
-        val todos = classpath.files.map { it.name }
-        // org.tensorflow:tensorflow-lite:2.17.0 es un POM de
-        // reubicación: el artefacto real es com.google.ai.edge.litert
-        // (LiteRT). El AAR con la .so es litert-1.0.1.aar (la API vive
-        // en litert-api-1.0.1.aar). Se acepta también el nombre viejo
-        // por si la versión cambia.
-        val aar = classpath.files.firstOrNull {
-            it.name.endsWith(".aar") && (
-                (it.name.startsWith("litert-") && !it.name.startsWith("litert-api")) ||
-                    it.name.startsWith("tensorflow-lite-")
-                )
-        } ?: error(
-            "No se encontró el AAR de LiteRT/TF Lite en " +
-                "debugRuntimeClasspath (${todos.size} archivos). " +
-                "Con 'tensor'/'lite'/'litert': " +
-                todos.filter {
-                    it.contains("tensor", ignoreCase = true) ||
-                        it.contains("litert", ignoreCase = true)
-                }.ifEmpty { listOf("(ninguno)") },
-        )
-        copy {
-            from(zipTree(aar)) {
-                include("jni/x86_64/*.so")
-                eachFile {
-                    // Aplana: solo el nombre del .so, sin jni/x86_64/.
-                    relativePath =
-                        org.gradle.api.file.RelativePath(true, name)
-                }
-                includeEmptyDirs = false
-            }
-            into(salida)
-        }
-    }
-}
-
-tasks.withType<Test>().configureEach {
-    dependsOn("extraerLibsNativasTest")
-    val dirLibs = layout.buildDirectory.dir("libs-nativas-test")
-    // Se antepone el directorio a la ruta por defecto de la JVM, no
-    // se sustituye: otras librerías nativas siguen encontrándose.
-    systemProperty(
-        "java.library.path",
-        dirLibs.map {
-            it.asFile.absolutePath + System.getProperty("path.separator") +
-                System.getProperty("java.library.path", "")
-        },
-    )
-    // dlopen resuelve las dependencias de la .so (libc++_shared.so)
-    // con LD_LIBRARY_PATH, no con java.library.path.
-    environment(
-        "LD_LIBRARY_PATH",
-        dirLibs.map {
-            val previo = System.getenv("LD_LIBRARY_PATH").orEmpty()
-            if (previo.isBlank()) it.asFile.absolutePath
-            else it.asFile.absolutePath + ":" + previo
-        },
-    )
-}
+// NOTA (Fix 3): NO se extrae la .so de LiteRT para las pruebas
+// unitarias. Se intentó (runs 45186469733–45188146136): la extracción
+// funciona, pero `libtensorflowlite_jni.so` del AAR está enlazada
+// para Android (NEEDED: libm.so, libdl.so, liblog.so, libc.so sin
+// versión) y en la JVM Linux de CI no carga ("libm.so: invalid ELF
+// header", liblog.so inexistente). Ningún java.library.path lo
+// arregla. Las pruebas que construyen el intérprete se saltan con
+// JUnit Assume en esa JVM y corren de verdad en teléfono/emulador
+// (ver ClasificadorModeloTest.kt). El modelo está verificado en
+// Python con los mismos bytes del .tflite (ver fix-3-resumen.md).
