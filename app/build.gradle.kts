@@ -78,11 +78,12 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.jsoup)
     implementation(libs.kotlinx.coroutines.android)
-    // Clasificador LiteRT (Fix 3): el modelo DistilBERT INT8 corre con
-    // el intérprete base; la tokenización WordPiece vive en Kotlin
-    // (domain/TokenizadorWordPiece) porque la librería de metadatos
-    // (tflite-support 0.4.4) no tiene ruedas para Python 3.12 y
-    // Model Maker no se instala en este entorno (ver fix-3-resumen.md).
+    // Clasificador LiteRT (Fix 3): el modelo DistilBERT (rango
+    // dinámico) corre con el intérprete base; la tokenización
+    // WordPiece vive en Kotlin (domain/TokenizadorWordPiece) porque
+    // la librería de metadatos (tflite-support 0.4.4) no tiene ruedas
+    // para Python 3.12 y Model Maker no se instala en este entorno
+    // (ver fix-3-resumen.md).
     implementation(libs.tensorflow.lite)
     // Reentrenamiento de la cabeza en reposo (Fix 3): trabajo único
     // periódico con cargador y dispositivo en reposo.
@@ -98,4 +99,68 @@ dependencies {
     testImplementation(libs.androidx.room.testing)
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.robolectric)
+}
+
+// ---- Librería nativa de TF Lite en las pruebas unitarias (Fix 3) ----
+// El intérprete de LiteRT carga `libtensorflowlite_jni.so` con
+// System.loadLibrary. En el APK esa .so va empaquetada por el plugin
+// de Android, pero en la JVM de las pruebas unitarias no hay nada en
+// java.library.path y ClasificadorModeloTest fallaba con
+// UnsatisfiedLinkError (run 45185628304: 301 pruebas, 4 fallidas).
+// Esta tarea extrae las .so x86_64 del AAR (incluida libc++_shared.so,
+// de la que depende la JNI) a build/libs-nativas-test y las tareas de
+// test las ponen en java.library.path y LD_LIBRARY_PATH.
+val libsNativasTest = configurations.create("libsNativasTest") {
+    isCanBeResolved = true
+    isCanBeConsumed = false
+}
+
+dependencies {
+    add("libsNativasTest", libs.tensorflow.lite)
+}
+
+tasks.register("extraerLibsNativasTest") {
+    val salida = layout.buildDirectory.dir("libs-nativas-test")
+    outputs.dir(salida)
+    doLast {
+        val aar = libsNativasTest.files.first {
+            it.name.startsWith("tensorflow-lite-") && it.name.endsWith(".aar")
+        }
+        copy {
+            from(zipTree(aar)) {
+                include("jni/x86_64/*.so")
+                eachFile {
+                    // Aplana: solo el nombre del .so, sin jni/x86_64/.
+                    relativePath =
+                        org.gradle.api.file.RelativePath(true, name)
+                }
+                includeEmptyDirs = false
+            }
+            into(salida)
+        }
+    }
+}
+
+tasks.withType<Test>().configureEach {
+    dependsOn("extraerLibsNativasTest")
+    val dirLibs = layout.buildDirectory.dir("libs-nativas-test")
+    // Se antepone el directorio a la ruta por defecto de la JVM, no
+    // se sustituye: otras librerías nativas siguen encontrándose.
+    systemProperty(
+        "java.library.path",
+        dirLibs.map {
+            it.asFile.absolutePath + java.io.File.pathSeparator +
+                System.getProperty("java.library.path", "")
+        },
+    )
+    // dlopen resuelve las dependencias de la .so (libc++_shared.so)
+    // con LD_LIBRARY_PATH, no con java.library.path.
+    environment(
+        "LD_LIBRARY_PATH",
+        dirLibs.map {
+            val previo = System.getenv("LD_LIBRARY_PATH").orEmpty()
+            if (previo.isBlank()) it.asFile.absolutePath
+            else it.asFile.absolutePath + ":" + previo
+        },
+    )
 }

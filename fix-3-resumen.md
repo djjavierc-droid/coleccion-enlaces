@@ -254,6 +254,25 @@ tokenizador WordPiece; solo cambian los pesos y el vocabulario).
      cabeza (esas palabras no tienen señal de categoría) y hace que el
      código cumpla su propio test.
 - Pendiente: segundo run de CI tras estas dos correcciones.
+
+### 5.9 CI — segundo run fallido: la .so de TF Lite no carga en la JVM (run 45185628304)
+- Tras las correcciones: **301 pruebas, 4 fallidas** (de 126 a 4). Las
+  125 de WorkManager y la de stopwords quedaron resueltas.
+- Las 4 restantes son `ClasificadorModeloTest` (las que construyen el
+  modelo: assets, EterniCodIA, genérico, blanco) con
+  `java.lang.UnsatisfiedLinkError` al construir `ClasificadorModelo`.
+  La prueba de equivalencia del tokenizador (Kotlin puro, sin modelo)
+  SÍ pasa. Causa: el intérprete carga `libtensorflowlite_jni.so` con
+  `System.loadLibrary`; en el APK va empaquetada, pero en la JVM de
+  las pruebas no hay nada en `java.library.path`.
+- Corrección (app/build.gradle.kts): configuración `libsNativasTest`
+  con el AAR de TF Lite; tarea `extraerLibsNativasTest` que extrae
+  `jni/x86_64/*.so` (incluida `libc++_shared.so`, dependencia de la
+  JNI) a `build/libs-nativas-test`; las tareas `Test` dependen de ella
+  y ponen ese directorio en `java.library.path` (antepuesto a la ruta
+  por defecto) y en `LD_LIBRARY_PATH` (para que dlopen resuelva
+  `libc++_shared.so`).
+- Pendiente: tercer run de CI tras esta corrección.
 - `.gitignore` ya excluye entrenamiento/venv/, datos/, tmp/,
   .hf-cache/, modelo_tf/, modelo_clasificador.tflite, *.log, *.json.
   **modelo_base/ (157 MB MobileBERT) y modelo_base_distilbert/
