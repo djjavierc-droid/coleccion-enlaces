@@ -383,7 +383,7 @@ class HomeViewModelTest {
                 as ResultadoAgregarEnlace.Exito).id
             esperarEstado { it.totalEnlaces == 1 }
             viewModel.cambiarCategoriaManual(id, entretenimientoId)
-            esperarEstado { it.totalEnlaces == 1 }
+            advanceUntilIdle()
             db.enlaceDao().actualizar(
                 db.enlaceDao().obtenerPorId(id)!!.copy(titulo = "Receta de paella"),
             )
@@ -394,7 +394,14 @@ class HomeViewModelTest {
             viewModel.reclasificarEnlace(id)
             advanceUntilIdle()
 
-            val estado = esperarEstado { !it.cargando }
+            // Se espera el estado ya asentado (enlace visible en
+            // Entretenimiento): esperar solo `!cargando` devuelve el
+            // primer estado sin carga, que puede ser anterior al
+            // desbloqueo.
+            val estado = esperarEstado {
+                it.enlaces.size == 1 &&
+                    it.enlaces.first().categoria.nombre == "Entretenimiento"
+            }
             assertEquals("Entretenimiento", estado.enlaces.first().categoria.nombre)
         }
 
