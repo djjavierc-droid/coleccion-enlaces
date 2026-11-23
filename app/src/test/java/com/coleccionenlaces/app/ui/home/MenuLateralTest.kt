@@ -63,10 +63,14 @@ class MenuLateralTest {
         assertFalse(items[1].bloqueada)
         assertTrue(items[2].bloqueada)
         // Las filas no llevan ningún contenido de enlaces: solo
-        // nombre, ícono, color, contador y bloqueo.
+        // nombre, ícono, color, contador y bloqueo. Los campos que
+        // empiezan por `$` no se cuentan: los genera el compilador
+        // (el de Compose añade `$stable`, público y no sintético,
+        // a las clases estables) y no son datos de la fila.
         for (item in items) {
             val campos = item.javaClass.declaredFields
-                .filter { !it.isSynthetic }.map { it.name }.toSet()
+                .filter { !it.isSynthetic && !it.name.startsWith("$") }
+                .map { it.name }.toSet()
             assertEquals(
                 setOf(
                     "categoriaId", "nombre", "color", "icono",
