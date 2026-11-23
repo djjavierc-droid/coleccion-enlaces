@@ -8,6 +8,7 @@ import com.coleccionenlaces.app.data.RepositorioEnlaces
 import com.coleccionenlaces.app.data.ResultadoAgregarEnlace
 import com.coleccionenlaces.app.data.ServicioVistaPrevia
 import com.coleccionenlaces.app.data.TipoErrorAgregarEnlace
+import com.coleccionenlaces.app.data.TipoErrorCarpeta
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -122,12 +123,20 @@ class HomeViewModelTest {
         assertFalse(estado.soloFavoritos)
         assertEquals("", estado.busqueda)
         assertEquals(null, estado.categoriaSeleccionadaId)
+        // Fase 9: por defecto todo está bloqueado y no hay marcadores
+        // (no hay enlaces todavía).
+        assertTrue(estado.categoriasDesbloqueadas.isEmpty())
+        assertTrue(estado.seccionesBloqueadas.isEmpty())
     }
 
     @Test
     fun `agregarEnlace actualiza la lista con su categoria resuelta`() = runTest {
         viewModel.agregarEnlace("https://ejemplo.com/receta")
         advanceUntilIdle()
+        // Fase 9: la carpeta está bloqueada por defecto; sin
+        // desbloquearla, el enlace no se ve (ver la prueba de
+        // bloqueo). Se desbloquea como haría la huella con éxito.
+        viewModel.desbloquearCategoria(cocinaId)
 
         // El estado se espera ya asentado: los contadores son otra
         // consulta de Room y pueden llegar después que la lista, y
@@ -186,6 +195,10 @@ class HomeViewModelTest {
                 categoriaId = entretenimientoId,
             ),
         )
+        // Fase 9: sin desbloquear, la búsqueda no ve nada de las
+        // carpetas bloqueadas (ver la prueba de bloqueo).
+        viewModel.desbloquearCategoria(cocinaId)
+        viewModel.desbloquearCategoria(entretenimientoId)
 
         viewModel.cambiarBusqueda("paella")
         val porPaella = esperarEstado {
@@ -231,6 +244,8 @@ class HomeViewModelTest {
         )
         esperarEstado { it.totalEnlaces == 2 }
 
+        viewModel.desbloquearCategoria(cocinaId)
+        viewModel.desbloquearCategoria(entretenimientoId)
         viewModel.seleccionarCategoria(cocinaId)
         val filtrado = esperarEstado { it.enlaces.size == 1 && it.categoriaSeleccionadaId == cocinaId }
         assertEquals("Cocina", filtrado.enlaces.first().categoria.nombre)
@@ -252,6 +267,10 @@ class HomeViewModelTest {
         )
         esperarEstado { it.totalEnlaces == 2 }
 
+        // Fase 9: sin desbloquear, los favoritos de carpetas
+        // bloqueadas no se ven (ver la prueba de bloqueo).
+        viewModel.desbloquearCategoria(cocinaId)
+        viewModel.desbloquearCategoria(entretenimientoId)
         viewModel.alternarSoloFavoritos()
         assertEquals(0, esperarEstado { it.soloFavoritos }.enlaces.size)
 
@@ -270,6 +289,7 @@ class HomeViewModelTest {
                 as ResultadoAgregarEnlace.Exito).id
             esperarEstado { it.totalEnlaces == 1 }
 
+            viewModel.desbloquearCategoria(entretenimientoId)
             viewModel.cambiarCategoriaManual(id, entretenimientoId)
 
             val estado = esperarEstado {
@@ -363,15 +383,180 @@ class HomeViewModelTest {
                 as ResultadoAgregarEnlace.Exito).id
             esperarEstado { it.totalEnlaces == 1 }
             viewModel.cambiarCategoriaManual(id, entretenimientoId)
-            esperarEstado { it.enlaces.first().categoria.nombre == "Entretenimiento" }
+            esperarEstado { it.totalEnlaces == 1 }
             db.enlaceDao().actualizar(
                 db.enlaceDao().obtenerPorId(id)!!.copy(titulo = "Receta de paella"),
             )
 
+            // Fase 9: el enlace cambió a Entretenimiento y esa
+            // carpeta está bloqueada; sin desbloquearla no se ve.
+            viewModel.desbloquearCategoria(entretenimientoId)
             viewModel.reclasificarEnlace(id)
             advanceUntilIdle()
 
             val estado = esperarEstado { !it.cargando }
             assertEquals("Entretenimiento", estado.enlaces.first().categoria.nombre)
         }
+
+    // ---- Fase 9: huella por carpeta ----
+
+    @Test
+    fun `por defecto las carpetas estan bloqueadas hasta desbloquear con huella`() = runTest {
+        viewModel.agregarEnlace("https://ejemplo.com/receta")
+        advanceUntilIdle()
+
+        // El enlace existe (total 1) pero no se ve nada de su
+        // carpeta: ni lista, ni secciones; solo el marcador de
+        // bloqueado, con su nombre y sin contenido.
+        val bloqueado = esperarEstado {
+            it.totalEnlaces == 1 && it.contadores[cocinaId] == 1
+        }
+        assertTrue(bloqueado.enlaces.isEmpty())
+        assertTrue(bloqueado.secciones.isEmpty())
+        assertEquals(1, bloqueado.seccionesBloqueadas.size)
+        assertEquals("Cocina", bloqueado.seccionesBloqueadas.first().nombre)
+        assertFalse(viewModel.estaDesbloqueada(cocinaId))
+
+        // La huella con éxito desbloquea solo esa carpeta.
+        viewModel.desbloquearCategoria(cocinaId)
+
+        val abierto = esperarEstado { it.enlaces.size == 1 }
+        assertTrue(viewModel.estaDesbloqueada(cocinaId))
+        assertFalse(viewModel.estaDesbloqueada(entretenimientoId))
+        assertEquals("Receta de paella valenciana", abierto.enlaces.first().enlace.titulo)
+        assertEquals(1, abierto.secciones.size)
+        assertTrue(abierto.seccionesBloqueadas.isEmpty())
+    }
+
+    @Test
+    fun `la busqueda excluye las carpetas bloqueadas`() = runTest {
+        viewModel.agregarEnlace("https://ejemplo.com/receta")
+        advanceUntilIdle()
+        esperarEstado { it.totalEnlaces == 1 && it.contadores[cocinaId] == 1 }
+
+        viewModel.cambiarBusqueda("paella")
+        val sinVer = esperarEstado { it.busqueda == "paella" }
+        assertEquals(0, sinVer.enlaces.size)
+
+        viewModel.desbloquearCategoria(cocinaId)
+
+        val visto = esperarEstado { it.enlaces.size == 1 }
+        assertEquals("Receta de paella valenciana", visto.enlaces.first().enlace.titulo)
+    }
+
+    @Test
+    fun `los favoritos excluyen las carpetas bloqueadas`() = runTest {
+        val id = (repositorio.agregarEnlace("https://ejemplo.com/receta")
+            as ResultadoAgregarEnlace.Exito).id
+        esperarEstado { it.totalEnlaces == 1 }
+        repositorio.alternarFavorito(id)
+
+        viewModel.alternarSoloFavoritos()
+        val sinVer = esperarEstado { it.soloFavoritos }
+        assertEquals(0, sinVer.enlaces.size)
+
+        viewModel.desbloquearCategoria(cocinaId)
+
+        val visto = esperarEstado { it.enlaces.size == 1 }
+        assertEquals("Receta de paella valenciana", visto.enlaces.first().enlace.titulo)
+    }
+
+    // ---- Fase 9: carpetas propias del usuario ----
+
+    @Test
+    fun `crearCarpeta desde el ViewModel crea la carpeta y cierra el dialogo`() = runTest {
+        viewModel.abrirDialogoCarpeta()
+        esperarEstado { it.mostrarDialogoCarpeta }
+
+        viewModel.crearCarpeta("Mis cosas", 0xFF7E57C2, "star")
+        advanceUntilIdle()
+
+        val estado = esperarEstado { it.categorias.size == 18 && !it.mostrarDialogoCarpeta }
+        assertFalse(estado.mostrarDialogoCarpeta)
+        assertEquals(null, estado.errorCarpeta)
+        val carpeta = estado.categorias.first { it.nombre == "Mis cosas" }
+        assertFalse(carpeta.esPredefinida)
+        assertEquals(0xFF7E57C2, carpeta.color)
+        assertEquals("star", carpeta.icono)
+    }
+
+    @Test
+    fun `crearCarpeta duplicada desde el ViewModel pone el error y no crea`() = runTest {
+        viewModel.crearCarpeta("Mis cosas", 0xFF7E57C2, "star")
+        advanceUntilIdle()
+        esperarEstado { it.categorias.size == 18 }
+
+        viewModel.abrirDialogoCarpeta()
+        viewModel.crearCarpeta("mis cosas", 0xFF1E88E5, "home")
+        advanceUntilIdle()
+
+        val estado = esperarEstado { it.errorCarpeta != null }
+        assertEquals(TipoErrorCarpeta.NOMBRE_DUPLICADO, estado.errorCarpeta)
+        assertTrue(estado.mostrarDialogoCarpeta)
+        assertEquals(18, estado.categorias.size)
+    }
+
+    @Test
+    fun `crearCarpeta hasta el maximo de 20 rechaza la siguiente`() = runTest {
+        viewModel.crearCarpeta("Carpeta 1", 0xFF7E57C2, "star")
+        advanceUntilIdle()
+        viewModel.crearCarpeta("Carpeta 2", 0xFF1E88E5, "home")
+        advanceUntilIdle()
+        viewModel.crearCarpeta("Carpeta 3", 0xFF43A047, "work")
+        advanceUntilIdle()
+        esperarEstado { it.categorias.size == 20 }
+
+        viewModel.abrirDialogoCarpeta()
+        viewModel.crearCarpeta("Carpeta 4", 0xFFFB8C00, "school")
+        advanceUntilIdle()
+
+        val estado = esperarEstado { it.errorCarpeta != null }
+        assertEquals(TipoErrorCarpeta.LIMITE_ALCANZADO, estado.errorCarpeta)
+        assertTrue(estado.mostrarDialogoCarpeta)
+        assertEquals(20, estado.categorias.size)
+    }
+
+    @Test
+    fun `renombrarCarpeta predefinida desde el ViewModel pone el error`() = runTest {
+        viewModel.abrirDialogoCarpeta(db.categoriaDao().obtenerPorNombre("Cocina")!!)
+
+        viewModel.renombrarCarpeta(cocinaId, "Cocina nueva")
+        advanceUntilIdle()
+
+        val estado = esperarEstado { it.errorCarpeta != null }
+        assertEquals(TipoErrorCarpeta.NO_ES_PROPIA, estado.errorCarpeta)
+        assertTrue(estado.mostrarDialogoCarpeta)
+        assertEquals("Cocina", db.categoriaDao().obtenerPorId(cocinaId)!!.nombre)
+    }
+
+    @Test
+    fun `borrarCarpeta propia desde el ViewModel mueve sus enlaces a Otros`() = runTest {
+        viewModel.crearCarpeta("Mis cosas", 0xFF7E57C2, "star")
+        advanceUntilIdle()
+        val carpetaId = esperarEstado { it.categorias.size == 18 }
+            .categorias.first { it.nombre == "Mis cosas" }.id
+        val otrosId = db.categoriaDao().obtenerPorNombre("Otros")!!.id
+        db.enlaceDao().insertar(
+            Enlace(
+                url = "https://ejemplo.com/x",
+                titulo = "Enlace en carpeta",
+                categoriaId = carpetaId,
+            ),
+        )
+        viewModel.desbloquearCategoria(carpetaId)
+        esperarEstado { it.totalEnlaces == 1 && it.enlaces.size == 1 }
+
+        viewModel.borrarCarpeta(carpetaId)
+        advanceUntilIdle()
+
+        // El enlace sobrevive en "Otros"; para verlo hay que
+        // desbloquear "Otros", también bloqueada por defecto.
+        viewModel.desbloquearCategoria(otrosId)
+        val estado = esperarEstado {
+            it.categorias.size == 17 && it.enlaces.size == 1 &&
+                it.enlaces.first().categoria.nombre == "Otros"
+        }
+        assertEquals("Otros", estado.enlaces.first().categoria.nombre)
+        assertEquals(null, estado.enlaces.first().enlace.categoriaId)
+    }
 }

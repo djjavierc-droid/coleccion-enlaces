@@ -26,6 +26,30 @@ enum class TipoErrorAgregarEnlace {
     ERROR_AL_GUARDAR,
 }
 
+/** Resultado de [RepositorioEnlaces.crearCarpeta] y [RepositorioEnlaces.renombrarCarpeta]. */
+sealed interface ResultadoCarpeta {
+    data class Exito(val id: Long) : ResultadoCarpeta
+    data class Error(val tipo: TipoErrorCarpeta) : ResultadoCarpeta
+}
+
+/** Tipos de error al crear o renombrar una carpeta propia. */
+enum class TipoErrorCarpeta {
+    /** El nombre está vacío (o solo tiene espacios). */
+    NOMBRE_VACIO,
+
+    /** Ya existe otra carpeta con ese nombre (sin distinguir mayúsculas). */
+    NOMBRE_DUPLICADO,
+
+    /** Ya hay 20 categorías: no cabe ninguna carpeta más. */
+    LIMITE_ALCANZADO,
+
+    /** La carpeta es una de las 17 predefinidas: no se puede renombrar ni borrar. */
+    NO_ES_PROPIA,
+
+    /** La carpeta no existe. */
+    NO_EXISTE,
+}
+
 /**
  * Repositorio (Fase 5): ÚNICA fuente de datos de la app.
  *
@@ -208,6 +232,78 @@ class RepositorioEnlaces(
     /** Borra un enlace por id. */
     suspend fun borrarEnlace(id: Long) {
         enlaceDao.borrarPorId(id)
+    }
+
+    /**
+     * Crea una carpeta propia del usuario (Fase 9, orden de Javier).
+     *
+     * Reglas: el nombre es obligatorio (sin espacios alrededor) y
+     * único sin distinguir mayúsculas; el total no puede pasar de
+     * [CategoriasPredefinidas.MAX_CATEGORIAS] (17 predefinidas +
+     * propias). La carpeta nueva va al final (`orden` mayor que el
+     * mayor guardado) y nace con `esPredefinida = false`.
+     */
+    suspend fun crearCarpeta(nombre: String, color: Long, icono: String): ResultadoCarpeta {
+        val limpio = nombre.trim()
+        if (limpio.isEmpty()) return ResultadoCarpeta.Error(TipoErrorCarpeta.NOMBRE_VACIO)
+        if (categoriaDao.contar() >= CategoriasPredefinidas.MAX_CATEGORIAS) {
+            return ResultadoCarpeta.Error(TipoErrorCarpeta.LIMITE_ALCANZADO)
+        }
+        if (categoriaDao.obtenerPorNombreSinDistinguirMayusculas(limpio) != null) {
+            return ResultadoCarpeta.Error(TipoErrorCarpeta.NOMBRE_DUPLICADO)
+        }
+        val orden = (categoriaDao.ordenMaximo() ?: -1) + 1
+        val id = categoriaDao.insertar(
+            Categoria(
+                nombre = limpio,
+                color = color,
+                icono = icono,
+                esPredefinida = false,
+                orden = orden,
+            ),
+        )
+        return ResultadoCarpeta.Exito(id)
+    }
+
+    /**
+     * Renombra una carpeta propia del usuario (Fase 9).
+     *
+     * Solo las carpetas propias se pueden renombrar: las predefinidas
+     * devuelven [TipoErrorCarpeta.NO_ES_PROPIA] y no se tocan. El
+     * nombre nuevo sigue las mismas reglas que al crear (obligatorio
+     * y único sin distinguir mayúsculas, sin contar la propia
+     * carpeta). Los enlaces no se tocan: referencian la categoría
+     * por id, así que el renombre no los mueve.
+     */
+    suspend fun renombrarCarpeta(id: Long, nuevoNombre: String): ResultadoCarpeta {
+        val categoria = categoriaDao.obtenerPorId(id)
+            ?: return ResultadoCarpeta.Error(TipoErrorCarpeta.NO_EXISTE)
+        if (categoria.esPredefinida) {
+            return ResultadoCarpeta.Error(TipoErrorCarpeta.NO_ES_PROPIA)
+        }
+        val limpio = nuevoNombre.trim()
+        if (limpio.isEmpty()) return ResultadoCarpeta.Error(TipoErrorCarpeta.NOMBRE_VACIO)
+        val otra = categoriaDao.obtenerPorNombreSinDistinguirMayusculas(limpio)
+        if (otra != null && otra.id != id) {
+            return ResultadoCarpeta.Error(TipoErrorCarpeta.NOMBRE_DUPLICADO)
+        }
+        categoriaDao.actualizar(categoria.copy(nombre = limpio))
+        return ResultadoCarpeta.Exito(id)
+    }
+
+    /**
+     * Borra una carpeta propia del usuario (Fase 9).
+     *
+     * Devuelve `false` si no existe o si es predefinida (las 17 no
+     * se pueden borrar). Sus enlaces sobreviven: la clave foránea
+     * usa `SET_NULL` y el repositorio los expone como "Otros"
+     * (decisión de la Fase 2).
+     */
+    suspend fun borrarCarpeta(id: Long): Boolean {
+        val categoria = categoriaDao.obtenerPorId(id) ?: return false
+        if (categoria.esPredefinida) return false
+        categoriaDao.borrar(categoria)
+        return true
     }
 
     /**

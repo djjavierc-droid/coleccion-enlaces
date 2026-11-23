@@ -26,6 +26,13 @@ interface CategoriaDao {
     @Query("SELECT * FROM categorias WHERE nombre = :nombre LIMIT 1")
     suspend fun obtenerPorNombre(nombre: String): Categoria?
 
+    @Query("SELECT * FROM categorias WHERE nombre = :nombre COLLATE NOCASE LIMIT 1")
+    suspend fun obtenerPorNombreSinDistinguirMayusculas(nombre: String): Categoria?
+
+    /** El mayor valor de `orden` guardado, o null si no hay categorías. */
+    @Query("SELECT MAX(orden) FROM categorias")
+    suspend fun ordenMaximo(): Int?
+
     /** Todas las categorías, en el orden de los chips y secciones. */
     @Query("SELECT * FROM categorias ORDER BY orden ASC, id ASC")
     fun obtenerTodas(): Flow<List<Categoria>>

@@ -7,7 +7,11 @@ import com.coleccionenlaces.app.data.Categoria
 import com.coleccionenlaces.app.data.EnlaceConCategoria
 import com.coleccionenlaces.app.data.RepositorioEnlaces
 import com.coleccionenlaces.app.data.ResultadoAgregarEnlace
+import com.coleccionenlaces.app.data.ResultadoCarpeta
 import com.coleccionenlaces.app.data.TipoErrorAgregarEnlace
+import com.coleccionenlaces.app.data.TipoErrorCarpeta
+import com.coleccionenlaces.app.domain.BloqueoCarpetas
+import com.coleccionenlaces.app.domain.filtrarEnlacesVisibles
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -45,6 +49,18 @@ data class SeccionEnlaces(
  *   compartido (ACTION_SEND) lo abre prellenado con la URL extraída.
  *   Al guardar con éxito el ViewModel lo cierra solo; con error se
  *   queda abierto para que la UI muestre el error dentro del diálogo.
+ * - [categoriasDesbloqueadas]: ids de las carpetas desbloqueadas con
+ *   huella en esta sesión (Fase 9). [enlaces] ya viene filtrado: solo
+ *   trae enlaces de esas categorías, así que la búsqueda y los
+ *   favoritos tampoco muestran nada de una carpeta bloqueada.
+ *   [seccionesBloqueadas] son las categorías con enlaces que siguen
+ *   bloqueadas: la UI dibuja su marcador ("Toca para abrir con
+ *   huella") en vez de sus tarjetas.
+ * - [mostrarDialogoCarpeta] / [carpetaEnEdicion] / [errorCarpeta]:
+ *   el diálogo de crear/renombrar carpeta propia (Fase 9).
+ *   `carpetaEnEdicion` null = crear; con valor = renombrar esa
+ *   carpeta. Al crear con éxito el ViewModel lo cierra solo; con
+ *   error se queda abierto para mostrar el error dentro del diálogo.
  */
 data class HomeUiState(
     val enlaces: List<EnlaceConCategoria> = emptyList(),
@@ -59,6 +75,10 @@ data class HomeUiState(
     val errorAgregar: TipoErrorAgregarEnlace? = null,
     val mostrarDialogoAgregar: Boolean = false,
     val urlInicialDialogo: String? = null,
+    val categoriasDesbloqueadas: Set<Long> = emptySet(),
+    val mostrarDialogoCarpeta: Boolean = false,
+    val carpetaEnEdicion: Categoria? = null,
+    val errorCarpeta: TipoErrorCarpeta? = null,
 ) {
     /**
      * Secciones por categoría, en el orden de los chips, solo con
@@ -71,6 +91,18 @@ data class HomeUiState(
             return enlaces.groupBy { it.categoria.id }
                 .entries.sortedBy { orden[it.key] ?: Int.MAX_VALUE }
                 .map { (_, lista) -> SeccionEnlaces(lista.first().categoria, lista) }
+        }
+
+    /**
+     * Categorías con enlaces que siguen bloqueadas en esta sesión
+     * (Fase 9). La UI dibuja su marcador de bloqueado en vez de sus
+     * tarjetas. Solo cuentan las que tienen al menos un enlace: una
+     * carpeta vacía y bloqueada no necesita marcador.
+     */
+    val seccionesBloqueadas: List<Categoria>
+        get() = categorias.filter { categoria ->
+            categoria.id !in categoriasDesbloqueadas &&
+                (contadores[categoria.id] ?: 0) > 0
         }
 }
 
@@ -107,11 +139,24 @@ private data class ControlesUi(
     val errorAgregar: TipoErrorAgregarEnlace? = null,
     val mostrarDialogoAgregar: Boolean = false,
     val urlInicialDialogo: String? = null,
+    val mostrarDialogoCarpeta: Boolean = false,
+    val carpetaEnEdicion: Categoria? = null,
+    val errorCarpeta: TipoErrorCarpeta? = null,
 )
 
 class HomeViewModel(
     private val repositorio: RepositorioEnlaces,
 ) : ViewModel() {
+
+    /**
+     * Bloqueo por carpeta (Fase 9): qué categorías están
+     * desbloqueadas en esta sesión. Vive solo en memoria (ver
+     * [BloqueoCarpetas]): al cerrar la app se pierde y todo vuelve
+     * a estar bloqueado. Se expone para que la UI lo consulte y
+     * para las pruebas; el desbloqueo real lo pide la UI con huella
+     * y luego llama a [desbloquearCategoria].
+     */
+    val bloqueo = BloqueoCarpetas()
 
     private val controles = MutableStateFlow(ControlesUi())
 
@@ -146,6 +191,18 @@ class HomeViewModel(
                 errorAgregar = c.errorAgregar,
                 mostrarDialogoAgregar = c.mostrarDialogoAgregar,
                 urlInicialDialogo = c.urlInicialDialogo,
+                mostrarDialogoCarpeta = c.mostrarDialogoCarpeta,
+                carpetaEnEdicion = c.carpetaEnEdicion,
+                errorCarpeta = c.errorCarpeta,
+            )
+        }.combine(bloqueo.desbloqueadas) { estado, desbloqueadas ->
+            // Último filtro (Fase 9): de una carpeta bloqueada no se
+            // ve ningún enlace, ni en la cuadrícula, ni en la
+            // búsqueda, ni en favoritos. El total y los contadores
+            // se dejan como están: son solo números, no contenido.
+            estado.copy(
+                enlaces = filtrarEnlacesVisibles(estado.enlaces, desbloqueadas),
+                categoriasDesbloqueadas = desbloqueadas,
             )
         }.stateIn(
             scope = viewModelScope,
@@ -258,6 +315,112 @@ class HomeViewModel(
     fun reclasificarEnlace(enlaceId: Long) {
         viewModelScope.launch {
             repositorio.reclasificarEnlace(enlaceId)
+        }
+    }
+
+    // ---- Huella por carpeta (Fase 9) ----
+
+    /** ¿Está desbloqueada esta categoría en esta sesión? */
+    fun estaDesbloqueada(categoriaId: Long): Boolean =
+        bloqueo.estaDesbloqueada(categoriaId)
+
+    /**
+     * Marca una categoría como desbloqueada para lo que queda de
+     * sesión. La UI solo llama a esto tras un BiometricPrompt con
+     * éxito; nunca se desbloquea nada sin huella.
+     */
+    fun desbloquearCategoria(categoriaId: Long) {
+        bloqueo.desbloquear(categoriaId)
+    }
+
+    // ---- Carpetas propias del usuario (Fase 9) ----
+
+    /**
+     * Abre el diálogo de carpeta: crear (sin [categoria]) o
+     * renombrar (con la carpeta propia a editar). Abrirlo limpia
+     * cualquier error anterior de carpeta.
+     */
+    fun abrirDialogoCarpeta(categoria: Categoria? = null) {
+        controles.update {
+            it.copy(
+                mostrarDialogoCarpeta = true,
+                carpetaEnEdicion = categoria,
+                errorCarpeta = null,
+            )
+        }
+    }
+
+    /** Cierra el diálogo de carpeta y limpia su error y su edición. */
+    fun cerrarDialogoCarpeta() {
+        controles.update {
+            it.copy(
+                mostrarDialogoCarpeta = false,
+                carpetaEnEdicion = null,
+                errorCarpeta = null,
+            )
+        }
+    }
+
+    /** Limpia el error de carpeta, tras mostrarlo. */
+    fun limpiarErrorCarpeta() {
+        controles.update { it.copy(errorCarpeta = null) }
+    }
+
+    /**
+     * Crea una carpeta propia con nombre, color e ícono. Con éxito,
+     * el diálogo se cierra solo; con error (nombre vacío, duplicado
+     * o límite de 20) el diálogo se queda abierto con el error.
+     */
+    fun crearCarpeta(nombre: String, color: Long, icono: String) {
+        viewModelScope.launch {
+            when (val resultado = repositorio.crearCarpeta(nombre, color, icono)) {
+                is ResultadoCarpeta.Exito -> controles.update {
+                    it.copy(
+                        mostrarDialogoCarpeta = false,
+                        carpetaEnEdicion = null,
+                        errorCarpeta = null,
+                    )
+                }
+                is ResultadoCarpeta.Error -> controles.update {
+                    it.copy(errorCarpeta = resultado.tipo)
+                }
+            }
+        }
+    }
+
+    /**
+     * Renombra una carpeta propia. Solo las propias se pueden
+     * renombrar: con una predefinida el repositorio devuelve el
+     * error y el diálogo se queda abierto con el error.
+     */
+    fun renombrarCarpeta(categoriaId: Long, nuevoNombre: String) {
+        viewModelScope.launch {
+            when (val resultado = repositorio.renombrarCarpeta(categoriaId, nuevoNombre)) {
+                is ResultadoCarpeta.Exito -> controles.update {
+                    it.copy(
+                        mostrarDialogoCarpeta = false,
+                        carpetaEnEdicion = null,
+                        errorCarpeta = null,
+                    )
+                }
+                is ResultadoCarpeta.Error -> controles.update {
+                    it.copy(errorCarpeta = resultado.tipo)
+                }
+            }
+        }
+    }
+
+    /**
+     * Borra una carpeta propia (la confirmación la pide la UI). Si
+     * era la categoría del filtro activo, el filtro vuelve a "Todos"
+     * para no quedarse apuntando a una carpeta que ya no existe.
+     */
+    fun borrarCarpeta(categoriaId: Long) {
+        viewModelScope.launch {
+            repositorio.borrarCarpeta(categoriaId)
+            controles.update {
+                if (it.categoriaId == categoriaId) it.copy(categoriaId = null) else it
+            }
         }
     }
 }
