@@ -29,4 +29,13 @@
     <string name="add_dialog_save">Guardar</string>
     <string name="add_dialog_error_invalid">Esa URL no es válida. Revisa que empiece por http:// o https://.</string>
     <string name="add_dialog_error_save">No se pudo guardar el enlace. Inténtalo de nuevo.</string>
+    <string name="menu_change_category">Cambiar categoría</string>
+    <string name="menu_share">Compartir</string>
+    <string name="menu_share_title">Compartir enlace</string>
+    <string name="menu_share_error">No hay ninguna aplicación con la que compartir este enlace.</string>
+    <string name="menu_delete">Borrar</string>
+    <string name="menu_delete_title">Borrar enlace</string>
+    <string name="menu_delete_body">«%1$s» se borrará de tu colección y no se podrá recuperar.</string>
+    <string name="menu_delete_confirm">Borrar</string>
+    <string name="menu_open_error">No hay ninguna aplicación que pueda abrir este enlace.</string>
 </resources>

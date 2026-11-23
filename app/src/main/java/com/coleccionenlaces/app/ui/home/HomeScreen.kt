@@ -1,5 +1,7 @@
 package com.coleccionenlaces.app.ui.home
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
@@ -35,22 +37,33 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.coleccionenlaces.app.R
 import com.coleccionenlaces.app.data.Categoria
+import com.coleccionenlaces.app.data.EnlaceConCategoria
 import com.coleccionenlaces.app.ui.theme.ColeccionTipografia
 import com.coleccionenlaces.app.ui.theme.Espaciado
 import com.coleccionenlaces.app.ui.theme.FondoDegradado
+import com.coleccionenlaces.app.util.crearIntentAbrirEnlace
+import com.coleccionenlaces.app.util.crearIntentCompartirEnlace
+import kotlinx.coroutines.launch
 
 /**
  * Pantalla principal (Fase 6, sección 6 del plan).
@@ -68,16 +81,57 @@ import com.coleccionenlaces.app.ui.theme.FondoDegradado
  *   cuando [HomeUiState.mostrarDialogoAgregar] es true y se cierra
  *   solo al guardar con éxito (el ViewModel lo cierra) o con
  *   [HomeViewModel.cerrarDialogoAgregar] al cancelar.
- * - Tocar una tarjeta NO abre nada en esta fase: abrir el enlace y
- *   el menú de tarjeta son la Fase 8.
+ * - Fase 8: tocar una tarjeta abre el enlace en el navegador o en
+ *   la app correspondiente (ACTION_VIEW); si ninguna app puede
+ *   abrirlo, se muestra un mensaje amigable en un Snackbar y la
+ *   app no se rompe. La pulsación larga abre el menú de tarjeta
+ *   ([MenuTarjeta]).
+ *
+ * ## Decisión de diseño (Fase 8): el estado del menú vive en la UI
+ * Qué tarjeta tiene el menú abierto (`enlaceMenu`) es estado local
+ * de esta pantalla (`remember`): nada fuera de ella lo necesita
+ * (el ViewModel no tiene que saber qué menú está abierto; solo
+ * ejecuta las acciones que el menú le pide: cambiar categoría,
+ * favorito y borrar). Sigue el patrón del diálogo de agregar al
+ * revés: el diálogo SÍ vive en el ViewModel porque MainActivity
+ * tiene que abrirlo desde el intent compartido; el menú no tiene
+ * ningún abridor externo, así que su estado se queda en la UI.
  */
 @Composable
 fun HomeScreen(viewModel: HomeViewModel) {
     val estado by viewModel.estado.collectAsState()
+    var enlaceMenu by remember { mutableStateOf<EnlaceConCategoria?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val alcance = rememberCoroutineScope()
+    val contexto = LocalContext.current
+    val mensajeSinAppAbrir = stringResource(R.string.menu_open_error)
+    val mensajeSinAppCompartir = stringResource(R.string.menu_share_error)
+    val tituloCompartir = stringResource(R.string.menu_share_title)
+
+    /** Abre la URL en el navegador o la app correspondiente. */
+    val abrirEnlace: (String) -> Unit = { url ->
+        try {
+            contexto.startActivity(crearIntentAbrirEnlace(url))
+        } catch (_: ActivityNotFoundException) {
+            alcance.launch { snackbarHostState.showSnackbar(mensajeSinAppAbrir) }
+        }
+    }
+
+    /** Comparte la URL con ACTION_SEND y chooser (texto plano). */
+    val compartirEnlace: (String) -> Unit = { url ->
+        try {
+            contexto.startActivity(
+                Intent.createChooser(crearIntentCompartirEnlace(url), tituloCompartir),
+            )
+        } catch (_: ActivityNotFoundException) {
+            alcance.launch { snackbarHostState.showSnackbar(mensajeSinAppCompartir) }
+        }
+    }
 
     FondoDegradado {
         Scaffold(
             containerColor = Color.Transparent,
+            snackbarHost = { SnackbarHost(snackbarHostState) },
             floatingActionButton = {
                 ExtendedFloatingActionButton(
                     onClick = { viewModel.abrirDialogoAgregar() },
@@ -163,6 +217,8 @@ fun HomeScreen(viewModel: HomeViewModel) {
                             TarjetaEnlace(
                                 item = itemEnlace,
                                 onAlternarFavorito = viewModel::alternarFavorito,
+                                onAbrir = { abrirEnlace(itemEnlace.enlace.url) },
+                                onAbrirMenu = { enlaceMenu = itemEnlace },
                                 modifier = Modifier.animateItem(),
                             )
                         }
@@ -178,6 +234,22 @@ fun HomeScreen(viewModel: HomeViewModel) {
                 onGuardar = viewModel::agregarEnlace,
                 onCerrar = viewModel::cerrarDialogoAgregar,
                 onLimpiarError = viewModel::limpiarErrorAgregar,
+            )
+        }
+        enlaceMenu?.let { itemMenu ->
+            MenuTarjeta(
+                item = itemMenu,
+                categorias = estado.categorias,
+                onCambiarCategoria = { categoriaId ->
+                    viewModel.cambiarCategoriaManual(itemMenu.enlace.id, categoriaId)
+                },
+                onAlternarFavorito = { viewModel.alternarFavorito(itemMenu.enlace.id) },
+                onCompartir = {
+                    enlaceMenu = null
+                    compartirEnlace(itemMenu.enlace.url)
+                },
+                onBorrar = { viewModel.borrarEnlace(itemMenu.enlace.id) },
+                onCerrar = { enlaceMenu = null },
             )
         }
     }

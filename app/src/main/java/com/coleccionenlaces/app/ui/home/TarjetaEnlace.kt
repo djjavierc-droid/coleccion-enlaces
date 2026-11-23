@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -61,18 +62,21 @@ private enum class EstadoImagen { CARGANDO, OK, ERROR }
  * respaldo con el ícono de enlace sobre el color de la categoría;
  * el enlace se guardó igual, con el dominio como título (Fase 5).
  *
- * La tarjeta NO abre nada al tocarla en esta fase: abrir el enlace
- * y el menú de tarjeta son la Fase 8. Solo el ícono de favorito
- * responde al toque.
- *
  * La animación de entrada (fade y leve desplazamiento) se ejecuta
  * una vez por enlace: el estado vive en `remember` y la cuadrícula
  * usa la clave del id, así que al filtrar no se vuelve a animar.
+ *
+ * Fase 8: tocar la tarjeta abre el enlace ([onAbrir]) y la
+ * pulsación larga abre el menú de tarjeta ([onAbrirMenu]). El
+ * ícono de favorito sigue siendo su propio botón: su toque lo
+ * consume él y no abre el enlace.
  */
 @Composable
 fun TarjetaEnlace(
     item: EnlaceConCategoria,
     onAlternarFavorito: (Long) -> Unit,
+    onAbrir: () -> Unit,
+    onAbrirMenu: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val enlace = item.enlace
@@ -92,6 +96,10 @@ fun TarjetaEnlace(
                 containerColor = MaterialTheme.colorScheme.surface,
             ),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            modifier = Modifier.combinedClickable(
+                onClick = onAbrir,
+                onLongClick = onAbrirMenu,
+            ),
         ) {
             Column {
                 ImagenTarjeta(
