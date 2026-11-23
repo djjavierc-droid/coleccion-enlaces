@@ -28,3 +28,13 @@ val SuperficieVarianteClara = Color(0xFFE9E7F8)
 val TextoClaro = Color(0xFF191A2E)
 val TextoSecundarioClaro = Color(0xFF55576E)
 val BordeClaro = Color(0xFFC9C6E8)
+
+// Tono superior del degradado en modo claro (corrección 1.0.1,
+// punto 1): lavanda muy claro y OPACO. El degradado anterior usaba
+// el primario con alfa 0.14, que se compone sobre el fondo de la
+// ventana (oscuro) y en el teléfono se medía #5C596E detrás del
+// título: el subtítulo quedaba en 1.05:1 y el título en 2.53:1.
+// Con este tono opaco el título primario queda en 5.02:1 y el
+// subtítulo en 5.79:1 sobre la zona superior. El modo oscuro no
+// cambia: sigue con el primario translúcido.
+val DegradadoSuperiorClaro = Color(0xFFE9E6FF)

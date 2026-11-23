@@ -77,17 +77,31 @@ fun ColeccionTheme(
 /**
  * Fondo con degradado sutil (nunca color plano): del color primario
  * con transparencia arriba al fondo del tema abajo.
+ *
+ * En modo claro el tono superior es [DegradadoSuperiorClaro], un
+ * lavanda muy claro OPACO (corrección 1.0.1, punto 1): el degradado
+ * anterior usaba el primario con alfa 0.14, que se compone sobre el
+ * fondo de la ventana (oscuro) y en el teléfono se medía #5C596E
+ * detrás del título, con el subtítulo en 1.05:1. El degradado SE
+ * QUEDA como diseño, solo mucho más claro y luminoso. En modo oscuro
+ * no cambia nada: sigue el primario translúcido de siempre.
  */
 @Composable
 fun FondoDegradado(content: @Composable BoxScope.() -> Unit) {
     val esquema = MaterialTheme.colorScheme
+    val esClaro = esquema.background.luminance() > 0.5f
+    val superior = if (esClaro) {
+        DegradadoSuperiorClaro
+    } else {
+        esquema.primary.copy(alpha = 0.14f)
+    }
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
-                        esquema.primary.copy(alpha = 0.14f),
+                        superior,
                         esquema.background,
                         esquema.background
                     )
