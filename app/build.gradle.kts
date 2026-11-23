@@ -54,6 +54,7 @@ android {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.splashscreen)
@@ -75,6 +76,8 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
 
     testImplementation(libs.junit)
+    // Pruebas del ViewModel (Fase 5): runTest y Main de prueba.
+    testImplementation(libs.kotlinx.coroutines.test)
     // Pruebas del DAO (Fase 2): Room en memoria con Robolectric, para que
     // corran en testDebugUnitTest sin emulador. room-testing es el artefacto
     // de pruebas de Room (migraciones y utilidades); Robolectric aporta el
