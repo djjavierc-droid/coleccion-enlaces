@@ -78,6 +78,15 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.jsoup)
     implementation(libs.kotlinx.coroutines.android)
+    // Clasificador LiteRT (Fix 3): el modelo DistilBERT INT8 corre con
+    // el intérprete base; la tokenización WordPiece vive en Kotlin
+    // (domain/TokenizadorWordPiece) porque la librería de metadatos
+    // (tflite-support 0.4.4) no tiene ruedas para Python 3.12 y
+    // Model Maker no se instala en este entorno (ver fix-3-resumen.md).
+    implementation(libs.tensorflow.lite)
+    // Reentrenamiento de la cabeza en reposo (Fix 3): trabajo único
+    // periódico con cargador y dispositivo en reposo.
+    implementation(libs.androidx.work.runtime.ktx)
 
     testImplementation(libs.junit)
     // Pruebas del ViewModel (Fase 5): runTest y Main de prueba.

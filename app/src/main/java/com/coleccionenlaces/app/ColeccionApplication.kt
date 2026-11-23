@@ -17,5 +17,8 @@ class ColeccionApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         contenedor = AppContainer(this)
+        // Aprendizaje (Fix 3): carga los pesos guardados y programa el
+        // reentrenamiento diario en reposo. No bloquea el arranque.
+        contenedor.iniciarAprendizaje()
     }
 }

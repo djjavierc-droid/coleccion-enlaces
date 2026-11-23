@@ -27,6 +27,11 @@ fragment = "1.8.8"
 junit = "4.13.2"
 robolectric = "4.14.1"
 androidx-test-core = "1.6.1"
+# Clasificador LiteRT (Fix 3): TFLite 2.17.0 (estable) para el modelo
+# DistilBERT INT8 y WorkManager 2.10.0 para el reentrenamiento de la
+# cabeza en reposo (con cargador + dispositivo en reposo).
+tensorflowLite = "2.17.0"
+workRuntime = "2.10.0"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
@@ -46,6 +51,8 @@ androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref =
 androidx-room-testing = { module = "androidx.room:room-testing", version.ref = "room" }
 androidx-test-core = { module = "androidx.test:core", version.ref = "androidx-test-core" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
+tensorflow-lite = { module = "org.tensorflow:tensorflow-lite", version.ref = "tensorflowLite" }
+androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "workRuntime" }
 androidx-splashscreen = { module = "androidx.core:core-splashscreen", version.ref = "splashscreen" }
 androidx-biometric = { module = "androidx.biometric:biometric", version.ref = "biometric" }
 androidx-fragment-ktx = { module = "androidx.fragment:fragment-ktx", version.ref = "fragment" }

@@ -2,6 +2,8 @@ package com.coleccionenlaces.app.data
 
 import android.graphics.Bitmap
 import com.coleccionenlaces.app.domain.Clasificador
+import com.coleccionenlaces.app.domain.MotorClasificacion
+import com.coleccionenlaces.app.domain.MotorPalabrasClave
 import com.coleccionenlaces.app.domain.ResultadoOEmbed
 import com.coleccionenlaces.app.domain.ResultadoVistaPrevia
 import com.coleccionenlaces.app.domain.TipoErrorVistaPrevia
@@ -135,6 +137,20 @@ class RepositorioEnlaces(
      * no se guarda nada en local y la tarjeta usa la URL remota.
      */
     private val directorioMiniaturas: File? = null,
+    /**
+     * Motor de clasificación (Fix 3). En producción es
+     * [com.coleccionenlaces.app.domain.ClasificadorInteligente]
+     * (modelo DistilBERT -> cabeza aprendida -> "Otros"). El valor
+     * por defecto es el clasificador por palabras clave y existe SOLO
+     * para las pruebas del repositorio, que comprueban el cableado
+     * con resultados deterministas; en la app nunca se usa.
+     */
+    private val motorClasificacion: MotorClasificacion = MotorPalabrasClave,
+    /**
+     * Servicio de aprendizaje (Fix 3). Null en las pruebas que no lo
+     * necesitan: sin él, mover un enlace no registra corrección.
+     */
+    private val servicioAprendizaje: ServicioAprendizaje? = null,
 ) {
 
     /** Todas las categorías, en el orden de los chips y secciones. */
@@ -315,7 +331,7 @@ class RepositorioEnlaces(
                 categoriaManual = false,
                 htmlVideo = oembedExito?.html,
             )
-            val nombreCategoria = Clasificador.clasificarEnlace(enlaceSinCategoria)
+            val nombreCategoria = motorClasificacion.clasificarEnlace(enlaceSinCategoria)
             val categoriaId = nombreCategoria?.let { categoriaDao.obtenerPorNombre(it)?.id }
                 ?: categoriaDao.obtenerPorNombre(Clasificador.OTROS)?.id
             val id = enlaceDao.insertar(enlaceSinCategoria.copy(categoriaId = categoriaId))
@@ -403,7 +419,7 @@ class RepositorioEnlaces(
         }
         val actualizado = enlace.copy(titulo = tituloNuevo, descripcion = descripcionNueva)
         val categoriaId = if (!enlace.categoriaManual) {
-            val nombre = Clasificador.clasificarEnlace(actualizado)
+            val nombre = motorClasificacion.clasificarEnlace(actualizado)
             nombre?.let { categoriaDao.obtenerPorNombre(it)?.id }
                 ?: categoriaDao.obtenerPorNombre(Clasificador.OTROS)?.id
         } else {
@@ -464,7 +480,7 @@ class RepositorioEnlaces(
      */
     suspend fun reclasificarEnlace(id: Long): Boolean {
         val enlace = enlaceDao.obtenerPorId(id) ?: return false
-        val nombreCategoria = Clasificador.clasificarEnlace(enlace) ?: return false
+        val nombreCategoria = motorClasificacion.clasificarEnlace(enlace) ?: return false
         val categoriaId = categoriaDao.obtenerPorNombre(nombreCategoria)?.id
             ?: categoriaDao.obtenerPorNombre(Clasificador.OTROS)?.id
         enlaceDao.actualizar(enlace.copy(categoriaId = categoriaId))
@@ -476,12 +492,22 @@ class RepositorioEnlaces(
      * elegida y marca `categoriaManual = true`, para que la
      * clasificación automática no la sobrescriba jamás.
      *
+     * Además (Fix 3), registra la corrección para el aprendizaje: el
+     * título y la descripción del enlace con la categoría elegida
+     * alimentan la cabeza (paso en línea inmediato). El aprendizaje
+     * nunca rompe el movimiento: si falla, el enlace queda movido
+     * igual.
+     *
      * Devuelve `false` si el enlace o la categoría no existen.
      */
     suspend fun cambiarCategoriaManual(enlaceId: Long, categoriaId: Long): Boolean {
         val enlace = enlaceDao.obtenerPorId(enlaceId) ?: return false
-        if (categoriaDao.obtenerPorId(categoriaId) == null) return false
+        val categoria = categoriaDao.obtenerPorId(categoriaId) ?: return false
         enlaceDao.actualizar(enlace.copy(categoriaId = categoriaId, categoriaManual = true))
+        servicioAprendizaje?.registrarCorreccion(
+            "${enlace.titulo} ${enlace.descripcion}".trim(),
+            categoria.nombre,
+        )
         return true
     }
 

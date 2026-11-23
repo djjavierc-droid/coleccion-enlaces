@@ -20,3 +20,20 @@ build/
 # El archivo vive solo en la copia local; en CI se genera desde el
 # secreto XXX_KEYWORDS_B64 (lo crea la Fase 4).
 app/src/main/java/com/coleccionenlaces/app/domain/XxxKeywords.kt
+
+# Entrenamiento del clasificador LiteRT (Fix 3): el entorno, los
+# datos generados (incluyen la lista sensible), el modelo afinado y
+# las cachés. Los scripts (generar_datos.py, entrenar.py,
+# convertir.py) SÍ se commitean: no contienen palabras sensibles.
+entrenamiento/venv/
+entrenamiento/datos/
+entrenamiento/tmp/
+entrenamiento/.hf-cache/
+entrenamiento/modelo_tf/
+entrenamiento/modelo_clasificador.tflite
+entrenamiento/*.log
+entrenamiento/*.json
+# Pesos base descargados de HF (157 MB MobileBERT + 347 MB DistilBERT):
+# nunca se commitean; solo se usan en local para entrenar.
+entrenamiento/modelo_base/
+entrenamiento/modelo_base_distilbert/

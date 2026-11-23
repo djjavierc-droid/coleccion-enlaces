@@ -8,25 +8,30 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 /**
- * Base de datos Room de la app (versión 2).
+ * Base de datos Room de la app (versión 3).
  *
- * Tablas: `enlaces` y `categorias`. En la primera creación se siembran
- * las 17 categorías predefinidas ([CategoriasPredefinidas.lista]); las
- * carpetas que el usuario cree a mano (Fase 9) se añaden como filas
- * nuevas de `categorias` con `esPredefinida = false`.
+ * Tablas: `enlaces`, `categorias`, `correcciones_aprendizaje` y
+ * `pesos_cabeza`. En la primera creación se siembran las 17 categorías
+ * predefinidas ([CategoriasPredefinidas.lista]); las carpetas que el
+ * usuario cree a mano (Fase 9) se añaden como filas nuevas de
+ * `categorias` con `esPredefinida = false`.
  *
  * Migración 1 → 2 (corrección 1.0.1, punto 3): la tabla `enlaces`
  * gana `htmlVideo` (HTML del reproductor oEmbed) e `imagenLocal`
  * (ruta de la miniatura guardada en local). Las dos son nullables,
  * así que los enlaces ya guardados sobreviven tal cual.
  *
+ * Migración 2 → 3 (Fix 3, clasificador LiteRT): se crean las tablas
+ * del aprendizaje (`correcciones_aprendizaje` y `pesos_cabeza`),
+ * vacías al principio; ningún dato existente se toca.
+ *
  * Singleton de la app: [obtenerInstancia]. Las pruebas usan
  * [crearEnMemoria], que construye una base en memoria (también
  * sembrada) y permite consultas en el hilo principal del test.
  */
 @Database(
-    entities = [Enlace::class, Categoria::class],
-    version = 2,
+    entities = [Enlace::class, Categoria::class, CorreccionAprendizaje::class, PesosCabeza::class],
+    version = 3,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -34,6 +39,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun enlaceDao(): EnlaceDao
 
     abstract fun categoriaDao(): CategoriaDao
+
+    abstract fun aprendizajeDao(): AprendizajeDao
 
     companion object {
         @Volatile
@@ -50,6 +57,27 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migración 2 → 3: crea las tablas del aprendizaje (Fix 3),
+         * vacías; ningún dato existente se toca.
+         */
+        val MIGRACION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `correcciones_aprendizaje` (" +
+                        "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "`texto` TEXT NOT NULL, `categoria` TEXT NOT NULL, " +
+                        "`creadoEn` INTEGER NOT NULL)",
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `pesos_cabeza` (" +
+                        "`id` INTEGER NOT NULL, `pesos` BLOB NOT NULL, " +
+                        "`actualizadoEn` INTEGER NOT NULL, " +
+                        "PRIMARY KEY(`id`))",
+                )
+            }
+        }
+
         fun obtenerInstancia(context: Context): AppDatabase =
             instancia ?: synchronized(this) {
                 instancia ?: Room.databaseBuilder(
@@ -58,7 +86,7 @@ abstract class AppDatabase : RoomDatabase() {
                     "coleccion-enlaces.db",
                 )
                     .addCallback(CallbackSiembra)
-                    .addMigrations(MIGRACION_1_2)
+                    .addMigrations(MIGRACION_1_2, MIGRACION_2_3)
                     .build()
                     .also { instancia = it }
             }

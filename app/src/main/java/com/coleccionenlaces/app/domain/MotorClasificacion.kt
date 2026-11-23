@@ -1,0 +1,98 @@
+package com.coleccionenlaces.app.domain
+
+import com.coleccionenlaces.app.data.Enlace
+
+/**
+ * Motor de clasificación: decide la categoría de un enlace por su
+ * título, descripción y URL. El repositorio (Fase 5) usa esta
+ * interfaz para clasificar al guardar y al reclasificar; así el motor
+ * se puede cambiar sin tocar el repositorio.
+ *
+ * ## Implementaciones
+ * - [ClasificadorInteligente]: el motor de producción (Fix 3):
+ *   modelo DistilBERT -> cabeza aprendida -> "Otros".
+ * - [MotorPalabrasClave]: adaptador del clasificador por palabras
+ *   clave (Fase 4). SOLO para las pruebas del repositorio, que
+ *   comprueban el cableado con resultados deterministas. En
+ *   producción NUNCA se usa: por orden de Javier, en ejecución no se
+ *   adivina con palabras clave (ver fix-3-resumen.md).
+ */
+interface MotorClasificacion {
+
+    /** Categoría de un enlace por título, descripción y URL. */
+    fun clasificar(titulo: String, descripcion: String, url: String): String
+
+    /**
+     * Categoría a aplicar a un enlace guardado.
+     *
+     * - Si `enlace.categoriaManual` es true, devuelve `null`: la
+     *   elección manual tiene prioridad y NO se sobrescribe.
+     * - Si es false, devuelve el nombre que da [clasificar].
+     */
+    fun clasificarEnlace(enlace: Enlace): String? {
+        if (enlace.categoriaManual) return null
+        return clasificar(enlace.titulo, enlace.descripcion, enlace.url)
+    }
+}
+
+/** Adaptador del clasificador por palabras clave (SOLO pruebas). */
+object MotorPalabrasClave : MotorClasificacion {
+    override fun clasificar(titulo: String, descripcion: String, url: String): String =
+        Clasificador.clasificar(titulo, descripcion, url)
+}
+
+/**
+ * Motor de producción (Fix 3): el modelo DistilBERT decide primero;
+ * si no está seguro, decide la cabeza aprendida con las correcciones
+ * de Javier; si tampoco está segura, el enlace va a "Otros".
+ *
+ * La URL no alimenta al modelo (solo título + descripción, como en el
+ * entrenamiento); se recibe por la interfaz y se ignora.
+ *
+ * @param modelo el DistilBERT INT8 (null si no cargó: se salta).
+ * @param cabeza la cabeza aprendida (pesos de Room, en memoria).
+ * @param etiquetas las 16 categorías en el orden del modelo y la cabeza.
+ * @param umbralModelo confianza mínima del modelo para aceptar su categoría.
+ * @param umbralCabeza confianza mínima de la cabeza para aceptar su categoría.
+ */
+class ClasificadorInteligente(
+    private val modelo: ClasificadorModelo?,
+    private val cabeza: CabezaAprendizaje,
+    private val etiquetas: List<String>,
+    private val umbralModelo: Float = UMBRAL_MODELO,
+    private val umbralCabeza: Float = UMBRAL_CABEZA,
+) : MotorClasificacion {
+
+    override fun clasificar(titulo: String, descripcion: String, url: String): String {
+        val texto = "$titulo $descripcion".trim()
+        if (texto.isBlank()) return Clasificador.OTROS
+        // 1. El modelo DistilBERT.
+        val resultadoModelo = try {
+            modelo?.clasificar(texto)
+        } catch (_: Exception) {
+            null
+        }
+        if (resultadoModelo != null && resultadoModelo.confianza >= umbralModelo) {
+            return resultadoModelo.categoria
+        }
+        // 2. La cabeza aprendida con las correcciones de Javier.
+        val prediccionCabeza = try {
+            cabeza.predecir(texto)
+        } catch (_: Exception) {
+            null
+        }
+        if (prediccionCabeza != null && prediccionCabeza.confianza >= umbralCabeza) {
+            return etiquetas[prediccionCabeza.indiceClase]
+        }
+        // 3. Sin seguridad: "Otros". Nunca se adivina con palabras clave.
+        return Clasificador.OTROS
+    }
+
+    companion object {
+        /** Confianza mínima del modelo (calibrada en validación). */
+        const val UMBRAL_MODELO = 0.5f
+
+        /** Confianza mínima de la cabeza aprendida. */
+        const val UMBRAL_CABEZA = 0.6f
+    }
+}
