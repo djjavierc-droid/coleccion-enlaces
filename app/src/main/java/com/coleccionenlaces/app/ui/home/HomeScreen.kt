@@ -49,6 +49,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -73,6 +74,7 @@ import com.coleccionenlaces.app.ui.theme.Espaciado
 import com.coleccionenlaces.app.ui.theme.FondoDegradado
 import com.coleccionenlaces.app.util.crearIntentAbrirEnlace
 import com.coleccionenlaces.app.util.crearIntentCompartirEnlace
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -153,6 +155,22 @@ fun HomeScreen(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val contexto = LocalContext.current
     val haptics = LocalHapticFeedback.current
+
+    /**
+     * Pista de apertura del menú lateral (corrección 1.0.1, punto 2):
+     * la primera vez que se abre la app, el cajón se abre solo
+     * brevemente para que se vea que existe y de dónde sale. Solo
+     * una vez: la marca queda guardada y no se vuelve a mostrar.
+     */
+    LaunchedEffect(Unit) {
+        if (!PreferenciasMenu.leerPistaMenuVista(contexto)) {
+            delay(PISTA_MENU_ESPERA_MS)
+            drawerState.open()
+            delay(PISTA_MENU_VISIBLE_MS)
+            drawerState.close()
+            PreferenciasMenu.guardarPistaMenuVista(contexto)
+        }
+    }
     val mensajeSinAppAbrir = stringResource(R.string.menu_open_error)
     val mensajeSinAppCompartir = stringResource(R.string.menu_share_error)
     val tituloCompartir = stringResource(R.string.menu_share_title)
@@ -354,6 +372,12 @@ fun HomeScreen(
                                     onAlternarFavorito = viewModel::alternarFavorito,
                                     onAbrir = { abrirEnlace(itemEnlace.enlace.url) },
                                     onAbrirMenu = { enlaceMenu = itemEnlace },
+                                    onMiniaturaCapturada = { id, bitmap ->
+                                        viewModel.guardarMiniaturaVideo(id, bitmap)
+                                    },
+                                    onTextoDetectado = { id, texto ->
+                                        viewModel.actualizarTextoDesdeWebView(id, texto)
+                                    },
                                     modifier = Modifier.animateItem(),
                                 )
                             }
@@ -403,14 +427,11 @@ fun HomeScreen(
         if (estado.mostrarDialogoAgregar) {
             DialogoAgregarEnlace(
                 urlInicial = estado.urlInicialDialogo,
+                textoCompartidoInicial = estado.textoCompartidoDialogo,
                 guardando = estado.guardandoEnlace,
                 comprobando = estado.comprobandoVistaPrevia,
-                sinVistaPrevia = estado.sinVistaPrevia,
-                tituloSugerido = estado.tituloSugerido,
                 error = estado.errorAgregar,
                 onComprobar = viewModel::comprobarVistaPrevia,
-                onGuardarEditado = viewModel::guardarEnlaceEditado,
-                onUrlCambiada = viewModel::limpiarSinVistaPrevia,
                 onCerrar = viewModel::cerrarDialogoAgregar,
                 onLimpiarError = viewModel::limpiarErrorAgregar,
             )
@@ -473,6 +494,12 @@ fun HomeScreen(
     }
 }
 
+/** Espera antes de abrir el cajón la primera vez (pista del menú, punto 2). */
+private const val PISTA_MENU_ESPERA_MS = 400L
+
+/** Tiempo que el cajón se queda abierto en la pista de la primera vez. */
+private const val PISTA_MENU_VISIBLE_MS = 1800L
+
 /** Encabezado grande: menú lateral, título de la app y contador total, con el interruptor de tema. */
 @Composable
 private fun Encabezado(
@@ -487,11 +514,28 @@ private fun Encabezado(
             .fillMaxWidth()
             .padding(top = Espaciado.s),
     ) {
-        IconButton(onClick = onAbrirMenu) {
+        // Botón del menú lateral (corrección 1.0.1, punto 2): ícono
+        // de hamburguesa Material 3 estándar JUNTO a la palabra
+        // visible "Categorías", para que se entienda que al tocarlo
+        // se despliega el menú de izquierda a derecha.
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .clip(RoundedCornerShape(28.dp))
+                .clickable(onClick = onAbrirMenu)
+                .padding(end = Espaciado.s, top = Espaciado.xs, bottom = Espaciado.xs),
+        ) {
             Icon(
                 imageVector = Icons.Filled.Menu,
                 contentDescription = stringResource(R.string.home_menu_open),
                 tint = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.padding(start = Espaciado.xs),
+            )
+            Spacer(modifier = Modifier.size(Espaciado.xs))
+            Text(
+                text = stringResource(R.string.home_menu_categories),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onBackground,
             )
         }
         Column(modifier = Modifier.weight(1f)) {

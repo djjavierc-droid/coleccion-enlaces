@@ -1,5 +1,6 @@
 package com.coleccionenlaces.app.ui.home
 
+import android.graphics.Bitmap
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
@@ -48,6 +49,7 @@ import com.coleccionenlaces.app.R
 import com.coleccionenlaces.app.data.EnlaceConCategoria
 import com.coleccionenlaces.app.ui.theme.ColeccionTipografia
 import com.coleccionenlaces.app.ui.theme.Espaciado
+import java.io.File
 
 /** Estado de la imagen de vista previa de la tarjeta. */
 private enum class EstadoImagen { CARGANDO, OK, ERROR }
@@ -61,8 +63,19 @@ private enum class EstadoImagen { CARGANDO, OK, ERROR }
  * [onAlternarFavorito] (esto SÍ funciona en esta fase).
  *
  * Sin imagen (el sitio no ofreció vista previa) se muestra un
- * respaldo con el ícono de enlace sobre el color de la categoría;
- * el enlace se guardó igual, con el dominio como título (Fase 5).
+ * respaldo con el ícono de enlace sobre el color de la categoría y
+ * el aviso "Sin vista previa"; el enlace se guardó igual, con el
+ * título automático (corrección 1.0.1).
+ *
+ * Miniatura de vídeo (corrección 1.0.1, punto 3): si el enlace trae
+ * el HTML del reproductor oEmbed ([Enlace.htmlVideo]) y aún no tiene
+ * miniatura local, la tarjeta pinta el reproductor en un WebView
+ * sin autoplay y captura su cuadro con [MiniaturaWebView]: el
+ * cuadro se guarda en local con [onMiniaturaCapturada] y el texto
+ * visible del reproductor se entrega con [onTextoDetectado] para
+ * enriquecer el título. La prioridad de imagen es: miniatura local
+ * > reproductor oEmbed (WebView) > imagen de la vista previa >
+ * respaldo con aviso.
  *
  * La animación de entrada (fade y leve desplazamiento) se ejecuta
  * una vez por enlace: el estado vive en `remember` y la cuadrícula
@@ -79,6 +92,8 @@ fun TarjetaEnlace(
     onAlternarFavorito: (Long) -> Unit,
     onAbrir: () -> Unit,
     onAbrirMenu: () -> Unit,
+    onMiniaturaCapturada: (Long, Bitmap) -> Unit = { _, _ -> },
+    onTextoDetectado: (Long, String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     val enlace = item.enlace
@@ -105,11 +120,20 @@ fun TarjetaEnlace(
         ) {
             Column {
                 ImagenTarjeta(
+                    imagenLocal = enlace.imagenLocal,
+                    htmlVideo = enlace.htmlVideo,
                     urlImagen = enlace.urlImagen,
+                    url = enlace.url,
                     titulo = enlace.titulo,
                     colorCategoria = colorCategoria,
                     esFavorito = enlace.esFavorito,
                     onAlternarFavorito = { onAlternarFavorito(enlace.id) },
+                    onMiniaturaCapturada = { bitmap ->
+                        onMiniaturaCapturada(enlace.id, bitmap)
+                    },
+                    onTextoDetectado = { texto ->
+                        onTextoDetectado(enlace.id, texto)
+                    },
                 )
                 Column(
                     modifier = Modifier.padding(Espaciado.s + Espaciado.xs),
@@ -161,13 +185,26 @@ fun TarjetaEnlace(
 
 @Composable
 private fun ImagenTarjeta(
+    imagenLocal: String?,
+    htmlVideo: String?,
     urlImagen: String?,
+    url: String,
     titulo: String,
     colorCategoria: Color,
     esFavorito: Boolean,
     onAlternarFavorito: () -> Unit,
+    onMiniaturaCapturada: (Bitmap) -> Unit,
+    onTextoDetectado: (String) -> Unit,
 ) {
-    var estadoImagen by remember(urlImagen) { mutableStateOf(EstadoImagen.CARGANDO) }
+    // Estado de carga por fuente: si la local falla se cae al
+    // reproductor o a la remota, y si la remota falla al respaldo.
+    var estadoLocal by remember(imagenLocal) { mutableStateOf(EstadoImagen.CARGANDO) }
+    var estadoRemota by remember(urlImagen) { mutableStateOf(EstadoImagen.CARGANDO) }
+    val mostrarLocal = imagenLocal != null && estadoLocal != EstadoImagen.ERROR
+    val mostrarWebView = !mostrarLocal && htmlVideo != null
+    val mostrarRemota = !mostrarLocal && !mostrarWebView &&
+        urlImagen != null && estadoRemota != EstadoImagen.ERROR
+    val mostrarRespaldo = !mostrarLocal && !mostrarWebView && !mostrarRemota
     val haptics = LocalHapticFeedback.current
     Box(
         modifier = Modifier
@@ -175,35 +212,64 @@ private fun ImagenTarjeta(
             .height(136.dp)
             .background(MaterialTheme.colorScheme.surfaceVariant),
     ) {
-        if (urlImagen != null) {
+        if (mostrarLocal) {
+            AsyncImage(
+                model = File(imagenLocal!!),
+                contentDescription = titulo,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+                onLoading = { estadoLocal = EstadoImagen.CARGANDO },
+                onSuccess = { estadoLocal = EstadoImagen.OK },
+                onError = { estadoLocal = EstadoImagen.ERROR },
+            )
+        } else if (mostrarWebView) {
+            MiniaturaWebView(
+                html = htmlVideo!!,
+                baseUrl = url,
+                onMiniaturaCapturada = onMiniaturaCapturada,
+                onTextoDetectado = onTextoDetectado,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else if (mostrarRemota) {
             AsyncImage(
                 model = urlImagen,
                 contentDescription = titulo,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
-                onLoading = { estadoImagen = EstadoImagen.CARGANDO },
-                onSuccess = { estadoImagen = EstadoImagen.OK },
-                onError = { estadoImagen = EstadoImagen.ERROR },
+                onLoading = { estadoRemota = EstadoImagen.CARGANDO },
+                onSuccess = { estadoRemota = EstadoImagen.OK },
+                onError = { estadoRemota = EstadoImagen.ERROR },
             )
         }
-        if (urlImagen == null || estadoImagen == EstadoImagen.ERROR) {
+        if (mostrarRespaldo) {
             // Respaldo sin imagen: ícono de enlace sobre el color de
-            // la categoría, sin imagen externa.
+            // la categoría, con el aviso "Sin vista previa" (la
+            // tarjeta lo muestra sin pedirle nada al usuario).
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(colorCategoria.copy(alpha = 0.25f)),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(
-                    imageVector = Icons.Filled.Link,
-                    contentDescription = null,
-                    tint = colorCategoria,
-                    modifier = Modifier.size(48.dp),
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        imageVector = Icons.Filled.Link,
+                        contentDescription = null,
+                        tint = colorCategoria,
+                        modifier = Modifier.size(48.dp),
+                    )
+                    Spacer(modifier = Modifier.height(Espaciado.xs))
+                    Text(
+                        text = stringResource(R.string.card_no_preview),
+                        style = ColeccionTipografia.etiqueta,
+                        color = colorCategoria,
+                    )
+                }
             }
         }
-        if (urlImagen != null && estadoImagen == EstadoImagen.CARGANDO) {
+        val cargandoImagen = (mostrarLocal && estadoLocal == EstadoImagen.CARGANDO) ||
+            (mostrarRemota && estadoRemota == EstadoImagen.CARGANDO)
+        if (cargandoImagen) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
