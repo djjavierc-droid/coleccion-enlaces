@@ -310,7 +310,21 @@ tokenizador WordPiece; solo cambian los pesos y el vocabulario).
   sin necesitar la .so. El cableado del intérprete en Kotlin
   (2 entradas, softmax, umbral) queda verificado solo por revisión
   de código + prueba en el teléfono de Javier con la versión completa.
-- Pendiente: run de CI tras esta corrección (debe quedar en verde,
+- **Run 45189245470: el Assume NO bastó (301 pruebas, 4 fallidas)**.
+  El constructor de `ClasificadorModelo` no crea el intérprete: todo
+  es `by lazy`. El `UnsatisfiedLinkError` saltaba al primer uso
+  (`estaDisponible`, `clasificar`), fuera del try del test. Y peor:
+  el `lazy` del intérprete capturaba solo `Exception`, y
+  `UnsatisfiedLinkError` es un `Error`, no una `Exception`: en un
+  teléfono con la .so dañada la app se ROMPERÍA, contra su propio
+  contrato ("la app nunca se rompe por el modelo"). Correcciones:
+  (a) `ClasificadorModelo` captura ahora también `LinkageError` en
+  el `lazy` del intérprete, en `clasificar` y en `cerrar`: sin .so el
+  modelo queda no disponible y la app sigue con la cabeza. (b) El
+  test sondea la carga nativa con `Class.forName` de
+  `TensorFlowLite` e `Interpreter` antes de construir y salta con
+  `Assume.assumeTrue` si no carga.
+- Pendiente: run de CI tras estas correcciones (debe quedar en verde,
   con las 4 pruebas de modelo saltadas en la JVM).
 - `.gitignore` ya excluye entrenamiento/venv/, datos/, tmp/,
   .hf-cache/, modelo_tf/, modelo_clasificador.tflite, *.log, *.json.

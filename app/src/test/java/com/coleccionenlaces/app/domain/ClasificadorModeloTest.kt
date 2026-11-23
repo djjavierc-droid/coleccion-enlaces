@@ -57,25 +57,34 @@ class ClasificadorModeloTest {
     )
 
     /**
+     * ¿Carga la .so de LiteRT en esta JVM? Tocar las clases fuerza su
+     * inicialización estática (System.loadLibrary). Si la .so no
+     * carga, lanza LinkageError (o ExceptionInInitializerError si la
+     * inicialización ya falló antes).
+     */
+    private fun cargaNativaDisponible(): Boolean {
+        return try {
+            Class.forName("org.tensorflow.lite.TensorFlowLite")
+            Class.forName("org.tensorflow.lite.Interpreter")
+            true
+        } catch (_: LinkageError) {
+            false
+        } catch (_: ExceptionInInitializerError) {
+            false
+        }
+    }
+
+    /**
      * Construye el modelo o SALTA la prueba si la librería nativa no
      * carga en esta JVM (ver el comentario de la clase). En un
      * teléfono o emulador la .so carga y la prueba corre de verdad.
-     * Se capturan los tres errores de enlace: el primero es
-     * UnsatisfiedLinkError; si la inicialización estática ya falló,
-     * los siguientes intentos dan ExceptionInInitializerError o
-     * NoClassDefFoundError.
      */
     private fun modeloDisponible(): ClasificadorModelo {
-        try {
-            return ClasificadorModelo(contexto)
-        } catch (e: UnsatisfiedLinkError) {
-            Assume.assumeNoException("LiteRT nativo no carga en esta JVM", e)
-        } catch (e: ExceptionInInitializerError) {
-            Assume.assumeNoException("LiteRT nativo no carga en esta JVM", e)
-        } catch (e: NoClassDefFoundError) {
-            Assume.assumeNoException("LiteRT nativo no carga en esta JVM", e)
-        }
-        throw AssertionError("assumeNoException debería haber saltado la prueba")
+        Assume.assumeTrue(
+            "LiteRT nativo no carga en esta JVM",
+            cargaNativaDisponible(),
+        )
+        return ClasificadorModelo(contexto)
     }
 
     @Test

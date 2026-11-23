@@ -8,7 +8,8 @@ import java.nio.channels.FileChannel
 import kotlin.math.exp
 
 /**
- * Clasificador con el modelo DistilBERT INT8 (Fix 3, opción A).
+ * Clasificador con el modelo DistilBERT (Fix 3, opción A; cuantización
+ * de rango dinámico).
  *
  * Carga `assets/modelo_clasificador.tflite` con el intérprete base de
  * LiteRT y lo ejecuta sobre el texto tokenizado con
@@ -26,7 +27,9 @@ import kotlin.math.exp
  * [CabezaAprendizaje]): aquí solo se ejecuta. Si el archivo no está,
  * no se puede cargar o la inferencia falla, [clasificar] devuelve
  * null y el pipeline sigue con la cabeza aprendida: la app nunca se
- * rompe por el modelo.
+ * rompe por el modelo. Eso incluye que la librería nativa no cargue
+ * (LinkageError): en ese caso el modelo queda no disponible, no se
+ * rompe la app.
  *
  * El intérprete no es seguro para hilos: el acceso se sincroniza con
  * un candado y la inferencia corre en el hilo que llama (el
@@ -69,6 +72,10 @@ class ClasificadorModelo(
                 interprete.allocateTensors()
             }
         } catch (_: Exception) {
+            null
+        } catch (_: LinkageError) {
+            // La .so no cargó (ABI incompatible, instalación dañada):
+            // el modelo queda no disponible, la app no se rompe.
             null
         }
     }
@@ -118,6 +125,10 @@ class ClasificadorModelo(
             ResultadoModelo(etiquetas[mejor], probs[mejor])
         } catch (_: Exception) {
             null
+        } catch (_: LinkageError) {
+            // La .so falló en plena inferencia: el modelo queda
+            // inutilizable, pero la app sigue con la cabeza.
+            null
         }
     }
 
@@ -126,6 +137,7 @@ class ClasificadorModelo(
         try {
             interprete?.close()
         } catch (_: Exception) {
+        } catch (_: LinkageError) {
         }
     }
 
