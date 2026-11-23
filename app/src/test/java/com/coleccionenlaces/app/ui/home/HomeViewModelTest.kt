@@ -9,9 +9,9 @@ import com.coleccionenlaces.app.data.ResultadoAgregarEnlace
 import com.coleccionenlaces.app.data.ServicioVistaPrevia
 import com.coleccionenlaces.app.data.TipoErrorAgregarEnlace
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.test.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
