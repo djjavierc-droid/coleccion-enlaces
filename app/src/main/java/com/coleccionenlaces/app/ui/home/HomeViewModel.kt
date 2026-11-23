@@ -119,6 +119,20 @@ data class HomeUiState(
             categoria.id !in categoriasDesbloqueadas &&
                 (contadores[categoria.id] ?: 0) > 0
         }
+
+    /**
+     * ¿Hay algún filtro o búsqueda activa? (verificación (a),
+     * corrección 1.0.1): búsqueda no vacía, categoría seleccionada
+     * o solo favoritos. "Sin resultados" solo se muestra cuando la
+     * lista está vacía Y esto es true; con la lista vacía y sin
+     * filtro, la pantalla muestra el estado de "colección vacía".
+     * Antes esta condición vivía repetida en el composable; ahora
+     * es una propiedad derivada del estado, con sus pruebas.
+     */
+    val hayFiltroActivo: Boolean
+        get() = busqueda.isNotBlank() ||
+            categoriaSeleccionadaId != null ||
+            soloFavoritos
 }
 
 /**

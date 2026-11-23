@@ -724,4 +724,56 @@ class HomeViewModelTest {
             )
             assertEquals("Tecnología y celulares", estado.enlaces.first().categoria.nombre)
         }
+
+    // ---- Verificación (a): "Sin resultados" solo con filtro activo ----
+
+    @Test
+    fun `sin filtro y con un enlace la lista no esta vacia y no hay filtro activo`() = runTest {
+        viewModel.agregarEnlace("https://ejemplo.com/receta")
+        advanceUntilIdle()
+
+        val estado = esperarEstado { it.totalEnlaces == 1 && !it.guardandoEnlace }
+
+        assertEquals(1, estado.enlaces.size)
+        assertFalse(estado.hayFiltroActivo)
+    }
+
+    @Test
+    fun `busqueda sin coincidencias deja la lista vacia con filtro activo`() = runTest {
+        viewModel.agregarEnlace("https://ejemplo.com/receta")
+        advanceUntilIdle()
+        esperarEstado { it.totalEnlaces == 1 && !it.guardandoEnlace }
+
+        viewModel.cambiarBusqueda("zzz sin coincidencias")
+
+        val estado = esperarEstado {
+            it.busqueda == "zzz sin coincidencias" && it.enlaces.isEmpty()
+        }
+        assertTrue(estado.hayFiltroActivo)
+    }
+
+    @Test
+    fun `categoria sin enlaces deja la lista vacia con filtro activo`() = runTest {
+        val estadoInicial = esperarEstado { !it.cargando }
+        // Sin filtro y sin enlaces no hay filtro activo: es la
+        // colección vacía, no "Sin resultados".
+        assertFalse(estadoInicial.hayFiltroActivo)
+
+        viewModel.seleccionarCategoria(cocinaId)
+
+        val estado = esperarEstado {
+            it.categoriaSeleccionadaId == cocinaId && it.enlaces.isEmpty()
+        }
+        assertTrue(estado.hayFiltroActivo)
+    }
+
+    @Test
+    fun `solo favoritos sin favoritos deja la lista vacia con filtro activo`() = runTest {
+        esperarEstado { !it.cargando }
+
+        viewModel.alternarSoloFavoritos()
+
+        val estado = esperarEstado { it.soloFavoritos && it.enlaces.isEmpty() }
+        assertTrue(estado.hayFiltroActivo)
+    }
 }

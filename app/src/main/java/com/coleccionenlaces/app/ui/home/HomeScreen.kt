@@ -419,9 +419,7 @@ fun HomeScreen(
                     ) {
                         item(span = { GridItemSpan(maxLineSpan) }) {
                             EstadoVacio(
-                                hayFiltroActivo = estado.busqueda.isNotBlank() ||
-                                    estado.categoriaSeleccionadaId != null ||
-                                    estado.soloFavoritos,
+                                hayFiltroActivo = estado.hayFiltroActivo,
                                 modifier = Modifier.padding(top = Espaciado.xl),
                             )
                         }
