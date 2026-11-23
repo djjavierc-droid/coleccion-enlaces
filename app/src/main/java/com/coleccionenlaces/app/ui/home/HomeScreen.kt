@@ -3,6 +3,7 @@ package com.coleccionenlaces.app.ui.home
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -301,7 +302,7 @@ private fun FilaChips(
                 colors = FilterChipDefaults.filterChipColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant,
                     labelColor = MaterialTheme.colorScheme.onSurface,
-                    leadingIconColor = color,
+                    iconColor = color,
                     selectedContainerColor = color,
                     selectedLabelColor = colorSobreCategoria(color),
                     selectedLeadingIconColor = colorSobreCategoria(color),
