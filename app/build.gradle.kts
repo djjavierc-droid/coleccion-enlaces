@@ -120,12 +120,19 @@ tasks.register("extraerLibsNativasTest") {
     outputs.dir(salida)
     doLast {
         val classpath = configurations.getByName("debugRuntimeClasspath")
+        val todos = classpath.files.map { it.name }
         val aar = classpath.files.firstOrNull {
-            it.name.startsWith("tensorflow-lite-") && it.name.endsWith(".aar")
+            it.name.contains("tensorflow", ignoreCase = true) &&
+                it.name.endsWith(".aar")
         } ?: error(
             "No se encontró el AAR de tensorflow-lite en " +
-                "debugRuntimeClasspath. Archivos: " +
-                classpath.files.take(20).joinToString(", ") { it.name },
+                "debugRuntimeClasspath (${todos.size} archivos). " +
+                "Con 'tensor'/'lite': " +
+                todos.filter {
+                    it.contains("tensor", ignoreCase = true) ||
+                        it.contains("lite", ignoreCase = true)
+                }.ifEmpty { listOf("(ninguno)") } +
+                ". Todos: " + todos.joinToString(", "),
         )
         copy {
             from(zipTree(aar)) {
