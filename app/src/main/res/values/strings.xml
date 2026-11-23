@@ -3,6 +3,18 @@
     <string name="app_name">Colección</string>
     <string name="home_title">Colección</string>
     <string name="home_subtitle">Tu colección de enlaces, organizada.</string>
-    <string name="home_empty">Todavía no hay enlaces guardados.\nToca + para pegar el primero.</string>
-    <string name="home_phase_marker">Fase 1 · Proyecto base listo</string>
+    <string name="home_search_hint">Buscar enlaces…</string>
+    <string name="home_search_clear">Limpiar búsqueda</string>
+    <string name="home_chip_todos">Todos</string>
+    <string name="home_chip_favoritos">Favoritos</string>
+    <string name="home_add_link">Agregar enlace</string>
+    <string name="home_total_none">Sin enlaces todavía</string>
+    <string name="home_total_one">1 enlace</string>
+    <string name="home_total_many">%1$d enlaces</string>
+    <string name="home_favorite_add">Marcar como favorito</string>
+    <string name="home_favorite_remove">Quitar de favoritos</string>
+    <string name="home_empty_title">Tu colección está vacía</string>
+    <string name="home_empty_body">Pega tu primer enlace con el botón de abajo y aparecerá aquí con su vista previa.</string>
+    <string name="home_no_results_title">Sin resultados</string>
+    <string name="home_no_results_body">Prueba con otra búsqueda o con otra categoría.</string>
 </resources>
