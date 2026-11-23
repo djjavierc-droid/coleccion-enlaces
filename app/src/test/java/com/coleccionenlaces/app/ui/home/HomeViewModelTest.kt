@@ -129,7 +129,20 @@ class HomeViewModelTest {
         viewModel.agregarEnlace("https://ejemplo.com/receta")
         advanceUntilIdle()
 
-        val estado = esperarEstado { it.totalEnlaces == 1 }
+        // El estado se espera ya asentado: los contadores son otra
+        // consulta de Room y pueden llegar después que la lista, y
+        // `guardandoEnlace` se apaga en una actualización posterior
+        // a la inserción. Esperar solo `totalEnlaces == 1` es una
+        // carrera (la misma clase que la corregida en la Fase 5):
+        // el primer estado con total 1 puede traer los contadores
+        // aún vacíos o `guardandoEnlace` aún en true.
+        val estado = esperarEstado {
+            it.totalEnlaces == 1 &&
+                it.contadores[cocinaId] == 1 &&
+                !it.guardandoEnlace &&
+                it.errorAgregar == null &&
+                it.secciones.size == 1
+        }
 
         assertEquals(1, estado.enlaces.size)
         assertEquals("Receta de paella valenciana", estado.enlaces.first().enlace.titulo)
@@ -146,7 +159,10 @@ class HomeViewModelTest {
         viewModel.agregarEnlace("no-es-una-url")
         advanceUntilIdle()
 
-        val estado = esperarEstado { it.errorAgregar != null }
+        // Misma carrera que arriba: el error se pone en una
+        // actualización y `guardandoEnlace` se apaga en la siguiente;
+        // se espera el estado con ambos asentados.
+        val estado = esperarEstado { it.errorAgregar != null && !it.guardandoEnlace }
 
         assertEquals(TipoErrorAgregarEnlace.URL_INVALIDA, estado.errorAgregar)
         assertEquals(0, estado.totalEnlaces)
