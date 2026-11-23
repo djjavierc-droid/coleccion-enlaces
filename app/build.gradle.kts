@@ -121,18 +121,24 @@ tasks.register("extraerLibsNativasTest") {
     doLast {
         val classpath = configurations.getByName("debugRuntimeClasspath")
         val todos = classpath.files.map { it.name }
+        // org.tensorflow:tensorflow-lite:2.17.0 es un POM de
+        // reubicación: el artefacto real es com.google.ai.edge.litert
+        // (LiteRT). El AAR con la .so es litert-1.0.1.aar (la API vive
+        // en litert-api-1.0.1.aar). Se acepta también el nombre viejo
+        // por si la versión cambia.
         val aar = classpath.files.firstOrNull {
-            it.name.contains("tensorflow", ignoreCase = true) &&
-                it.name.endsWith(".aar")
+            it.name.endsWith(".aar") && (
+                (it.name.startsWith("litert-") && !it.name.startsWith("litert-api")) ||
+                    it.name.startsWith("tensorflow-lite-")
+                )
         } ?: error(
-            "No se encontró el AAR de tensorflow-lite en " +
+            "No se encontró el AAR de LiteRT/TF Lite en " +
                 "debugRuntimeClasspath (${todos.size} archivos). " +
-                "Con 'tensor'/'lite': " +
+                "Con 'tensor'/'lite'/'litert': " +
                 todos.filter {
                     it.contains("tensor", ignoreCase = true) ||
-                        it.contains("lite", ignoreCase = true)
-                }.ifEmpty { listOf("(ninguno)") } +
-                ". Todos: " + todos.joinToString(", "),
+                        it.contains("litert", ignoreCase = true)
+                }.ifEmpty { listOf("(ninguno)") },
         )
         copy {
             from(zipTree(aar)) {
