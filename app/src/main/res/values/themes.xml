@@ -9,6 +9,8 @@
         <item name="postSplashScreenTheme">@style/Theme.Coleccion</item>
     </style>
 
-    <!-- Tema base de la actividad (Compose dibuja todo lo demás). -->
-    <style name="Theme.Coleccion" parent="Theme.Material3.DayNight.NoActionBar" />
+    <!-- Tema base de la actividad. Material 3 de Compose no aporta
+         temas XML, por eso el padre es el tema base de la plataforma;
+         Compose dibuja todo lo demás (colores, tipografía, formas). -->
+    <style name="Theme.Coleccion" parent="android:Theme.Material.NoActionBar" />
 </resources>
