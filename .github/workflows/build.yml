@@ -21,6 +21,18 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      # El código de clasificación referencia el archivo de palabras
+      # clave sensibles, que NUNCA se commitea: se genera aquí desde el
+      # secreto XXX_KEYWORDS_B64 (base64 del contenido del archivo).
+      # El contenido del secreto no se imprime en ningún log. Si el
+      # secreto no existe, el build falla (comportamiento correcto).
+      - name: Generar archivo de palabras clave sensibles
+        env:
+          XXX_KEYWORDS_B64: ${{ secrets.XXX_KEYWORDS_B64 }}
+        run: |
+          if [ -z "$XXX_KEYWORDS_B64" ]; then echo "Falta el secreto XXX_KEYWORDS_B64" >&2; exit 1; fi
+          echo "$XXX_KEYWORDS_B64" | base64 -d > app/src/main/java/com/coleccionenlaces/app/domain/XxxKeywords.kt
+
       - name: Android SDK (API 36)
         run: |
           echo "ANDROID_SDK_ROOT=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
