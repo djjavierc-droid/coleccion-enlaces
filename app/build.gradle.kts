@@ -149,7 +149,7 @@ tasks.withType<Test>().configureEach {
     systemProperty(
         "java.library.path",
         dirLibs.map {
-            it.asFile.absolutePath + java.io.File.pathSeparator +
+            it.asFile.absolutePath + System.getProperty("path.separator") +
                 System.getProperty("java.library.path", "")
         },
     )
