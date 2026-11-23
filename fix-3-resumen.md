@@ -324,7 +324,19 @@ tokenizador WordPiece; solo cambian los pesos y el vocabulario).
   test sondea la carga nativa con `Class.forName` de
   `TensorFlowLite` e `Interpreter` antes de construir y salta con
   `Assume.assumeTrue` si no carga.
-- Pendiente: run de CI tras estas correcciones (debe quedar en verde,
+- **Run 45190129412: el sondeo Class.forName NO detectó nada (301
+  pruebas, 3 fallidas)**. El de texto en blanco ya pasa (clasificar
+  devuelve null sin modelo), pero los otros 3 fallan con
+  AssertionError: `estaDisponible` es false porque la .so no cargó.
+  Causa del sondeo fallido, verificada en el bytecode de
+  `litert-api-1.0.1.aar` (javap): el bloque estático de
+  `TensorFlowLite` intenta la carga y GUARDA la excepción en
+  `LOAD_LIBRARY_EXCEPTION` sin lanzar; es `init()` quien la relanza
+  como UnsatisfiedLinkError ("Failed to load native TensorFlow Lite
+  methods..."). `Class.forName` inicializa la clase sin lanzar.
+  Corrección: el sondeo llama a `TensorFlowLite.init()` (público,
+  idempotente) y salta si lanza UnsatisfiedLinkError.
+- Pendiente: run de CI tras esta corrección (debe quedar en verde,
   con las 4 pruebas de modelo saltadas en la JVM).
 - `.gitignore` ya excluye entrenamiento/venv/, datos/, tmp/,
   .hf-cache/, modelo_tf/, modelo_clasificador.tflite, *.log, *.json.

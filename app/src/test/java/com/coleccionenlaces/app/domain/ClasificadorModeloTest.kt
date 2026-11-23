@@ -10,6 +10,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.tensorflow.lite.TensorFlowLite
 
 /**
  * Pruebas de [ClasificadorModelo] con el .tflite REAL (Fix 3,
@@ -57,17 +58,20 @@ class ClasificadorModeloTest {
     )
 
     /**
-     * ¿Carga la .so de LiteRT en esta JVM? Tocar las clases fuerza su
-     * inicialización estática (System.loadLibrary). Si la .so no
-     * carga, lanza LinkageError (o ExceptionInInitializerError si la
-     * inicialización ya falló antes).
+     * ¿Carga la .so de LiteRT en esta JVM? `TensorFlowLite.init()`
+     * carga la .so (o relanza el error guardado si la carga falló).
+     * El bloque estático de TensorFlowLite NO lanza: intenta la carga
+     * y guarda la excepción en LOAD_LIBRARY_EXCEPTION; es `init()`
+     * quien la relanza como UnsatisfiedLinkError ("Failed to load
+     * native TensorFlow Lite methods..."). Por eso un simple
+     * Class.forName NO sirve como sondeo (verificado en el bytecode
+     * de litert-api-1.0.1.aar).
      */
     private fun cargaNativaDisponible(): Boolean {
         return try {
-            Class.forName("org.tensorflow.lite.TensorFlowLite")
-            Class.forName("org.tensorflow.lite.Interpreter")
+            TensorFlowLite.init()
             true
-        } catch (_: LinkageError) {
+        } catch (_: UnsatisfiedLinkError) {
             false
         } catch (_: ExceptionInInitializerError) {
             false
