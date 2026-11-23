@@ -2,6 +2,7 @@ package com.coleccionenlaces.app.domain
 
 import com.coleccionenlaces.app.data.Enlace
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
@@ -83,6 +84,100 @@ class ClasificadorTest {
             "Tecnología y celulares",
             Clasificador.clasificar(
                 "Nuevo smartphone Android con pantalla OLED y memoria RAM",
+                "",
+                "https://ejemplo.com/pagina",
+            ),
+        )
+    }
+
+    // ---- Corrección 1.0.1 (Fix 2): el vídeo de EterniCodIA ----
+
+    @Test
+    fun `tecnologia por el titulo y la descripcion exactos del video de EterniCodIA`() {
+        assertEquals(
+            "Tecnología y celulares",
+            Clasificador.clasificar(
+                "Contratamos a una IA... y el primer día ya vendía croquetas en Marte...",
+                "Hoy hemos contratado a una",
+                "https://www.facebook.com/share/r/1JqVPz7de",
+            ),
+        )
+    }
+
+    @Test
+    fun `tecnologia por la palabra IA sola`() {
+        assertEquals(
+            "Tecnología y celulares",
+            Clasificador.clasificar("La nueva IA", "", "https://ejemplo.com/pagina"),
+        )
+    }
+
+    @Test
+    fun `tecnologia por chatgpt`() {
+        assertEquals(
+            "Tecnología y celulares",
+            Clasificador.clasificar("ChatGPT responde preguntas", "", "https://ejemplo.com/pagina"),
+        )
+    }
+
+    @Test
+    fun `tecnologia por gemini`() {
+        assertEquals(
+            "Tecnología y celulares",
+            Clasificador.clasificar("Probando Gemini", "", "https://ejemplo.com/pagina"),
+        )
+    }
+
+    @Test
+    fun `tecnologia por claude`() {
+        assertEquals(
+            "Tecnología y celulares",
+            Clasificador.clasificar("Probando Claude", "", "https://ejemplo.com/pagina"),
+        )
+    }
+
+    @Test
+    fun `tecnologia por copilot`() {
+        assertEquals(
+            "Tecnología y celulares",
+            Clasificador.clasificar("Probando Copilot", "", "https://ejemplo.com/pagina"),
+        )
+    }
+
+    @Test
+    fun `tecnologia por robot`() {
+        assertEquals(
+            "Tecnología y celulares",
+            Clasificador.clasificar("Mi nuevo robot", "", "https://ejemplo.com/pagina"),
+        )
+    }
+
+    @Test
+    fun `tecnologia por automatizacion`() {
+        assertEquals(
+            "Tecnología y celulares",
+            Clasificador.clasificar("Todo sobre automatizacion", "", "https://ejemplo.com/pagina"),
+        )
+    }
+
+    @Test
+    fun `la ia dentro de familia no clasifica como tecnologia`() {
+        assertNotEquals(
+            "Tecnología y celulares",
+            Clasificador.clasificar(
+                "La historia de mi familia",
+                "",
+                "https://ejemplo.com/pagina",
+            ),
+        )
+    }
+
+    @Test
+    fun `la ia dentro de energia no clasifica como tecnologia`() {
+        assertNotEquals(
+            "Tecnología y celulares",
+            Clasificador.clasificar(
+                "Energía solar en casa",
                 "",
                 "https://ejemplo.com/pagina",
             ),

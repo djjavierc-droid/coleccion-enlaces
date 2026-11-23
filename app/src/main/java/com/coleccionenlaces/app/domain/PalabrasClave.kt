@@ -120,6 +120,18 @@ object PalabrasClave {
             "bateria del celular",
             "actualizacion de software",
             "inteligencia artificial",
+            // Corrección 1.0.1 (Fix 2): el vídeo de EterniCodIA dice
+            // "IA" sin escribir "inteligencia artificial"; sin la
+            // palabra sola caía en "Otros". Coincidencia por palabra
+            // completa (como el resto del clasificador): "ia" no
+            // coincide dentro de "familia" ni de "energía".
+            "ia",
+            "chatgpt",
+            "gemini",
+            "claude",
+            "copilot",
+            "robot",
+            "automatizacion",
             "gadget",
             "laptop",
             "tablet",
