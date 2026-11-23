@@ -566,4 +566,108 @@ class HomeViewModelTest {
         assertEquals("Otros", estado.enlaces.first().categoria.nombre)
         assertEquals(null, estado.enlaces.first().enlace.categoriaId)
     }
+
+    // ---- Fix 1: comprobar vista previa y editar título/descripción ----
+
+    @Test
+    fun `comprobarVistaPrevia con vista previa fallida abre la edicion con el dominio sugerido`() =
+        runTest {
+            viewModel.abrirDialogoAgregar("https://www.facebook.com/share/r/1JqVPz7de")
+            esperarEstado { it.mostrarDialogoAgregar }
+
+            viewModel.comprobarVistaPrevia("https://www.facebook.com/share/r/1JqVPz7de")
+            advanceUntilIdle()
+
+            val estado = esperarEstado { it.sinVistaPrevia }
+            assertTrue(estado.mostrarDialogoAgregar)
+            assertTrue(estado.sinVistaPrevia)
+            assertEquals("facebook.com", estado.tituloSugerido)
+            assertFalse(estado.comprobandoVistaPrevia)
+            assertFalse(estado.guardandoEnlace)
+            // Todavía no se guardó nada: el usuario aún no escribió el título.
+            assertEquals(0, estado.totalEnlaces)
+            assertEquals(null, estado.errorAgregar)
+        }
+
+    @Test
+    fun `comprobarVistaPrevia con vista previa correcta guarda y cierra el dialogo`() =
+        runTest {
+            viewModel.abrirDialogoAgregar("https://ejemplo.com/receta")
+            esperarEstado { it.mostrarDialogoAgregar }
+
+            viewModel.comprobarVistaPrevia("https://ejemplo.com/receta")
+            advanceUntilIdle()
+
+            val estado = esperarEstado {
+                it.totalEnlaces == 1 && !it.mostrarDialogoAgregar && !it.guardandoEnlace
+            }
+            assertFalse(estado.mostrarDialogoAgregar)
+            assertFalse(estado.sinVistaPrevia)
+            assertEquals(null, estado.tituloSugerido)
+            assertEquals(1, estado.totalEnlaces)
+        }
+
+    @Test
+    fun `guardarEnlaceEditado guarda el titulo editado y clasifica por el`() = runTest {
+        viewModel.abrirDialogoAgregar("https://www.facebook.com/share/r/1JqVPz7de")
+        esperarEstado { it.mostrarDialogoAgregar }
+        viewModel.comprobarVistaPrevia("https://www.facebook.com/share/r/1JqVPz7de")
+        advanceUntilIdle()
+        esperarEstado { it.sinVistaPrevia }
+
+        viewModel.guardarEnlaceEditado(
+            "https://www.facebook.com/share/r/1JqVPz7de",
+            "Receta de paella valenciana",
+            "La receta tradicional paso a paso.",
+        )
+        advanceUntilIdle()
+
+        val estado = esperarEstado {
+            it.totalEnlaces == 1 && !it.mostrarDialogoAgregar && !it.guardandoEnlace
+        }
+        assertFalse(estado.mostrarDialogoAgregar)
+        assertFalse(estado.sinVistaPrevia)
+        assertEquals(1, estado.totalEnlaces)
+        // El enlace se guardó en Cocina por el título editado.
+        viewModel.desbloquearCategoria(cocinaId)
+        val visible = esperarEstado { it.enlaces.size == 1 }
+        assertEquals("Receta de paella valenciana", visible.enlaces.first().enlace.titulo)
+        assertEquals(
+            "La receta tradicional paso a paso.",
+            visible.enlaces.first().enlace.descripcion,
+        )
+        assertEquals("Cocina", visible.enlaces.first().categoria.nombre)
+    }
+
+    @Test
+    fun `comprobarVistaPrevia con URL invalida pone el error y no abre la edicion`() =
+        runTest {
+            viewModel.abrirDialogoAgregar("no-es-una-url")
+            esperarEstado { it.mostrarDialogoAgregar }
+
+            viewModel.comprobarVistaPrevia("no-es-una-url")
+            advanceUntilIdle()
+
+            val estado = esperarEstado { it.errorAgregar != null && !it.comprobandoVistaPrevia }
+            assertTrue(estado.mostrarDialogoAgregar)
+            assertFalse(estado.sinVistaPrevia)
+            assertEquals(null, estado.tituloSugerido)
+            assertEquals(TipoErrorAgregarEnlace.URL_INVALIDA, estado.errorAgregar)
+            assertEquals(0, estado.totalEnlaces)
+        }
+
+    @Test
+    fun `limpiarSinVistaPrevia limpia la edicion tras cambiar la URL`() = runTest {
+        viewModel.abrirDialogoAgregar("https://www.facebook.com/share/r/1JqVPz7de")
+        viewModel.comprobarVistaPrevia("https://www.facebook.com/share/r/1JqVPz7de")
+        advanceUntilIdle()
+        esperarEstado { it.sinVistaPrevia }
+
+        viewModel.limpiarSinVistaPrevia()
+
+        val estado = esperarEstado { !it.sinVistaPrevia }
+        assertFalse(estado.sinVistaPrevia)
+        assertEquals(null, estado.tituloSugerido)
+        assertEquals(0, estado.totalEnlaces)
+    }
 }
