@@ -68,7 +68,7 @@ abstract class AppDatabase : RoomDatabase() {
                         "INSERT INTO categorias " +
                             "(nombre, color, icono, esPredefinida, orden) " +
                             "VALUES (?, ?, ?, 1, ?)",
-                        arrayOf(semilla.nombre, semilla.color, semilla.icono, indice),
+                        arrayOf<Any?>(semilla.nombre, semilla.color, semilla.icono, indice),
                     )
                 }
             }
