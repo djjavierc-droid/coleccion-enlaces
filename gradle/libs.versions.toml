@@ -1,21 +1,24 @@
 # Catálogo de versiones — única fuente de versiones del proyecto.
 # Todas las versiones son estables y verificadas (2026-11-23):
 # AGP 8.13.2 + Kotlin 2.3.21 + KSP 2.3.10 (conjunto verificado jul-2026),
-# Compose BOM 2026.06.01, Navigation 2.9.8, Room 2.8.4, Coil 3.6.3,
-# OkHttp 5.5.1, Jsoup 1.24.1, Coroutines 1.11.0, SplashScreen 1.2.0,
+# Compose BOM 2026.05.00, Navigation 2.9.8, Room 2.8.4, Coil 3.5.0,
+# OkHttp 4.12.0, Jsoup 1.24.1, Coroutines 1.11.0, SplashScreen 1.2.0,
 # Biometric 1.1.0 (estable; la 1.4.x sigue en RC/alfa).
+# NOTA: las versiones más nuevas de Compose (1.12), Lifecycle (2.11),
+# Coil (3.6) y OkHttp (5.x) exigen compileSdk 37 (plataforma en vista
+# previa); por eso se usan las últimas estables con compileSdk 36.
 [versions]
 agp = "8.13.2"
 kotlin = "2.3.21"
 ksp = "2.3.10"
-composeBom = "2026.06.01"
+composeBom = "2026.05.00"
 navigation = "2.9.8"
 room = "2.8.4"
-lifecycle = "2.11.0"
+lifecycle = "2.10.0"
 activityCompose = "1.13.0"
 coreKtx = "1.17.0"
-coil = "3.6.3"
-okhttp = "5.5.1"
+coil = "3.5.0"
+okhttp = "4.12.0"
 jsoup = "1.24.1"
 coroutines = "1.11.0"
 splashscreen = "1.2.0"
