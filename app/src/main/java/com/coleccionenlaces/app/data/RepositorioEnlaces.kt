@@ -1,10 +1,20 @@
 package com.coleccionenlaces.app.data
 
+import android.graphics.Bitmap
 import com.coleccionenlaces.app.domain.Clasificador
+import com.coleccionenlaces.app.domain.ResultadoOEmbed
 import com.coleccionenlaces.app.domain.ResultadoVistaPrevia
 import com.coleccionenlaces.app.domain.TipoErrorVistaPrevia
+import com.coleccionenlaces.app.domain.proveedorOEmbedDe
+import com.coleccionenlaces.app.util.esUrlImagenFirmada
+import com.coleccionenlaces.app.util.primeraLinea
+import com.coleccionenlaces.app.util.restoTrasPrimeraLinea
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
 import java.net.URI
 
 /**
@@ -27,14 +37,20 @@ enum class TipoErrorAgregarEnlace {
 }
 
 /** Resultado de [RepositorioEnlaces.prepararEnlace]: la vista previa obtenida (o su
- * fallo distinguido) y el título sugerido para el diálogo (el de la vista previa
- * cuando lo hay; si no, el dominio). El diálogo usa esto para pedir al usuario
- * el título y la descripción cuando la vista previa falló (Fix 1): un sitio
- * como Facebook no deja leer el enlace, pero el enlace se guarda igual con
- * los datos que escriba el usuario. */
+ * fallo distinguido) y el resultado oEmbed para esta misma URL. El diálogo usa
+ * esto para guardar sin descargar la página dos veces (una al comprobar y
+ * otra al guardar). No hay título sugerido para editar: el proceso es 100%
+ * automático (corrección 1.0.1) — nadie escribe títulos. */
 data class EnlacePreparado(
     val vistaPrevia: ResultadoVistaPrevia,
-    val tituloSugerido: String,
+    /**
+     * Resultado oEmbed para esta misma URL (corrección 1.0.1, punto 3),
+     * o null si la URL no es de YouTube, TikTok, Facebook, Instagram,
+     * X, Vimeo ni Dailymotion o si la vista previa ya trajo título
+     * (entonces no hizo falta pedirlo). Se guarda aquí para no
+     * pedirlo dos veces (una al comprobar y otra al guardar).
+     */
+    val oembed: ResultadoOEmbed? = null,
 )
 sealed interface ResultadoCarpeta {
     data class Exito(val id: Long) : ResultadoCarpeta
@@ -76,10 +92,17 @@ enum class TipoErrorCarpeta {
  *   ofreció título (o la descarga falló por cualquier motivo que no
  *   sea URL inválida), el enlace se guarda igual con el host de la
  *   URL como título y sin imagen. Solo `URL_INVALIDA` impide guardar.
- *   (Fix 1: el diálogo comprueba primero la vista previa con
- *   [prepararEnlace] y, si falló, deja que el usuario escriba el
- *   título y la descripción antes de guardar con
- *   [agregarEnlace] con título manual.)
+ *   (Corrección 1.0.1: el título es 100% automático, sin edición
+ *   manual — ver el orden de fuentes en [agregarEnlace].)
+ * - **Título automático, en orden.** El título sale de la primera
+ *   fuente que lo tenga: título oEmbed (YouTube/TikTok) -> título
+ *   de la vista previa (og:title) -> primera línea del texto que
+ *   acompañe al enlace al compartirlo -> texto visible del
+ *   reproductor oEmbed leído en el WebView ([actualizarTextoDesdeWebView])
+ *   -> dominio. Para Facebook el título de la vista previa nunca
+ *   existe (muro de login), así que el orden efectivo es el pedido
+ *   por Javier: oEmbed -> texto compartido -> texto del reproductor
+ *   -> dominio.
  * - **Clasificación solo al agregar y al reclasificar.** Un enlace
  *   nuevo tiene `categoriaManual = false`, así que se clasifica con
  *   [Clasificador.clasificarEnlace] y el nombre resultante se
@@ -103,6 +126,15 @@ class RepositorioEnlaces(
     private val enlaceDao: EnlaceDao,
     private val categoriaDao: CategoriaDao,
     private val servicioVistaPrevia: ServicioVistaPrevia,
+    private val servicioOEmbed: ServicioOEmbed = ServicioOEmbed(),
+    /**
+     * Carpeta donde se guardan las miniaturas locales (corrección
+     * 1.0.1, punto 3): el cuadro capturado del reproductor oEmbed y
+     * las imágenes de vista previa con firma temporal descargadas al
+     * guardar. Null en las pruebas que no la necesitan: sin carpeta
+     * no se guarda nada en local y la tarjeta usa la URL remota.
+     */
+    private val directorioMiniaturas: File? = null,
 ) {
 
     /** Todas las categorías, en el orden de los chips y secciones. */
@@ -154,19 +186,38 @@ class RepositorioEnlaces(
      *
      * Es el primer paso del diálogo de agregar (Fix 1): con el
      * resultado, la UI decide si guarda directamente (vista previa
-     * correcta) o si pide al usuario el título y la descripción
-     * (vista previa fallida: el sitio no dejó leer el enlace). El
-     * título sugerido es el de la vista previa cuando lo hay y el
-     * dominio en caso contrario. La URL inválida se distingue aquí
-     * igual que en [agregarEnlace]: con ella no se guarda nada.
+     * correcta) o guarda igual con el título automático (vista
+     * previa fallida: el sitio no dejó leer el enlace; el título
+     * sale del texto compartido o del dominio). La URL inválida se
+     * distingue aquí igual que en [agregarEnlace]: con ella no se
+     * guarda nada.
+     *
+     * Si la vista previa viene vacía y la URL es de YouTube, TikTok,
+     * Facebook, Instagram, X, Vimeo o Dailymotion, también se pide
+     * el oEmbed (corrección 1.0.1, punto 3): YouTube, Vimeo y
+     * Dailymotion dan título y miniatura, y Facebook, TikTok,
+     * Instagram y X dan el HTML del reproductor para capturar su
+     * cuadro.
      */
     suspend fun prepararEnlace(url: String): EnlacePreparado {
         val urlLimpia = url.trim()
         val resultado = servicioVistaPrevia.obtenerVistaPrevia(urlLimpia)
-        val tituloSugerido = resultado.vistaPrevia.titulo?.trim()
-            .takeUnless { it.isNullOrBlank() }
-            ?: extraerHost(urlLimpia) ?: urlLimpia
-        return EnlacePreparado(resultado, tituloSugerido)
+        val oembed = if (resultado.vistaPrevia.estaVacia) {
+            obtenerOEmbed(urlLimpia)
+        } else {
+            null
+        }
+        return EnlacePreparado(resultado, oembed)
+    }
+
+    /**
+     * Pide el oEmbed de una URL si su proveedor lo tiene (YouTube,
+     * TikTok, Facebook, Instagram, X, Vimeo o Dailymotion); null en
+     * caso contrario, sin tocar la red.
+     */
+    private suspend fun obtenerOEmbed(urlLimpia: String): ResultadoOEmbed? {
+        if (proveedorOEmbedDe(urlLimpia) == null) return null
+        return servicioOEmbed.obtenerVideo(urlLimpia)
     }
 
     /**
@@ -177,36 +228,52 @@ class RepositorioEnlaces(
      *   `URL_INVALIDA`, sin guardar nada.
      * - Cualquier otro fallo de vista previa (sin internet, timeout,
      *   sitio sin vista previa) -> el enlace se guarda igual, con el
-     *   dominio como título y sin imagen.
+     *   título automático (ver la sobrecarga) y sin imagen.
      * - La categoría es la del clasificador (el enlace nuevo no es
      *   manual); si el nombre no se resuelve en la base, "Otros".
      */
     suspend fun agregarEnlace(url: String): ResultadoAgregarEnlace =
-        agregarEnlace(url, tituloManual = null, descripcionManual = null, preparado = null)
+        agregarEnlace(url, textoCompartido = null, preparado = null)
 
     /**
-     * Agrega un enlace con título y descripción escritos por el
-     * usuario y/o con una vista previa ya comprobada (Fix 1).
+     * Agrega un enlace con el texto que acompañaba a la URL al
+     * compartirla y/o con una vista previa ya comprobada
+     * (corrección 1.0.1: proceso 100% automático, sin edición
+     * manual de título ni descripción).
      *
-     * - [tituloManual] / [descripcionManual]: lo que el usuario
-     *   escribió en el diálogo cuando la vista previa falló. Un
-     *   título manual no vacío tiene prioridad sobre el de la vista
-     *   previa (y sobre el dominio); una descripción manual tiene
-     *   prioridad sobre la de la vista previa. Con ambos en null se
-     *   comporta exactamente como [agregarEnlace].
+     * - [textoCompartido]: el texto que venía junto a la URL en el
+     *   intent de compartir (p. ej. el texto de la publicación de
+     *   Facebook) o al pegar. Es una fuente automática de título y
+     *   descripción, nunca algo que el usuario escriba en la app.
      * - [preparado]: el resultado de [prepararEnlace] para esta
      *   misma URL, para no descargar la página dos veces (una al
      *   comprobar y otra al guardar). Con null, la vista previa se
      *   descarga aquí.
-     * - El título y la descripción EFECTIVOS (manuales o de la vista
-     *   previa) son los que alimentan al clasificador: un título
-     *   escrito por el usuario clasifica igual que uno leído del
-     *   sitio.
+     * - El título EFECTIVO sale de la primera fuente que lo tenga:
+     *   título oEmbed (YouTube, Vimeo, Dailymotion) -> título de la
+     *   vista previa (og:title) -> primera línea del texto
+     *   compartido -> dominio. La descripción es la de la vista
+     *   previa o, si no hay, el texto compartido: completo cuando
+     *   no se usó como título, o su resto tras la primera línea
+     *   cuando sí. El título y la descripción efectivos son los
+     *   que alimentan al clasificador. El texto visible del
+     *   reproductor oEmbed llega después, al pintarse la tarjeta,
+     *   por [actualizarTextoDesdeWebView].
+     *
+     * oEmbed (corrección 1.0.1, punto 3): si la vista previa viene
+     * vacía y la URL es de YouTube, TikTok, Facebook, Instagram, X,
+     * Vimeo o Dailymotion, se usa el oEmbed: su título (YouTube,
+     * Vimeo, Dailymotion) tiene prioridad sobre el dominio; su HTML
+     * (Facebook, TikTok, Instagram, X) se guarda en
+     * [Enlace.htmlVideo] para capturar su cuadro en un WebView; su
+     * miniatura (YouTube, Vimeo, Dailymotion) se descarga a local
+     * al guardar. Una imagen de vista previa con firma temporal
+     * también se descarga a local: su URL se rompe a los días y el
+     * archivo local no.
      */
     suspend fun agregarEnlace(
         url: String,
-        tituloManual: String?,
-        descripcionManual: String?,
+        textoCompartido: String?,
         preparado: EnlacePreparado?,
     ): ResultadoAgregarEnlace {
         val urlLimpia = url.trim()
@@ -219,11 +286,26 @@ class RepositorioEnlaces(
                 return ResultadoAgregarEnlace.Error(TipoErrorAgregarEnlace.URL_INVALIDA)
             }
             val vistaPrevia = resultadoVistaPrevia.vistaPrevia
+            val oembed = if (vistaPrevia.estaVacia) {
+                preparado?.oembed ?: obtenerOEmbed(urlLimpia)
+            } else {
+                null
+            }
+            val oembedExito = oembed as? ResultadoOEmbed.Exito
             val host = extraerHost(urlLimpia) ?: urlLimpia
-            val titulo = tituloManual?.trim().takeUnless { it.isNullOrBlank() }
-                ?: vistaPrevia.titulo?.trim().takeUnless { it.isNullOrBlank() } ?: host
-            val descripcion = descripcionManual?.trim()
-                ?: vistaPrevia.descripcion?.trim().orEmpty()
+            val tituloCompartido = primeraLinea(textoCompartido)
+            val titulo = oembedExito?.titulo?.trim().takeUnless { it.isNullOrBlank() }
+                ?: vistaPrevia.titulo?.trim().takeUnless { it.isNullOrBlank() }
+                ?: tituloCompartido
+                ?: host
+            val tituloEsTextoCompartido = titulo == tituloCompartido
+            val descripcion = vistaPrevia.descripcion?.trim().takeUnless { it.isNullOrBlank() }
+                ?: if (tituloEsTextoCompartido) {
+                    restoTrasPrimeraLinea(textoCompartido)
+                } else {
+                    textoCompartido?.trim().takeUnless { it.isNullOrBlank() }
+                }
+                ?: ""
             val enlaceSinCategoria = Enlace(
                 url = urlLimpia,
                 titulo = titulo,
@@ -231,14 +313,135 @@ class RepositorioEnlaces(
                 urlImagen = vistaPrevia.urlImagen,
                 categoriaId = null,
                 categoriaManual = false,
+                htmlVideo = oembedExito?.html,
             )
             val nombreCategoria = Clasificador.clasificarEnlace(enlaceSinCategoria)
             val categoriaId = nombreCategoria?.let { categoriaDao.obtenerPorNombre(it)?.id }
                 ?: categoriaDao.obtenerPorNombre(Clasificador.OTROS)?.id
             val id = enlaceDao.insertar(enlaceSinCategoria.copy(categoriaId = categoriaId))
+            // Miniatura local: la del oEmbed (YouTube) siempre, y la
+            // de la vista previa solo si su URL lleva firma temporal.
+            val imagenADescargar = oembedExito?.urlMiniatura
+                ?: vistaPrevia.urlImagen?.takeIf { esUrlImagenFirmada(it) }
+            if (imagenADescargar != null) {
+                val ruta = descargarImagenLocal(id, imagenADescargar)
+                if (ruta != null) {
+                    enlaceDao.actualizar(
+                        enlaceSinCategoria.copy(id = id, categoriaId = categoriaId, imagenLocal = ruta),
+                    )
+                }
+            }
             ResultadoAgregarEnlace.Exito(id)
         } catch (_: Exception) {
             ResultadoAgregarEnlace.Error(TipoErrorAgregarEnlace.ERROR_AL_GUARDAR)
+        }
+    }
+
+    /**
+     * Guarda el cuadro capturado del reproductor oEmbed como
+     * miniatura local del enlace (corrección 1.0.1, punto 3): el
+     * WebView de la tarjeta captura el cuadro y lo entrega aquí
+     * como bitmap; se guarda como PNG en [directorioMiniaturas] y
+     * la ruta queda en [Enlace.imagenLocal], que la tarjeta
+     * prefiere a la URL remota. Devuelve false si el enlace no
+     * existe o si no se pudo guardar el archivo (sin carpeta
+     * configurada, por ejemplo).
+     */
+    suspend fun guardarMiniaturaVideo(enlaceId: Long, bitmap: Bitmap): Boolean {
+        val enlace = enlaceDao.obtenerPorId(enlaceId) ?: return false
+        val ruta = withContext(Dispatchers.IO) {
+            guardarBytesLocal(enlaceId, bitmapABytes(bitmap), "png")
+        } ?: return false
+        enlaceDao.actualizar(enlace.copy(imagenLocal = ruta))
+        return true
+    }
+
+    /** El bitmap como bytes PNG, o null si no se pudo comprimir. */
+    private fun bitmapABytes(bitmap: Bitmap): ByteArray? {
+        val salida = java.io.ByteArrayOutputStream()
+        return if (bitmap.compress(Bitmap.CompressFormat.PNG, 100, salida)) {
+            salida.toByteArray()
+        } else {
+            null
+        }
+    }
+
+    /**
+     * Enriquece un enlace con el texto visible de su reproductor
+     * oEmbed (corrección 1.0.1, punto 3, fuente automática 3): la
+     * tarjeta lee el texto del reproductor en el WebView (autor y
+     * texto de la publicación) y lo entrega aquí.
+     *
+     * Solo rellena lo que falta: el título solo cambia si aún es el
+     * dominio (último recurso al guardar) y la descripción solo si
+     * está vacía. Un título que ya vino de oEmbed, de la vista
+     * previa o del texto compartido nunca se sobrescribe. Si el
+     * título o la descripción cambian y la categoría no es manual,
+     * se vuelve a clasificar con el texto nuevo (así un vídeo de
+     * Facebook guardado como dominio puede pasar a "Tecnología y
+     * celulares" cuando el reproductor muestra su texto). Devuelve
+     * false si el enlace no existe, si el texto está vacío o si no
+     * había nada que rellenar.
+     */
+    suspend fun actualizarTextoDesdeWebView(enlaceId: Long, texto: String): Boolean {
+        val enlace = enlaceDao.obtenerPorId(enlaceId) ?: return false
+        val textoLimpio = texto.trim().take(500)
+        if (textoLimpio.isBlank()) return false
+        val host = extraerHost(enlace.url)
+        val tituloNuevo = if (host != null && enlace.titulo == host) {
+            primeraLinea(textoLimpio) ?: enlace.titulo
+        } else {
+            enlace.titulo
+        }
+        val descripcionNueva = if (enlace.descripcion.isBlank()) {
+            textoLimpio
+        } else {
+            enlace.descripcion
+        }
+        if (tituloNuevo == enlace.titulo && descripcionNueva == enlace.descripcion) {
+            return false
+        }
+        val actualizado = enlace.copy(titulo = tituloNuevo, descripcion = descripcionNueva)
+        val categoriaId = if (!enlace.categoriaManual) {
+            val nombre = Clasificador.clasificarEnlace(actualizado)
+            nombre?.let { categoriaDao.obtenerPorNombre(it)?.id }
+                ?: categoriaDao.obtenerPorNombre(Clasificador.OTROS)?.id
+        } else {
+            enlace.categoriaId
+        }
+        enlaceDao.actualizar(actualizado.copy(categoriaId = categoriaId))
+        return true
+    }
+
+    /**
+     * Descarga la imagen de [urlImagen] y la guarda en local como
+     * miniatura del enlace [enlaceId]. Devuelve la ruta del archivo
+     * o null si no se pudo descargar o guardar (sin carpeta, sin
+     * red, respuesta vacía): en ese caso la tarjeta usa la URL
+     * remota como antes.
+     */
+    private suspend fun descargarImagenLocal(enlaceId: Long, urlImagen: String): String? {
+        val bytes = servicioVistaPrevia.descargarBytes(urlImagen) ?: return null
+        return withContext(Dispatchers.IO) {
+            guardarBytesLocal(enlaceId, bytes, "jpg")
+        }
+    }
+
+    /**
+     * Escribe [bytes] como `miniatura-<enlaceId>.<extension>` en
+     * [directorioMiniaturas] y devuelve su ruta absoluta, o null si
+     * no hay carpeta configurada o la escritura falla.
+     */
+    private fun guardarBytesLocal(enlaceId: Long, bytes: ByteArray?, extension: String): String? {
+        val carpeta = directorioMiniaturas ?: return null
+        if (bytes == null) return null
+        return try {
+            if (!carpeta.exists()) carpeta.mkdirs()
+            val archivo = File(carpeta, "miniatura-$enlaceId.$extension")
+            FileOutputStream(archivo).use { it.write(bytes) }
+            archivo.absolutePath
+        } catch (_: Exception) {
+            null
         }
     }
 

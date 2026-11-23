@@ -3,8 +3,10 @@ package com.coleccionenlaces.app.di
 import android.content.Context
 import com.coleccionenlaces.app.data.AppDatabase
 import com.coleccionenlaces.app.data.RepositorioEnlaces
+import com.coleccionenlaces.app.data.ServicioOEmbed
 import com.coleccionenlaces.app.data.ServicioVistaPrevia
 import com.coleccionenlaces.app.ui.home.HomeViewModelFactory
+import java.io.File
 
 /**
  * Inyección de dependencias MANUAL (Fase 5, sección 5 del plan).
@@ -31,12 +33,21 @@ class AppContainer(context: Context) {
         ServicioVistaPrevia()
     }
 
+    /** Servicio oEmbed sin token (YouTube, TikTok y Facebook). */
+    val servicioOEmbed: ServicioOEmbed by lazy {
+        ServicioOEmbed()
+    }
+
     /** Única fuente de datos de la app. */
     val repositorio: RepositorioEnlaces by lazy {
         RepositorioEnlaces(
             enlaceDao = baseDatos.enlaceDao(),
             categoriaDao = baseDatos.categoriaDao(),
             servicioVistaPrevia = servicioVistaPrevia,
+            servicioOEmbed = servicioOEmbed,
+            // Miniaturas locales en el almacenamiento interno de la
+            // app (corrección 1.0.1, punto 3): nada sale del teléfono.
+            directorioMiniaturas = File(contextoApp.filesDir, "miniaturas"),
         )
     }
 

@@ -20,7 +20,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,35 +32,35 @@ import androidx.compose.ui.text.input.KeyboardType
 import com.coleccionenlaces.app.R
 import com.coleccionenlaces.app.data.TipoErrorAgregarEnlace
 import com.coleccionenlaces.app.ui.theme.Espaciado
-import com.coleccionenlaces.app.util.esEnlaceFacebook
 import com.coleccionenlaces.app.util.esUrlValida
+import com.coleccionenlaces.app.util.extraerTextoAcompanante
 import com.coleccionenlaces.app.util.extraerUrl
 
 /**
- * Diálogo de agregar enlace (Fase 7, sección 6 del plan; Fix 1:
- * vista previa en dos pasos con título y descripción editables).
+ * Diálogo de agregar enlace (Fase 7, sección 6 del plan).
  *
  * - Campo de texto para pegar la URL, con botón de pegar desde el
  *   portapapeles: si el portapapeles trae un texto con una URL dentro
- *   (p. ej. lo que comparte YouTube), se pega solo la URL extraída.
+ *   (p. ej. lo que comparte YouTube o Facebook), se pega solo la URL
+ *   extraída y el texto que la acompañaba se guarda aparte como
+ *   fuente automática de título/descripción.
  * - Validación de URL en tiempo real: con el campo vacío o una URL
  *   inválida, el botón Guardar está desactivado y se muestra el error
  *   en el campo.
  * - Al pulsar Guardar se comprueba primero la vista previa
  *   ([onComprobar]): mientras se descarga, barra de progreso, campo
- *   y botones desactivados y cierre bloqueado.
- * - Vista previa correcta: el enlace se guarda directamente y el
- *   diálogo se cierra solo (lo hace el ViewModel).
- * - Vista previa fallida ([sinVistaPrevia]): el diálogo NO se cierra
- *   ni guarda todavía. Muestra el aviso "Sin vista previa" (para un
- *   enlace de Facebook, el aviso lo dice claro: Facebook no deja
- *   leer la vista previa) y deja EDITAR el título (prellenado con
- *   [tituloSugerido]: el de la vista previa o el dominio) y la
- *   descripción antes de guardar con [onGuardarEditado]. El título y
- *   la descripción editados alimentan al clasificador igual que los
- *   de la vista previa. Si el usuario cambia la URL tras el fallo,
- *   la edición se descarta ([onUrlCambiada]) y hay que comprobar de
- *   nuevo.
+ *   y botones desactivados y cierre bloqueado. El enlace se guarda
+ *   SIEMPRE (aunque la vista previa falle: Facebook no deja leer
+ *   sus enlaces) con el título 100% automático — oEmbed, título de
+ *   la vista previa, texto que acompañaba al enlace, texto visible
+ *   del reproductor o dominio — y la tarjeta muestra "Sin vista
+ *   previa" si no hubo vista previa.
+ *
+ * Corrección 1.0.1: NO hay título ni descripción editables. El
+ * proceso es 100% automático: nadie escribe títulos en este
+ * diálogo, por orden de Javier (la edición manual del Fix 1 quedó
+ * eliminada del alcance).
+ *
  * - Si la URL resulta inválida al guardar, el error se muestra dentro
  *   del diálogo y NO se cierra (lo trae [error] del ViewModel).
  * - Al guardar con éxito, el ViewModel cierra el diálogo solo: este
@@ -69,53 +68,34 @@ import com.coleccionenlaces.app.util.extraerUrl
  *   limpian solos porque el diálogo deja de componerse.
  *
  * Sin lógica de negocio aquí: la validación es la función pura
- * [esUrlValida], la detección de Facebook es [esEnlaceFacebook] y el
- * guardado es [HomeViewModel.comprobarVistaPrevia] /
- * [HomeViewModel.guardarEnlaceEditado].
+ * [esUrlValida], la extracción de URL y texto acompañante son
+ * [extraerUrl] y [extraerTextoAcompanante], y el guardado es
+ * [HomeViewModel.comprobarVistaPrevia].
  */
 @Composable
 fun DialogoAgregarEnlace(
     urlInicial: String?,
+    textoCompartidoInicial: String?,
     guardando: Boolean,
     comprobando: Boolean,
-    sinVistaPrevia: Boolean,
-    tituloSugerido: String?,
     error: TipoErrorAgregarEnlace?,
-    onComprobar: (String) -> Unit,
-    onGuardarEditado: (String, String, String) -> Unit,
-    onUrlCambiada: () -> Unit,
+    onComprobar: (String, String?) -> Unit,
     onCerrar: () -> Unit,
     onLimpiarError: () -> Unit,
 ) {
     var url by remember(urlInicial) { mutableStateOf(urlInicial ?: "") }
-    var titulo by remember { mutableStateOf("") }
-    var descripcion by remember { mutableStateOf("") }
-    // Al aparecer la edición, el título se prellena con el sugerido
-    // (el de la vista previa o el dominio) y la descripción vacía.
-    LaunchedEffect(sinVistaPrevia) {
-        if (sinVistaPrevia) {
-            titulo = tituloSugerido ?: ""
-            descripcion = ""
-        }
+    var textoCompartido by remember(textoCompartidoInicial) {
+        mutableStateOf(textoCompartidoInicial)
     }
     val portapapeles = LocalClipboardManager.current
     val urlLimpia = url.trim()
     val esValida = esUrlValida(urlLimpia)
     val ocupado = guardando || comprobando
-    val tituloLimpio = titulo.trim()
     val guardar: () -> Unit = {
         if (esValida && !ocupado) {
-            if (sinVistaPrevia) {
-                if (tituloLimpio.isNotEmpty()) {
-                    onGuardarEditado(urlLimpia, tituloLimpio, descripcion.trim())
-                }
-            } else {
-                onComprobar(urlLimpia)
-            }
+            onComprobar(urlLimpia, textoCompartido)
         }
     }
-    val guardarHabilitado = esValida && !ocupado &&
-        (!sinVistaPrevia || tituloLimpio.isNotEmpty())
 
     AlertDialog(
         onDismissRequest = { if (!ocupado) onCerrar() },
@@ -125,7 +105,6 @@ fun DialogoAgregarEnlace(
                 OutlinedTextField(
                     value = url,
                     onValueChange = { nuevo ->
-                        if (sinVistaPrevia) onUrlCambiada()
                         url = nuevo
                         if (error != null) onLimpiarError()
                     },
@@ -135,8 +114,8 @@ fun DialogoAgregarEnlace(
                         if (url.isNotEmpty()) {
                             IconButton(
                                 onClick = {
-                                    if (sinVistaPrevia) onUrlCambiada()
                                     url = ""
+                                    textoCompartido = null
                                     if (error != null) onLimpiarError()
                                 },
                                 enabled = !ocupado,
@@ -151,7 +130,10 @@ fun DialogoAgregarEnlace(
                                 onClick = {
                                     val pegado = portapapeles.getText()?.text
                                     if (!pegado.isNullOrBlank()) {
-                                        url = extraerUrl(pegado) ?: pegado
+                                        val urlPegada = extraerUrl(pegado)
+                                        url = urlPegada ?: pegado
+                                        textoCompartido =
+                                            extraerTextoAcompanante(pegado, urlPegada)
                                     }
                                 },
                                 enabled = !ocupado,
@@ -168,7 +150,7 @@ fun DialogoAgregarEnlace(
                             urlLimpia.isNotEmpty() && !esValida -> {
                                 Text(stringResource(R.string.add_dialog_url_invalid))
                             }
-                            esValida && !sinVistaPrevia -> {
+                            esValida -> {
                                 Text(stringResource(R.string.add_dialog_url_hint))
                             }
                         }
@@ -183,53 +165,6 @@ fun DialogoAgregarEnlace(
                     keyboardActions = KeyboardActions(onDone = { guardar() }),
                     modifier = Modifier.fillMaxWidth(),
                 )
-                if (sinVistaPrevia) {
-                    Spacer(modifier = Modifier.height(Espaciado.m))
-                    Text(
-                        text = stringResource(R.string.add_dialog_no_preview_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Spacer(modifier = Modifier.height(Espaciado.xs))
-                    Text(
-                        text = stringResource(
-                            if (esEnlaceFacebook(urlLimpia)) {
-                                R.string.add_dialog_no_preview_facebook_body
-                            } else {
-                                R.string.add_dialog_no_preview_body
-                            },
-                        ),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(modifier = Modifier.height(Espaciado.m))
-                    OutlinedTextField(
-                        value = titulo,
-                        onValueChange = { titulo = it },
-                        label = { Text(stringResource(R.string.add_dialog_title_label)) },
-                        enabled = !ocupado,
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Text,
-                            imeAction = ImeAction.Next,
-                        ),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(modifier = Modifier.height(Espaciado.s))
-                    OutlinedTextField(
-                        value = descripcion,
-                        onValueChange = { descripcion = it },
-                        label = { Text(stringResource(R.string.add_dialog_description_label)) },
-                        enabled = !ocupado,
-                        maxLines = 3,
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Text,
-                            imeAction = ImeAction.Done,
-                        ),
-                        keyboardActions = KeyboardActions(onDone = { guardar() }),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
                 if (error != null) {
                     Spacer(modifier = Modifier.height(Espaciado.s))
                     Text(
@@ -264,7 +199,7 @@ fun DialogoAgregarEnlace(
             }
         },
         confirmButton = {
-            Button(onClick = guardar, enabled = guardarHabilitado) {
+            Button(onClick = guardar, enabled = esValida && !ocupado) {
                 Text(stringResource(R.string.add_dialog_save))
             }
         },

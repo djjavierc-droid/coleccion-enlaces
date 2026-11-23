@@ -3,6 +3,7 @@
     <string name="app_name">Colección</string>
     <string name="home_title">Colección</string>
     <string name="home_menu_open">Abrir el menú de categorías</string>
+    <string name="home_menu_categories">Categorías</string>
     <string name="home_subtitle">Tu colección de enlaces, organizada.</string>
     <string name="home_search_hint">Buscar enlaces…</string>
     <string name="home_search_clear">Limpiar búsqueda</string>
@@ -14,6 +15,7 @@
     <string name="home_total_many">%1$d enlaces</string>
     <string name="home_favorite_add">Marcar como favorito</string>
     <string name="home_favorite_remove">Quitar de favoritos</string>
+    <string name="card_no_preview">Sin vista previa</string>
     <string name="home_empty_title">Tu colección está vacía</string>
     <string name="home_empty_body">Pega tu primer enlace con el botón de abajo y aparecerá aquí con su vista previa.</string>
     <string name="home_no_results_title">Sin resultados</string>
@@ -27,11 +29,6 @@
     <string name="add_dialog_url_hint">Al guardar se obtendrá la vista previa del enlace: su título, su descripción y su imagen.</string>
     <string name="add_dialog_loading">Obteniendo la vista previa…</string>
     <string name="add_dialog_saving">Guardando enlace…</string>
-    <string name="add_dialog_no_preview_title">Sin vista previa</string>
-    <string name="add_dialog_no_preview_body">Este sitio no permitió leer el enlace, así que no se pudo obtener su título ni su descripción. Escríbelos tú: se usarán para organizar el enlace en tu colección.</string>
-    <string name="add_dialog_no_preview_facebook_body">Facebook no deja leer la vista previa de sus enlaces. Escribe el título y la descripción tú: se usarán para organizar el enlace en tu colección.</string>
-    <string name="add_dialog_title_label">Título</string>
-    <string name="add_dialog_description_label">Descripción (opcional)</string>
     <string name="add_dialog_cancel">Cancelar</string>
     <string name="add_dialog_save">Guardar</string>
     <string name="add_dialog_error_invalid">Esa URL no es válida. Revisa que empiece por http:// o https://.</string>

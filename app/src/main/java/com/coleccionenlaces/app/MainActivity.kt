@@ -18,6 +18,7 @@ import com.coleccionenlaces.app.ui.home.HomeScreen
 import com.coleccionenlaces.app.ui.home.HomeViewModel
 import com.coleccionenlaces.app.ui.theme.ColeccionTheme
 import com.coleccionenlaces.app.ui.theme.PreferenciasTema
+import com.coleccionenlaces.app.util.extraerTextoAcompanante
 import com.coleccionenlaces.app.util.extraerUrl
 
 /**
@@ -88,13 +89,18 @@ class MainActivity : FragmentActivity() {
      * MISMO diálogo de agregar prellenado con ella, para que el
      * usuario la vea y la confirme con Guardar. Si el texto no trae
      * ninguna URL, no se hace nada.
+     *
+     * Corrección 1.0.1: el texto que acompaña a la URL (p. ej. el
+     * texto de la publicación de Facebook) se extrae con
+     * [extraerTextoAcompanante] y viaja al diálogo como fuente
+     * automática de título/descripción: nadie escribe títulos.
      */
     private fun manejarIntentCompartir(intent: Intent?) {
         if (intent?.action != Intent.ACTION_SEND) return
         if (intent.type != "text/plain") return
         val texto = intent.getStringExtra(Intent.EXTRA_TEXT) ?: return
         val url = extraerUrl(texto) ?: return
-        homeViewModel.abrirDialogoAgregar(url)
+        homeViewModel.abrirDialogoAgregar(url, extraerTextoAcompanante(texto, url))
     }
 }
 

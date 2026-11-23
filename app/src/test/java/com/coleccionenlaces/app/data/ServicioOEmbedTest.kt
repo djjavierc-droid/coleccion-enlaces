@@ -10,6 +10,7 @@ import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.IOException
@@ -36,6 +37,22 @@ class ServicioOEmbedTest {
 
     private val jsonError100 = """
         {"error":{"message":"(#100) Invalid parameter","type":"OAuthException","code":100}}
+    """.trimIndent()
+
+    private val jsonInstagram = """
+        {"version":"1.0","provider_name":"Instagram","provider_url":"https://www.instagram.com/","type":"rich","width":658,"html":"<blockquote class=\"instagram-media\" data-instgrm-permalink=\"https://www.instagram.com/reel/Df2uUvyt_S4/\"></blockquote><script async src=\"//www.instagram.com/embed.js\"></script>"}
+    """.trimIndent()
+
+    private val jsonX = """
+        {"url":"https://x.com/Interior/status/507185938620219395","author_name":"U.S. Department of the Interior","html":"<blockquote class=\"twitter-tweet\"><p>Happy 50th anniversary to the Wilderness Act!</p></blockquote><script async src=\"https://platform.x.com/widgets.js\" charset=\"utf-8\"></script>","width":550,"height":null,"type":"rich","provider_name":"X","provider_url":"https://x.com","version":"1.0"}
+    """.trimIndent()
+
+    private val jsonVimeo = """
+        {"type":"video","version":"1.0","provider_name":"Vimeo","title":"The New Vimeo Player (You Know, For Videos)","html":"<iframe src=\"https://player.vimeo.com/video/76979871\"></iframe>","width":480,"height":270,"thumbnail_url":"https://i.vimeocdn.com/video/452001751-d_295x166?region=us"}
+    """.trimIndent()
+
+    private val jsonDailymotion = """
+        {"type":"video","version":"1.0","provider_name":"Dailymotion","title":"Así se vivió el Home Run Derby X en la CDMX","html":"<iframe src=\"https://www.dailymotion.com/embed/video/x8ek5sr\"></iframe>","width":480,"height":270,"thumbnail_url":"https://s1.dmcdn.net/v/UIaXR1g4gkw6X7Bnf/x720"}
     """.trimIndent()
 
     /**
@@ -157,6 +174,87 @@ class ServicioOEmbedTest {
         val html = (resultado as ResultadoOEmbed.Exito).html
         assertTrue(html.contains("autoplay=0"))
         assertFalse(html.contains("autoplay=1"))
+    }
+
+    @Test
+    fun `obtenerVideo de Instagram devuelve el html del incrustado sin titulo ni miniatura`() =
+        runBlocking {
+            val pedidas = mutableListOf<String>()
+            val servicio = ServicioOEmbed(
+                clienteFalso(
+                    mapOf("https://graph.facebook.com/v27.0/instagram_oembed" to (200 to jsonInstagram)),
+                    pedidas,
+                ),
+            )
+
+            val resultado = servicio.obtenerVideo("https://www.instagram.com/reel/Df2uUvyt_S4/")
+
+            assertTrue(resultado is ResultadoOEmbed.Exito)
+            val exito = resultado as ResultadoOEmbed.Exito
+            assertTrue(exito.html.contains("instagram-media"))
+            assertTrue(exito.html.contains("embed.js"))
+            assertNull(exito.titulo)
+            assertNull(exito.urlMiniatura)
+            assertEquals(1, pedidas.size)
+            assertFalse(pedidas[0].contains("token"))
+        }
+
+    @Test
+    fun `obtenerVideo de X devuelve el html del tuit sin titulo ni miniatura`() = runBlocking {
+        val servicio = ServicioOEmbed(
+            clienteFalso(
+                mapOf("https://publish.twitter.com/oembed" to (200 to jsonX)),
+            ),
+        )
+
+        val resultado = servicio.obtenerVideo("https://x.com/Interior/status/507185938620219395")
+
+        assertTrue(resultado is ResultadoOEmbed.Exito)
+        val exito = resultado as ResultadoOEmbed.Exito
+        assertTrue(exito.html.contains("twitter-tweet"))
+        assertTrue(exito.html.contains("platform.x.com/widgets.js"))
+        assertNull(exito.titulo)
+        assertNull(exito.urlMiniatura)
+    }
+
+    @Test
+    fun `obtenerVideo de Vimeo devuelve titulo miniatura y html`() = runBlocking {
+        val servicio = ServicioOEmbed(
+            clienteFalso(
+                mapOf("https://vimeo.com/api/oembed.json" to (200 to jsonVimeo)),
+            ),
+        )
+
+        val resultado = servicio.obtenerVideo("https://vimeo.com/76979871")
+
+        assertTrue(resultado is ResultadoOEmbed.Exito)
+        val exito = resultado as ResultadoOEmbed.Exito
+        assertEquals("The New Vimeo Player (You Know, For Videos)", exito.titulo)
+        assertEquals(
+            "https://i.vimeocdn.com/video/452001751-d_295x166?region=us",
+            exito.urlMiniatura,
+        )
+        assertTrue(exito.html.contains("player.vimeo.com/video/76979871"))
+    }
+
+    @Test
+    fun `obtenerVideo de Dailymotion devuelve titulo miniatura y html`() = runBlocking {
+        val servicio = ServicioOEmbed(
+            clienteFalso(
+                mapOf("https://www.dailymotion.com/services/oembed" to (200 to jsonDailymotion)),
+            ),
+        )
+
+        val resultado = servicio.obtenerVideo("https://www.dailymotion.com/video/x8ek5sr")
+
+        assertTrue(resultado is ResultadoOEmbed.Exito)
+        val exito = resultado as ResultadoOEmbed.Exito
+        assertEquals("Así se vivió el Home Run Derby X en la CDMX", exito.titulo)
+        assertEquals(
+            "https://s1.dmcdn.net/v/UIaXR1g4gkw6X7Bnf/x720",
+            exito.urlMiniatura,
+        )
+        assertTrue(exito.html.contains("dailymotion.com/embed/video/x8ek5sr"))
     }
 
     @Test

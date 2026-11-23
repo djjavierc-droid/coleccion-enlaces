@@ -1,5 +1,6 @@
 package com.coleccionenlaces.app.ui.home
 
+import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -47,19 +48,20 @@ data class SeccionEnlaces(
  *   los cambios llegan solos por el Flow de Room.
  * - [guardandoEnlace] / [errorAgregar]: estado transitorio de
  *   [HomeViewModel.agregarEnlace] (lo usa el diálogo de la Fase 7).
- * - [comprobandoVistaPrevia] / [sinVistaPrevia] / [tituloSugerido]:
- *   el diálogo comprueba primero la vista previa (Fix 1): mientras
- *   la descarga, [comprobandoVistaPrevia] es true; si el sitio no
- *   dejó leer el enlace, [sinVistaPrevia] es true y el diálogo
- *   muestra el aviso y deja editar el título (prellenado con
- *   [tituloSugerido]: el de la vista previa o el dominio) y la
- *   descripción antes de guardar. La URL inválida no abre la
- *   edición: pone [errorAgregar] como antes.
- * - [mostrarDialogoAgregar] / [urlInicialDialogo]: el diálogo de
- *   agregar (Fase 7). El botón flotante lo abre vacío; un enlace
- *   compartido (ACTION_SEND) lo abre prellenado con la URL extraída.
- *   Al guardar con éxito el ViewModel lo cierra solo; con error se
- *   queda abierto para que la UI muestre el error dentro del diálogo.
+ * - [comprobandoVistaPrevia]: el diálogo comprueba primero la vista
+ *   previa (Fix 1): mientras la descarga, es true. Si el sitio no
+ *   dejó leer el enlace, el enlace se guarda igual con el título
+ *   automático (corrección 1.0.1: nadie escribe títulos) y la
+ *   tarjeta muestra "Sin vista previa". La URL inválida pone
+ *   [errorAgregar] como antes.
+ * - [mostrarDialogoAgregar] / [urlInicialDialogo] /
+ *   [textoCompartidoDialogo]: el diálogo de agregar (Fase 7). El
+ *   botón flotante lo abre vacío; un enlace compartido (ACTION_SEND)
+ *   lo abre prellenado con la URL extraída y con el texto que la
+ *   acompañaba ([textoCompartidoDialogo]), que es una fuente
+ *   automática de título/descripción. Al guardar con éxito el
+ *   ViewModel lo cierra solo; con error se queda abierto para que la
+ *   UI muestre el error dentro del diálogo.
  * - [categoriasDesbloqueadas]: ids de las carpetas desbloqueadas con
  *   huella en esta sesión (Fase 9). [enlaces] ya viene filtrado: solo
  *   trae enlaces de esas categorías, así que la búsqueda y los
@@ -85,10 +87,9 @@ data class HomeUiState(
     val guardandoEnlace: Boolean = false,
     val errorAgregar: TipoErrorAgregarEnlace? = null,
     val comprobandoVistaPrevia: Boolean = false,
-    val sinVistaPrevia: Boolean = false,
-    val tituloSugerido: String? = null,
     val mostrarDialogoAgregar: Boolean = false,
     val urlInicialDialogo: String? = null,
+    val textoCompartidoDialogo: String? = null,
     val categoriasDesbloqueadas: Set<Long> = emptySet(),
     val mostrarDialogoCarpeta: Boolean = false,
     val carpetaEnEdicion: Categoria? = null,
@@ -152,10 +153,9 @@ private data class ControlesUi(
     val guardandoEnlace: Boolean = false,
     val errorAgregar: TipoErrorAgregarEnlace? = null,
     val comprobandoVistaPrevia: Boolean = false,
-    val sinVistaPrevia: Boolean = false,
-    val tituloSugerido: String? = null,
     val mostrarDialogoAgregar: Boolean = false,
     val urlInicialDialogo: String? = null,
+    val textoCompartidoDialogo: String? = null,
     val mostrarDialogoCarpeta: Boolean = false,
     val carpetaEnEdicion: Categoria? = null,
     val errorCarpeta: TipoErrorCarpeta? = null,
@@ -216,10 +216,9 @@ class HomeViewModel(
                 guardandoEnlace = c.guardandoEnlace,
                 errorAgregar = c.errorAgregar,
                 comprobandoVistaPrevia = c.comprobandoVistaPrevia,
-                sinVistaPrevia = c.sinVistaPrevia,
-                tituloSugerido = c.tituloSugerido,
                 mostrarDialogoAgregar = c.mostrarDialogoAgregar,
                 urlInicialDialogo = c.urlInicialDialogo,
+                textoCompartidoDialogo = c.textoCompartidoDialogo,
                 mostrarDialogoCarpeta = c.mostrarDialogoCarpeta,
                 carpetaEnEdicion = c.carpetaEnEdicion,
                 errorCarpeta = c.errorCarpeta,
@@ -264,123 +263,87 @@ class HomeViewModel(
      * previa, [HomeUiState.guardandoEnlace] es true; si la URL es
      * inválida, [HomeUiState.errorAgregar] lleva el tipo de error
      * (la UI lo muestra y lo limpia con [limpiarErrorAgregar]).
-     * Un fallo de vista previa NO es error: el enlace se guarda igual.
+     * Un fallo de vista previa NO es error: el enlace se guarda igual
+     * con el título automático.
      *
      * Al guardar con éxito, el diálogo se cierra solo (y se limpia su
      * URL inicial): la tarjeta nueva aparece por el Flow. Con error,
      * el diálogo se queda abierto para mostrar el error dentro de él.
      *
      * El diálogo de la Fase 7 ya no llama aquí directamente: primero
-     * llama a [comprobarVistaPrevia] y solo guarda por aquí cuando la
-     * vista previa es correcta (o con [guardarEnlaceEditado] cuando
-     * falló y el usuario escribió el título). Esta función se
-     * conserva como guardado directo (la usan las pruebas).
+     * llama a [comprobarVistaPrevia], que prepara la vista previa y
+     * el oEmbed una sola vez. Esta función se conserva como guardado
+     * directo (la usan las pruebas).
      */
     fun agregarEnlace(url: String) {
         viewModelScope.launch {
-            guardar(url, tituloManual = null, descripcionManual = null, preparado = null)
+            guardar(url, textoCompartido = null, preparado = null)
         }
     }
 
     /**
-     * Comprueba la vista previa de una URL sin guardar nada (Fix 1,
-     * primer paso del diálogo de agregar).
+     * Comprueba la vista previa de una URL sin guardar nada todavía
+     * (corrección 1.0.1, primer paso del diálogo de agregar) y
+     * guarda el enlace con el título 100% automático: nadie escribe
+     * títulos.
      *
      * - Vista previa correcta -> guarda directamente con lo ya
      *   descargado (una sola descarga) y el diálogo se cierra solo.
      * - Vista previa fallida (sin internet, timeout, sitio sin vista
-     *   previa, muro de login de Facebook...) -> NO guarda todavía:
-     *   pone [HomeUiState.sinVistaPrevia] en true con el título
-     *   sugerido (el dominio) para que el diálogo muestre el aviso y
-     *   deje editar el título y la descripción; el guardado lo hace
-     *   después [guardarEnlaceEditado].
+     *   previa, muro de login de Facebook...) -> guarda IGUAL con
+     *   el título automático (oEmbed, texto compartido o dominio) y
+     *   la tarjeta muestra "Sin vista previa". No se le pide nada al
+     *   usuario.
      * - URL inválida -> [HomeUiState.errorAgregar] con URL_INVALIDA
-     *   y no se abre la edición (igual que antes: no se guarda nada).
+     *   y no se guarda nada.
+     *
+     * [textoCompartido] es el texto que acompañaba a la URL al
+     * compartirla (o al pegarla): fuente automática de título y
+     * descripción.
      */
-    fun comprobarVistaPrevia(url: String) {
+    fun comprobarVistaPrevia(url: String, textoCompartido: String? = null) {
         viewModelScope.launch {
             controles.update { it.copy(comprobandoVistaPrevia = true, errorAgregar = null) }
             val comprobado = repositorio.prepararEnlace(url)
             preparado = comprobado
-            when (val resultado = comprobado.vistaPrevia) {
-                is ResultadoVistaPrevia.Exito -> guardar(
-                    url,
-                    tituloManual = null,
-                    descripcionManual = null,
-                    preparado = comprobado,
-                )
-                is ResultadoVistaPrevia.Error -> when (resultado.tipo) {
-                    TipoErrorVistaPrevia.URL_INVALIDA -> {
-                        preparado = null
-                        controles.update {
-                            it.copy(
-                                comprobandoVistaPrevia = false,
-                                errorAgregar = TipoErrorAgregarEnlace.URL_INVALIDA,
-                            )
-                        }
-                    }
-                    else -> controles.update {
-                        it.copy(
-                            comprobandoVistaPrevia = false,
-                            sinVistaPrevia = true,
-                            tituloSugerido = comprobado.tituloSugerido,
-                        )
-                    }
+            if (comprobado.vistaPrevia is ResultadoVistaPrevia.Error &&
+                (comprobado.vistaPrevia as ResultadoVistaPrevia.Error).tipo ==
+                    TipoErrorVistaPrevia.URL_INVALIDA
+            ) {
+                preparado = null
+                controles.update {
+                    it.copy(
+                        comprobandoVistaPrevia = false,
+                        errorAgregar = TipoErrorAgregarEnlace.URL_INVALIDA,
+                    )
                 }
+            } else {
+                guardar(url, textoCompartido = textoCompartido, preparado = comprobado)
             }
         }
     }
 
     /**
-     * Guarda el enlace con el título y la descripción que el usuario
-     * escribió tras fallar la vista previa (Fix 1, segundo paso del
-     * diálogo). Reutiliza la vista previa ya comprobada (sin volver a
-     * descargar la página) y clasifica con el título y la descripción
-     * editados, igual que si vinieran del sitio. Al guardar con éxito
-     * el diálogo se cierra solo; con error se queda abierto.
-     */
-    fun guardarEnlaceEditado(url: String, titulo: String, descripcion: String) {
-        viewModelScope.launch {
-            guardar(url, tituloManual = titulo, descripcionManual = descripcion, preparado = preparado)
-        }
-    }
-
-    /**
-     * Limpia el estado de "sin vista previa" (Fix 1): el usuario
-     * cambió la URL en el diálogo después de que la comprobación
-     * fallara, así que el título sugerido y la vista previa
-     * comprobada ya no corresponden a esa URL y hay que volver a
-     * comprobar desde cero.
-     */
-    fun limpiarSinVistaPrevia() {
-        preparado = null
-        controles.update { it.copy(sinVistaPrevia = false, tituloSugerido = null) }
-    }
-
-    /**
-     * Guardado común de [agregarEnlace], [comprobarVistaPrevia] (con
-     * vista previa correcta) y [guardarEnlaceEditado] (con título
-     * manual). Deja el diálogo en su estado final: cerrado al
-     * guardar con éxito (y sin rastro de la comprobación), abierto
-     * con el error si falla. Limpia siempre la vista previa
-     * comprobada: ya se usó o ya no vale.
+     * Guardado común de [agregarEnlace] y [comprobarVistaPrevia].
+     * Deja el diálogo en su estado final: cerrado al guardar con
+     * éxito (y sin rastro de la comprobación), abierto con el error
+     * si falla. Limpia siempre la vista previa comprobada: ya se
+     * usó o ya no vale.
      */
     private suspend fun guardar(
         url: String,
-        tituloManual: String?,
-        descripcionManual: String?,
+        textoCompartido: String?,
         preparado: EnlacePreparado?,
     ) {
         controles.update { it.copy(guardandoEnlace = true, errorAgregar = null) }
-        when (val resultado = repositorio.agregarEnlace(url, tituloManual, descripcionManual, preparado)) {
+        when (val resultado = repositorio.agregarEnlace(url, textoCompartido, preparado)) {
             is ResultadoAgregarEnlace.Exito -> controles.update {
                 it.copy(
                     guardandoEnlace = false,
                     comprobandoVistaPrevia = false,
-                    sinVistaPrevia = false,
-                    tituloSugerido = null,
                     mostrarDialogoAgregar = false,
                     urlInicialDialogo = null,
+                    textoCompartidoDialogo = null,
                 )
             }
             is ResultadoAgregarEnlace.Error -> controles.update {
@@ -401,35 +364,34 @@ class HomeViewModel(
 
     /**
      * Abre el diálogo de agregar, vacío o prellenado con [urlInicial]
-     * (enlace recibido desde el menú de compartir). Abrirlo limpia
+     * (enlace recibido desde el menú de compartir) y con el texto
+     * que la acompañaba ([textoCompartido]). Abrirlo limpia
      * cualquier error anterior de agregar y cualquier comprobación
      * de vista previa anterior (la URL es otra).
      */
-    fun abrirDialogoAgregar(urlInicial: String? = null) {
+    fun abrirDialogoAgregar(urlInicial: String? = null, textoCompartido: String? = null) {
         preparado = null
         controles.update {
             it.copy(
                 mostrarDialogoAgregar = true,
                 urlInicialDialogo = urlInicial,
+                textoCompartidoDialogo = textoCompartido,
                 errorAgregar = null,
                 comprobandoVistaPrevia = false,
-                sinVistaPrevia = false,
-                tituloSugerido = null,
             )
         }
     }
 
-    /** Cierra el diálogo de agregar y limpia su URL inicial, el error y la comprobación. */
+    /** Cierra el diálogo de agregar y limpia su URL inicial, su texto compartido, el error y la comprobación. */
     fun cerrarDialogoAgregar() {
         preparado = null
         controles.update {
             it.copy(
                 mostrarDialogoAgregar = false,
                 urlInicialDialogo = null,
+                textoCompartidoDialogo = null,
                 errorAgregar = null,
                 comprobandoVistaPrevia = false,
-                sinVistaPrevia = false,
-                tituloSugerido = null,
             )
         }
     }
@@ -438,6 +400,33 @@ class HomeViewModel(
     fun alternarFavorito(enlaceId: Long) {
         viewModelScope.launch {
             repositorio.alternarFavorito(enlaceId)
+        }
+    }
+
+    /**
+     * Guarda el cuadro capturado del reproductor oEmbed como
+     * miniatura local del enlace (corrección 1.0.1, punto 3). Lo
+     * llama la tarjeta cuando el WebView termina de pintar el vídeo
+     * y captura el cuadro. Si falla, la tarjeta sigue mostrando el
+     * reproductor; no se muestra ningún error.
+     */
+    fun guardarMiniaturaVideo(enlaceId: Long, bitmap: Bitmap) {
+        viewModelScope.launch {
+            repositorio.guardarMiniaturaVideo(enlaceId, bitmap)
+        }
+    }
+
+    /**
+     * Enriquece un enlace con el texto visible de su reproductor
+     * oEmbed (corrección 1.0.1, punto 3, fuente automática 3): lo
+     * llama la tarjeta cuando el WebView lee el texto del
+     * reproductor (autor y texto de la publicación). Solo rellena
+     * lo que falta (título si aún es el dominio, descripción si
+     * está vacía) y reclasifica si la categoría no es manual.
+     */
+    fun actualizarTextoDesdeWebView(enlaceId: Long, texto: String) {
+        viewModelScope.launch {
+            repositorio.actualizarTextoDesdeWebView(enlaceId, texto)
         }
     }
 

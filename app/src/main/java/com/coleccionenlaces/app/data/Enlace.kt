@@ -16,10 +16,12 @@ import androidx.room.PrimaryKey
  * puede crear carpetas propias (Fase 9) sin cambiar el modelo.
  *
  * - [urlImagen]: null cuando el sitio no ofreció imagen de vista previa.
- * - [htmlVideo]: HTML del reproductor oEmbed (Facebook, TikTok) para
- *   capturar su cuadro como miniatura en un WebView (corrección
- *   1.0.1, punto 3). Solo lo tienen los vídeos de esos proveedores
- *   con contenido público; null en el resto.
+ * - [htmlVideo]: HTML del reproductor oEmbed (Facebook, TikTok,
+ *   Instagram, X) para capturar su cuadro como miniatura en un
+ *   WebView (corrección 1.0.1, punto 3). Solo lo tienen los vídeos
+ *   de esos proveedores con contenido público; null en el resto
+ *   (YouTube, Vimeo y Dailymotion traen la miniatura directa en el
+ *   oEmbed y no necesitan captura).
  * - [imagenLocal]: ruta del archivo local con la miniatura guardada
  *   (corrección 1.0.1, punto 3): el cuadro capturado del WebView o
  *   una imagen de vista previa con firma temporal descargada al

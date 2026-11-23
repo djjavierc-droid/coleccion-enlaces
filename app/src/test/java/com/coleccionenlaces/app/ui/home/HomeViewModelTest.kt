@@ -6,6 +6,7 @@ import com.coleccionenlaces.app.data.AppDatabase
 import com.coleccionenlaces.app.data.Enlace
 import com.coleccionenlaces.app.data.RepositorioEnlaces
 import com.coleccionenlaces.app.data.ResultadoAgregarEnlace
+import com.coleccionenlaces.app.data.ServicioOEmbed
 import com.coleccionenlaces.app.data.ServicioVistaPrevia
 import com.coleccionenlaces.app.data.TipoErrorAgregarEnlace
 import com.coleccionenlaces.app.data.TipoErrorCarpeta
@@ -94,6 +95,25 @@ class HomeViewModelTest {
             db.enlaceDao(),
             db.categoriaDao(),
             ServicioVistaPrevia(cliente = cliente),
+            // oEmbed falso: 404 con `{}` para cualquier endpoint
+            // (sin red real en las pruebas).
+            ServicioOEmbed(
+                cliente = OkHttpClient.Builder()
+                    .addInterceptor { cadena ->
+                        Response.Builder()
+                            .request(cadena.request())
+                            .protocol(Protocol.HTTP_1_1)
+                            .code(404)
+                            .message("Error")
+                            .body(
+                                "{}".toResponseBody(
+                                    "application/json; charset=utf-8".toMediaType(),
+                                ),
+                            )
+                            .build()
+                    }
+                    .build(),
+            ),
         )
         viewModel = HomeViewModel(repositorio)
     }
@@ -567,10 +587,10 @@ class HomeViewModelTest {
         assertEquals(null, estado.enlaces.first().enlace.categoriaId)
     }
 
-    // ---- Fix 1: comprobar vista previa y editar título/descripción ----
+    // ---- Corrección 1.0.1: comprobar vista previa y título 100% automático ----
 
     @Test
-    fun `comprobarVistaPrevia con vista previa fallida abre la edicion con el dominio sugerido`() =
+    fun `comprobarVistaPrevia con vista previa fallida guarda igual con el dominio y cierra el dialogo`() =
         runTest {
             viewModel.abrirDialogoAgregar("https://www.facebook.com/share/r/1JqVPz7de")
             esperarEstado { it.mostrarDialogoAgregar }
@@ -578,15 +598,17 @@ class HomeViewModelTest {
             viewModel.comprobarVistaPrevia("https://www.facebook.com/share/r/1JqVPz7de")
             advanceUntilIdle()
 
-            val estado = esperarEstado { it.sinVistaPrevia }
-            assertTrue(estado.mostrarDialogoAgregar)
-            assertTrue(estado.sinVistaPrevia)
-            assertEquals("facebook.com", estado.tituloSugerido)
+            val estado = esperarEstado {
+                it.totalEnlaces == 1 && !it.mostrarDialogoAgregar && !it.guardandoEnlace
+            }
+            assertFalse(estado.mostrarDialogoAgregar)
             assertFalse(estado.comprobandoVistaPrevia)
-            assertFalse(estado.guardandoEnlace)
-            // Todavía no se guardó nada: el usuario aún no escribió el título.
-            assertEquals(0, estado.totalEnlaces)
+            assertEquals(1, estado.totalEnlaces)
             assertEquals(null, estado.errorAgregar)
+            // Sin vista previa: el título es el dominio y la tarjeta
+            // mostrará "Sin vista previa" (sin pedirle nada al usuario).
+            val guardado = db.enlaceDao().obtenerTodos().first().first()
+            assertEquals("facebook.com", guardado.titulo)
         }
 
     @Test
@@ -602,45 +624,44 @@ class HomeViewModelTest {
                 it.totalEnlaces == 1 && !it.mostrarDialogoAgregar && !it.guardandoEnlace
             }
             assertFalse(estado.mostrarDialogoAgregar)
-            assertFalse(estado.sinVistaPrevia)
-            assertEquals(null, estado.tituloSugerido)
             assertEquals(1, estado.totalEnlaces)
         }
 
     @Test
-    fun `guardarEnlaceEditado guarda el titulo editado y clasifica por el`() = runTest {
-        viewModel.abrirDialogoAgregar("https://www.facebook.com/share/r/1JqVPz7de")
-        esperarEstado { it.mostrarDialogoAgregar }
-        viewModel.comprobarVistaPrevia("https://www.facebook.com/share/r/1JqVPz7de")
-        advanceUntilIdle()
-        esperarEstado { it.sinVistaPrevia }
+    fun `comprobarVistaPrevia con texto compartido usa el texto como titulo y clasifica`() =
+        runTest {
+            val textoCompartido =
+                "Receta de paella valenciana\nLa receta tradicional paso a paso."
+            viewModel.abrirDialogoAgregar(
+                "https://www.facebook.com/share/r/1JqVPz7de",
+                textoCompartido,
+            )
+            esperarEstado { it.mostrarDialogoAgregar }
 
-        viewModel.guardarEnlaceEditado(
-            "https://www.facebook.com/share/r/1JqVPz7de",
-            "Receta de paella valenciana",
-            "La receta tradicional paso a paso.",
-        )
-        advanceUntilIdle()
+            viewModel.comprobarVistaPrevia(
+                "https://www.facebook.com/share/r/1JqVPz7de",
+                textoCompartido,
+            )
+            advanceUntilIdle()
 
-        val estado = esperarEstado {
-            it.totalEnlaces == 1 && !it.mostrarDialogoAgregar && !it.guardandoEnlace
+            val estado = esperarEstado {
+                it.totalEnlaces == 1 && !it.mostrarDialogoAgregar && !it.guardandoEnlace
+            }
+            assertFalse(estado.mostrarDialogoAgregar)
+            assertEquals(1, estado.totalEnlaces)
+            // El enlace se guardó en Cocina por el título del texto compartido.
+            viewModel.desbloquearCategoria(cocinaId)
+            val visible = esperarEstado { it.enlaces.size == 1 }
+            assertEquals("Receta de paella valenciana", visible.enlaces.first().enlace.titulo)
+            assertEquals(
+                "La receta tradicional paso a paso.",
+                visible.enlaces.first().enlace.descripcion,
+            )
+            assertEquals("Cocina", visible.enlaces.first().categoria.nombre)
         }
-        assertFalse(estado.mostrarDialogoAgregar)
-        assertFalse(estado.sinVistaPrevia)
-        assertEquals(1, estado.totalEnlaces)
-        // El enlace se guardó en Cocina por el título editado.
-        viewModel.desbloquearCategoria(cocinaId)
-        val visible = esperarEstado { it.enlaces.size == 1 }
-        assertEquals("Receta de paella valenciana", visible.enlaces.first().enlace.titulo)
-        assertEquals(
-            "La receta tradicional paso a paso.",
-            visible.enlaces.first().enlace.descripcion,
-        )
-        assertEquals("Cocina", visible.enlaces.first().categoria.nombre)
-    }
 
     @Test
-    fun `comprobarVistaPrevia con URL invalida pone el error y no abre la edicion`() =
+    fun `comprobarVistaPrevia con URL invalida pone el error y no guarda`() =
         runTest {
             viewModel.abrirDialogoAgregar("no-es-una-url")
             esperarEstado { it.mostrarDialogoAgregar }
@@ -650,24 +671,57 @@ class HomeViewModelTest {
 
             val estado = esperarEstado { it.errorAgregar != null && !it.comprobandoVistaPrevia }
             assertTrue(estado.mostrarDialogoAgregar)
-            assertFalse(estado.sinVistaPrevia)
-            assertEquals(null, estado.tituloSugerido)
             assertEquals(TipoErrorAgregarEnlace.URL_INVALIDA, estado.errorAgregar)
             assertEquals(0, estado.totalEnlaces)
         }
 
     @Test
-    fun `limpiarSinVistaPrevia limpia la edicion tras cambiar la URL`() = runTest {
-        viewModel.abrirDialogoAgregar("https://www.facebook.com/share/r/1JqVPz7de")
-        viewModel.comprobarVistaPrevia("https://www.facebook.com/share/r/1JqVPz7de")
-        advanceUntilIdle()
-        esperarEstado { it.sinVistaPrevia }
+    fun `abrirDialogoAgregar con texto compartido lo guarda en el estado y cerrar lo limpia`() =
+        runTest {
+            viewModel.abrirDialogoAgregar(
+                "https://www.facebook.com/share/r/1JqVPz7de",
+                "Texto de la publicación",
+            )
 
-        viewModel.limpiarSinVistaPrevia()
+            val estado = esperarEstado { it.mostrarDialogoAgregar }
+            assertEquals(
+                "https://www.facebook.com/share/r/1JqVPz7de",
+                estado.urlInicialDialogo,
+            )
+            assertEquals("Texto de la publicación", estado.textoCompartidoDialogo)
 
-        val estado = esperarEstado { !it.sinVistaPrevia }
-        assertFalse(estado.sinVistaPrevia)
-        assertEquals(null, estado.tituloSugerido)
-        assertEquals(0, estado.totalEnlaces)
-    }
+            viewModel.cerrarDialogoAgregar()
+
+            val cerrado = esperarEstado { !it.mostrarDialogoAgregar }
+            assertFalse(cerrado.mostrarDialogoAgregar)
+            assertEquals(null, cerrado.urlInicialDialogo)
+            assertEquals(null, cerrado.textoCompartidoDialogo)
+        }
+
+    @Test
+    fun `actualizarTextoDesdeWebView rellena el titulo de dominio y reclasifica`() =
+        runTest {
+            viewModel.comprobarVistaPrevia("https://www.facebook.com/share/r/1JqVPz7de")
+            advanceUntilIdle()
+            esperarEstado { it.totalEnlaces == 1 }
+            val id = db.enlaceDao().obtenerTodos().first().first().id
+            assertEquals("facebook.com", db.enlaceDao().obtenerPorId(id)!!.titulo)
+
+            viewModel.actualizarTextoDesdeWebView(
+                id,
+                "Contratamos a una IA... y el primer día ya vendía croquetas en Marte...\n" +
+                    "Hoy hemos contratado a una",
+            )
+            advanceUntilIdle()
+
+            val tecnologiaId =
+                db.categoriaDao().obtenerPorNombre("Tecnología y celulares")!!.id
+            viewModel.desbloquearCategoria(tecnologiaId)
+            val estado = esperarEstado { it.enlaces.size == 1 }
+            assertEquals(
+                "Contratamos a una IA... y el primer día ya vendía croquetas en Marte...",
+                estado.enlaces.first().enlace.titulo,
+            )
+            assertEquals("Tecnología y celulares", estado.enlaces.first().categoria.nombre)
+        }
 }

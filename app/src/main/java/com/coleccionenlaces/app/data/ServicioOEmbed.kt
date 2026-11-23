@@ -24,12 +24,15 @@ import java.util.concurrent.TimeUnit
  * público o inexistente el endpoint da error y el enlace se guarda
  * igual con el título editable (Fix 1).
  *
- * - YouTube: título, miniatura y HTML del reproductor.
+ * - YouTube, Vimeo y Dailymotion: título, miniatura y HTML del reproductor.
  * - TikTok: solo el HTML del reproductor (sin título ni miniatura en
  *   las respuestas probadas); se le quita el `autoplay=1` antes de
  *   cargarlo en el WebView, para que no reproduzca solo.
  * - Facebook: `oembed_video` y, si da error 100 (parámetro
  *   inválido), `oembed_post`. Solo devuelve el HTML del reproductor.
+ * - Instagram y X: solo el HTML del incrustado (sin título ni
+ *   miniatura); la miniatura se captura del reproductor en un WebView.
+ * - Vimeo y Dailymotion: título, miniatura y HTML, como YouTube.
  *
  * Sin reintentos: los errores de oEmbed son deterministas en su
  * mayoría (contenido no público, parámetro inválido); un fallo de
@@ -46,7 +49,7 @@ class ServicioOEmbed(
     /**
      * Obtiene el oEmbed del vídeo o publicación de [url].
      * Devuelve [ResultadoOEmbed.Error] con `NO_DISPONIBLE` si la URL
-     * no es de YouTube, TikTok ni Facebook (sin tocar la red).
+     * no es de un proveedor con oEmbed sin token (sin tocar la red).
      */
     suspend fun obtenerVideo(url: String): ResultadoOEmbed {
         val proveedor = proveedorOEmbedDe(url.trim())
@@ -71,6 +74,10 @@ class ServicioOEmbed(
                 } else {
                     video
                 }
+            }
+            ProveedorOEmbed.INSTAGRAM, ProveedorOEmbed.X,
+            ProveedorOEmbed.VIMEO, ProveedorOEmbed.DAILYMOTION -> {
+                pedir(construirUrlOEmbed(proveedor, url.trim()))
             }
         }
     }

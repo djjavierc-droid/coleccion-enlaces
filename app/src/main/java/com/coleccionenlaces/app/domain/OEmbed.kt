@@ -9,10 +9,17 @@ import java.net.URLEncoder
  * La mayoría de enlaces que se guardan son Shorts, Reels y vídeos
  * de TikTok: contenido PÚBLICO por lo general, así que oEmbed cubre
  * la mayoría de casos. Los endpoints no exigen token, cuenta ni
- * clave (verificado con llamadas reales, ver fix-1-resumen.md):
+ * clave (verificado con llamadas reales, ver fix-1-resumen.md).
+ * El mecanismo es UNO genérico para todas las plataformas: oEmbed
+ * oficial sin token -> HTML del reproductor en un WebView sin
+ * autoplay -> captura del cuadro como miniatura local.
  *
  * - YouTube (`www.youtube.com/oembed`): devuelve título,
- *   `thumbnail_url` y el HTML del reproductor.
+ *   `thumbnail_url` y el HTML del reproductor. La miniatura se usa
+ *   directa, sin captura.
+ * - Vimeo (`vimeo.com/api/oembed.json`) y Dailymotion
+ *   (`www.dailymotion.com/services/oembed`): también devuelven
+ *   título y `thumbnail_url` directos.
  * - TikTok (`www.tiktok.com/oembed`): devuelve SOLO el HTML del
  *   reproductor (sin título ni miniatura en las respuestas probadas:
  *   ni siquiera para un vídeo existente). Se trata como Facebook:
@@ -22,6 +29,12 @@ import java.net.URLEncoder
  *   devuelve `html`, `width`, `provider_name`, `type` y `version`
  *   (sin título ni miniatura: los quitaron el 2025-11-03). Solo
  *   funciona con contenido PÚBLICO.
+ * - Instagram (`graph.facebook.com/v27.0/instagram_oembed`): solo
+ *   devuelve el HTML del incrustado (blockquote + embed.js), sin
+ *   título ni miniatura. Solo contenido PÚBLICO.
+ * - X (`publish.twitter.com/oembed`): devuelve el HTML del tuit
+ *   (blockquote + widgets.js) y `author_name`, sin título ni
+ *   miniatura. Solo contenido PÚBLICO.
  *
  * Nada de fingir ser el rastreador de Meta, nada de yt-dlp (probado:
  * timeout contra facebook.com y exigiría backend o runtime en el
@@ -38,6 +51,10 @@ enum class ProveedorOEmbed {
     YOUTUBE,
     TIKTOK,
     FACEBOOK,
+    INSTAGRAM,
+    X,
+    VIMEO,
+    DAILYMOTION,
 }
 
 /** Tipos de error que puede devolver oEmbed. */
@@ -59,12 +76,12 @@ enum class TipoErrorOEmbed {
  * Resultado de [com.coleccionenlaces.app.data.ServicioOEmbed.obtenerVideo].
  *
  * [Exito] lleva el HTML del reproductor oficial y, cuando el
- * proveedor los da (YouTube), el título y la URL de la miniatura.
- * Facebook y TikTok no dan título ni miniatura: el título sale
- * automáticamente del texto que acompañe al enlace al compartirlo
- * o del texto visible del reproductor (o del dominio, en último
- * recurso) y la miniatura se captura del reproductor en un WebView
- * y se guarda en local.
+ * proveedor los da (YouTube, Vimeo, Dailymotion), el título y la URL
+ * de la miniatura. Facebook, TikTok, Instagram y X no dan título ni
+ * miniatura: el título sale automáticamente del texto que acompañe
+ * al enlace al compartirlo o del texto visible del reproductor (o
+ * del dominio, en último recurso) y la miniatura se captura del
+ * reproductor en un WebView y se guarda en local.
  */
 sealed interface ResultadoOEmbed {
     data class Exito(
@@ -82,7 +99,9 @@ sealed interface ResultadoOEmbed {
 
 /**
  * ¿Qué proveedor oEmbed sirve esta URL? Null si ninguno: solo
- * YouTube, TikTok y Facebook tienen endpoint oEmbed sin token.
+ * YouTube, TikTok, Facebook, Instagram, X, Vimeo y Dailymotion
+ * tienen endpoint oEmbed sin token. Añadir otra plataforma es una
+ * entrada más en este `when` y su URL en [construirUrlOEmbed].
  */
 fun proveedorOEmbedDe(url: String): ProveedorOEmbed? {
     val host = extraerHost(url) ?: return null
@@ -93,6 +112,11 @@ fun proveedorOEmbedDe(url: String): ProveedorOEmbed? {
         host == "facebook.com" || host.endsWith(".facebook.com") ||
             host == "fb.com" || host.endsWith(".fb.com") ||
             host == "fb.watch" || host.endsWith(".fb.watch") -> ProveedorOEmbed.FACEBOOK
+        host == "instagram.com" || host.endsWith(".instagram.com") -> ProveedorOEmbed.INSTAGRAM
+        host == "x.com" || host.endsWith(".x.com") ||
+            host == "twitter.com" || host.endsWith(".twitter.com") -> ProveedorOEmbed.X
+        host == "vimeo.com" || host.endsWith(".vimeo.com") -> ProveedorOEmbed.VIMEO
+        host == "dailymotion.com" || host.endsWith(".dailymotion.com") -> ProveedorOEmbed.DAILYMOTION
         else -> null
     }
 }
@@ -107,6 +131,14 @@ fun construirUrlOEmbed(proveedor: ProveedorOEmbed, urlPublicacion: String): Stri
             "https://www.tiktok.com/oembed?url=$codificada"
         ProveedorOEmbed.FACEBOOK ->
             "https://graph.facebook.com/v27.0/oembed_video?url=$codificada"
+        ProveedorOEmbed.INSTAGRAM ->
+            "https://graph.facebook.com/v27.0/instagram_oembed?url=$codificada"
+        ProveedorOEmbed.X ->
+            "https://publish.twitter.com/oembed?url=$codificada"
+        ProveedorOEmbed.VIMEO ->
+            "https://vimeo.com/api/oembed.json?url=$codificada"
+        ProveedorOEmbed.DAILYMOTION ->
+            "https://www.dailymotion.com/services/oembed?url=$codificada"
     }
 }
 

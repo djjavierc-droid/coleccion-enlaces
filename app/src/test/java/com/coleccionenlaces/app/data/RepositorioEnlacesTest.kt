@@ -2,6 +2,7 @@ package com.coleccionenlaces.app.data
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.coleccionenlaces.app.domain.ResultadoOEmbed
 import com.coleccionenlaces.app.domain.ResultadoVistaPrevia
 import com.coleccionenlaces.app.domain.TipoErrorVistaPrevia
 import com.coleccionenlaces.app.domain.VistaPrevia
@@ -22,7 +23,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.io.File
 import java.net.UnknownHostException
+import java.nio.file.Files
 
 /**
  * Pruebas del repositorio (Fase 5) sobre una base Room en memoria
@@ -42,7 +45,14 @@ class RepositorioEnlacesTest {
 
     private var cocinaId: Long = 0
     private var entretenimientoId: Long = 0
+    private var tecnologiaId: Long = 0
     private var otrosId: Long = 0
+
+    /** URLs oEmbed pedidas en cada prueba (para probar que no se piden de más). */
+    private val oembedPedidas = mutableListOf<String>()
+
+    /** Carpeta temporal donde se guardan las miniaturas locales en estas pruebas. */
+    private lateinit var directorioMiniaturas: File
 
     private val htmlReceta = """
         <html><head>
@@ -50,6 +60,40 @@ class RepositorioEnlacesTest {
         <meta property="og:description" content="La receta tradicional paso a paso.">
         <meta property="og:image" content="https://ejemplo.com/img/paella.jpg">
         </head><body></body></html>
+    """.trimIndent()
+
+    /** Respuesta oEmbed de YouTube (forma real verificada con curl). */
+    private val jsonYouTube = """
+        {"type":"video","version":"1.0","title":"Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)","author_name":"Rick Astley","provider_name":"YouTube","thumbnail_url":"https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg","html":"<iframe src=\"https://www.youtube.com/embed/dQw4w9WgXcQ\"></iframe>","width":480,"height":270}
+    """.trimIndent()
+
+    /** Respuesta oEmbed de Facebook (forma real verificada con curl). */
+    private val jsonFacebook = """
+        {"html":"<div class=\"fb-video\" data-href=\"https://www.facebook.com/share/r/1JqVPz7de\"></div><script src=\"https://connect.facebook.net/es_LA/sdk.js#xfbml=1&version=v27.0\"></script>","provider_name":"Facebook","type":"video","version":"1.0","width":500}
+    """.trimIndent()
+
+    /** Respuesta oEmbed de Instagram (forma real verificada con curl). */
+    private val jsonInstagram = """
+        {"version":"1.0","provider_name":"Instagram","provider_url":"https://www.instagram.com/","type":"rich","width":658,"html":"<blockquote class=\"instagram-media\" data-instgrm-permalink=\"https://www.instagram.com/reel/Df2uUvyt_S4/\"></blockquote><script async src=\"//www.instagram.com/embed.js\"></script>"}
+    """.trimIndent()
+
+    /** Respuesta oEmbed de X (forma real verificada con curl). */
+    private val jsonX = """
+        {"url":"https://x.com/Interior/status/507185938620219395","author_name":"U.S. Department of the Interior","html":"<blockquote class=\"twitter-tweet\"><p>Happy 50th anniversary to the Wilderness Act!</p></blockquote><script async src=\"https://platform.x.com/widgets.js\" charset=\"utf-8\"></script>","width":550,"height":null,"type":"rich","provider_name":"X","provider_url":"https://x.com","version":"1.0"}
+    """.trimIndent()
+
+    /** Respuesta oEmbed de Vimeo (forma real verificada con curl). */
+    private val jsonVimeo = """
+        {"type":"video","version":"1.0","provider_name":"Vimeo","title":"The New Vimeo Player (You Know, For Videos)","html":"<iframe src=\"https://player.vimeo.com/video/76979871\"></iframe>","width":480,"height":270,"thumbnail_url":"https://i.vimeocdn.com/video/452001751-d_295x166?region=us"}
+    """.trimIndent()
+
+    /** Respuesta oEmbed de Dailymotion (forma real verificada con curl). */
+    private val jsonDailymotion = """
+        {"type":"video","version":"1.0","provider_name":"Dailymotion","title":"Así se vivió el Home Run Derby X en la CDMX","html":"<iframe src=\"https://www.dailymotion.com/embed/video/x8ek5sr\"></iframe>","width":480,"height":270,"thumbnail_url":"https://s1.dmcdn.net/v/UIaXR1g4gkw6X7Bnf/x720"}
+    """.trimIndent()
+
+    private val jsonError100 = """
+        {"error":{"message":"(#100) Invalid parameter","type":"OAuthException","code":100}}
     """.trimIndent()
 
     @Before
@@ -60,12 +104,16 @@ class RepositorioEnlacesTest {
         categoriaDao = db.categoriaDao()
         cocinaId = categoriaDao.obtenerPorNombre("Cocina")!!.id
         entretenimientoId = categoriaDao.obtenerPorNombre("Entretenimiento")!!.id
+        tecnologiaId = categoriaDao.obtenerPorNombre("Tecnología y celulares")!!.id
         otrosId = categoriaDao.obtenerPorNombre("Otros")!!.id
+        oembedPedidas.clear()
+        directorioMiniaturas = Files.createTempDirectory("miniaturas-test").toFile()
     }
 
     @After
     fun cerrarBase() {
         db.close()
+        directorioMiniaturas.deleteRecursively()
     }
 
     /** Cliente que responde 200 con el HTML indicado según la URL pedida. */
@@ -83,11 +131,36 @@ class RepositorioEnlacesTest {
             }
             .build()
 
-    private fun repositorio(respuestas: Map<String, String> = emptyMap()): RepositorioEnlaces =
+    /** Cliente oEmbed falso: responde según el prefijo de la URL pedida; sin prefijo, 404 con `{}`. */
+    private fun clienteOEmbedFalso(respuestas: Map<String, Pair<Int, String>>): OkHttpClient =
+        OkHttpClient.Builder()
+            .addInterceptor { cadena ->
+                val url = cadena.request().url.toString()
+                oembedPedidas.add(url)
+                val (codigo, cuerpo) = respuestas.entries
+                    .firstOrNull { (prefijo, _) -> url.startsWith(prefijo) }?.value
+                    ?: (404 to "{}")
+                Response.Builder()
+                    .request(cadena.request())
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(codigo)
+                    .message(if (codigo == 200) "OK" else "Error")
+                    .body(cuerpo.toResponseBody("application/json; charset=utf-8".toMediaType()))
+                    .build()
+            }
+            .build()
+
+    private fun repositorio(
+        respuestas: Map<String, String> = emptyMap(),
+        oembed: Map<String, Pair<Int, String>> = emptyMap(),
+        directorio: File? = null,
+    ): RepositorioEnlaces =
         RepositorioEnlaces(
             enlaceDao,
             categoriaDao,
             ServicioVistaPrevia(cliente = clienteFalso(respuestas)),
+            ServicioOEmbed(cliente = clienteOEmbedFalso(oembed)),
+            directorio,
         )
 
     private fun repositorioSinInternet(): RepositorioEnlaces =
@@ -97,6 +170,11 @@ class RepositorioEnlacesTest {
             ServicioVistaPrevia(
                 cliente = OkHttpClient.Builder()
                     .addInterceptor { throw UnknownHostException("ejemplo.com") }
+                    .build(),
+            ),
+            ServicioOEmbed(
+                cliente = OkHttpClient.Builder()
+                    .addInterceptor { throw UnknownHostException("graph.facebook.com") }
                     .build(),
             ),
         )
@@ -420,17 +498,16 @@ class RepositorioEnlacesTest {
             assertEquals("https://ejemplo.com/receta", enlaceDao.obtenerPorId(id)!!.url)
         }
 
-    // ---- Fix 1: título y descripción editables sin vista previa ----
+    // ---- Corrección 1.0.1: título 100% automático, sin edición manual ----
 
     @Test
-    fun `agregarEnlace con vista previa fallida y titulo manual guarda el titulo editado y clasifica por el`() =
+    fun `agregarEnlace con vista previa fallida y texto compartido usa el texto como titulo y clasifica por el`() =
         runBlocking {
             val repo = repositorio()
 
             val resultado = repo.agregarEnlace(
                 "https://www.facebook.com/share/r/1JqVPz7de",
-                tituloManual = "Receta de paella valenciana",
-                descripcionManual = "La receta tradicional paso a paso.",
+                textoCompartido = "Receta de paella valenciana\nLa receta tradicional paso a paso.",
                 preparado = null,
             )
 
@@ -444,7 +521,7 @@ class RepositorioEnlacesTest {
         }
 
     @Test
-    fun `agregarEnlace con titulo manual vacio usa el titulo de la vista previa`() =
+    fun `agregarEnlace con texto compartido vacio usa el titulo de la vista previa`() =
         runBlocking {
             val repo = repositorio(
                 mapOf("https://ejemplo.com/receta" to htmlReceta),
@@ -452,13 +529,37 @@ class RepositorioEnlacesTest {
 
             val resultado = repo.agregarEnlace(
                 "https://ejemplo.com/receta",
-                tituloManual = "   ",
-                descripcionManual = null,
+                textoCompartido = "   ",
                 preparado = null,
             )
 
             val id = (resultado as ResultadoAgregarEnlace.Exito).id
             assertEquals("Receta de paella valenciana", enlaceDao.obtenerPorId(id)!!.titulo)
+            assertEquals(
+                "La receta tradicional paso a paso.",
+                enlaceDao.obtenerPorId(id)!!.descripcion,
+            )
+        }
+
+    @Test
+    fun `agregarEnlace con vista previa usa su titulo antes que el texto compartido`() =
+        runBlocking {
+            val repo = repositorio(
+                mapOf("https://ejemplo.com/receta" to htmlReceta),
+            )
+
+            val resultado = repo.agregarEnlace(
+                "https://ejemplo.com/receta",
+                textoCompartido = "Mira esta receta que encontré",
+                preparado = null,
+            )
+
+            val id = (resultado as ResultadoAgregarEnlace.Exito).id
+            val guardado = enlaceDao.obtenerPorId(id)!!
+            assertEquals("Receta de paella valenciana", guardado.titulo)
+            // La vista previa trae título y descripción: el texto
+            // compartido no hace falta y se descarta.
+            assertEquals("La receta tradicional paso a paso.", guardado.descripcion)
         }
 
     @Test
@@ -473,15 +574,13 @@ class RepositorioEnlacesTest {
                         urlImagen = "https://ejemplo.com/img/paella.jpg",
                     ),
                 ),
-                tituloSugerido = "Receta de paella valenciana",
             )
 
             // Sin internet y sin redescargar: si intentara descargar,
             // el cliente lanzaría UnknownHostException.
             val resultado = repo.agregarEnlace(
                 "https://ejemplo.com/receta",
-                tituloManual = null,
-                descripcionManual = null,
+                textoCompartido = null,
                 preparado = preparado,
             )
 
@@ -493,9 +592,13 @@ class RepositorioEnlacesTest {
         }
 
     @Test
-    fun `prepararEnlace con vista previa fallida devuelve el dominio como titulo sugerido`() =
+    fun `prepararEnlace con vista previa fallida en Facebook pide el oEmbed`() =
         runBlocking {
-            val repo = repositorio()
+            val repo = repositorio(
+                oembed = mapOf(
+                    "https://graph.facebook.com/v27.0/oembed_video" to (200 to jsonFacebook),
+                ),
+            )
 
             val preparado = repo.prepararEnlace("https://www.facebook.com/share/r/1JqVPz7de")
 
@@ -504,21 +607,25 @@ class RepositorioEnlacesTest {
                 TipoErrorVistaPrevia.SIN_VISTA_PREVIA,
                 (preparado.vistaPrevia as ResultadoVistaPrevia.Error).tipo,
             )
-            assertEquals("facebook.com", preparado.tituloSugerido)
+            assertTrue(preparado.oembed is ResultadoOEmbed.Exito)
+            assertTrue(
+                (preparado.oembed as ResultadoOEmbed.Exito).html.contains("fb-video"),
+            )
+            assertEquals(1, oembedPedidas.size)
         }
 
     @Test
-    fun `prepararEnlace con vista previa devuelve su titulo como sugerido`() =
-        runBlocking {
-            val repo = repositorio(
-                mapOf("https://ejemplo.com/receta" to htmlReceta),
-            )
+    fun `prepararEnlace con vista previa correcta no pide el oEmbed`() = runBlocking {
+        val repo = repositorio(
+            mapOf("https://ejemplo.com/receta" to htmlReceta),
+        )
 
-            val preparado = repo.prepararEnlace("https://ejemplo.com/receta")
+        val preparado = repo.prepararEnlace("https://ejemplo.com/receta")
 
-            assertTrue(preparado.vistaPrevia is ResultadoVistaPrevia.Exito)
-            assertEquals("Receta de paella valenciana", preparado.tituloSugerido)
-        }
+        assertTrue(preparado.vistaPrevia is ResultadoVistaPrevia.Exito)
+        assertNull(preparado.oembed)
+        assertTrue(oembedPedidas.isEmpty())
+    }
 
     @Test
     fun `prepararEnlace con URL invalida devuelve URL_INVALIDA`() = runBlocking {
@@ -531,4 +638,334 @@ class RepositorioEnlacesTest {
             (preparado.vistaPrevia as ResultadoVistaPrevia.Error).tipo,
         )
     }
+
+    // ---- Corrección 1.0.1, punto 3: oEmbed al guardar ----
+
+    @Test
+    fun `agregarEnlace de YouTube guarda el titulo oEmbed y descarga la miniatura a local`() =
+        runBlocking {
+            val repo = repositorio(
+                respuestas = mapOf(
+                    "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg" to "bytes-falsos-miniatura",
+                ),
+                oembed = mapOf(
+                    "https://www.youtube.com/oembed" to (200 to jsonYouTube),
+                ),
+                directorio = directorioMiniaturas,
+            )
+
+            val resultado = repo.agregarEnlace("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+
+            assertTrue(resultado is ResultadoAgregarEnlace.Exito)
+            val id = (resultado as ResultadoAgregarEnlace.Exito).id
+            val guardado = enlaceDao.obtenerPorId(id)!!
+            assertEquals(
+                "Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)",
+                guardado.titulo,
+            )
+            assertTrue(guardado.htmlVideo!!.contains("youtube.com/embed"))
+            val imagenLocal = guardado.imagenLocal!!
+            assertTrue(File(imagenLocal).exists())
+            assertTrue(File(imagenLocal).length() > 0)
+        }
+
+    @Test
+    fun `agregarEnlace de Facebook guarda el html del reproductor y el dominio como titulo`() =
+        runBlocking {
+            val repo = repositorio(
+                oembed = mapOf(
+                    "https://graph.facebook.com/v27.0/oembed_video" to (200 to jsonFacebook),
+                ),
+            )
+
+            val resultado = repo.agregarEnlace("https://www.facebook.com/share/r/1JqVPz7de")
+
+            assertTrue(resultado is ResultadoAgregarEnlace.Exito)
+            val id = (resultado as ResultadoAgregarEnlace.Exito).id
+            val guardado = enlaceDao.obtenerPorId(id)!!
+            assertEquals("facebook.com", guardado.titulo)
+            assertTrue(guardado.htmlVideo!!.contains("fb-video"))
+            assertNull(guardado.imagenLocal)
+            assertEquals(otrosId, guardado.categoriaId)
+        }
+
+    @Test
+    fun `agregarEnlace de Facebook con oEmbed en error 100 guarda sin htmlVideo`() =
+        runBlocking {
+            val repo = repositorio(
+                oembed = mapOf(
+                    "https://graph.facebook.com/v27.0/oembed_video" to (400 to jsonError100),
+                    "https://graph.facebook.com/v27.0/oembed_post" to (400 to jsonError100),
+                ),
+            )
+
+            val resultado = repo.agregarEnlace("https://www.facebook.com/share/r/1JqVPz7de")
+
+            assertTrue(resultado is ResultadoAgregarEnlace.Exito)
+            val id = (resultado as ResultadoAgregarEnlace.Exito).id
+            val guardado = enlaceDao.obtenerPorId(id)!!
+            assertEquals("facebook.com", guardado.titulo)
+            assertNull(guardado.htmlVideo)
+            assertNull(guardado.imagenLocal)
+        }
+
+    @Test
+    fun `agregarEnlace de Instagram guarda el html del incrustado y el dominio como titulo`() =
+        runBlocking {
+            val repo = repositorio(
+                oembed = mapOf(
+                    "https://graph.facebook.com/v27.0/instagram_oembed" to (200 to jsonInstagram),
+                ),
+            )
+
+            val resultado = repo.agregarEnlace("https://www.instagram.com/reel/Df2uUvyt_S4/")
+
+            assertTrue(resultado is ResultadoAgregarEnlace.Exito)
+            val id = (resultado as ResultadoAgregarEnlace.Exito).id
+            val guardado = enlaceDao.obtenerPorId(id)!!
+            assertEquals("instagram.com", guardado.titulo)
+            assertTrue(guardado.htmlVideo!!.contains("instagram-media"))
+            assertNull(guardado.imagenLocal)
+            assertEquals(otrosId, guardado.categoriaId)
+        }
+
+    @Test
+    fun `agregarEnlace de X guarda el html del tuit y el dominio como titulo`() =
+        runBlocking {
+            val repo = repositorio(
+                oembed = mapOf(
+                    "https://publish.twitter.com/oembed" to (200 to jsonX),
+                ),
+            )
+
+            val resultado = repo.agregarEnlace("https://x.com/Interior/status/507185938620219395")
+
+            assertTrue(resultado is ResultadoAgregarEnlace.Exito)
+            val id = (resultado as ResultadoAgregarEnlace.Exito).id
+            val guardado = enlaceDao.obtenerPorId(id)!!
+            assertEquals("x.com", guardado.titulo)
+            assertTrue(guardado.htmlVideo!!.contains("twitter-tweet"))
+            assertNull(guardado.imagenLocal)
+            assertEquals(otrosId, guardado.categoriaId)
+        }
+
+    @Test
+    fun `agregarEnlace de Vimeo guarda el titulo oEmbed y descarga la miniatura a local`() =
+        runBlocking {
+            val repo = repositorio(
+                respuestas = mapOf(
+                    "https://i.vimeocdn.com/video/452001751-d_295x166?region=us" to "bytes-falsos-miniatura",
+                ),
+                oembed = mapOf(
+                    "https://vimeo.com/api/oembed.json" to (200 to jsonVimeo),
+                ),
+                directorio = directorioMiniaturas,
+            )
+
+            val resultado = repo.agregarEnlace("https://vimeo.com/76979871")
+
+            assertTrue(resultado is ResultadoAgregarEnlace.Exito)
+            val id = (resultado as ResultadoAgregarEnlace.Exito).id
+            val guardado = enlaceDao.obtenerPorId(id)!!
+            assertEquals("The New Vimeo Player (You Know, For Videos)", guardado.titulo)
+            assertTrue(guardado.htmlVideo!!.contains("player.vimeo.com/video/76979871"))
+            val imagenLocal = guardado.imagenLocal!!
+            assertTrue(File(imagenLocal).exists())
+            assertTrue(File(imagenLocal).length() > 0)
+        }
+
+    @Test
+    fun `agregarEnlace de Dailymotion guarda el titulo oEmbed y descarga la miniatura a local`() =
+        runBlocking {
+            val repo = repositorio(
+                respuestas = mapOf(
+                    "https://s1.dmcdn.net/v/UIaXR1g4gkw6X7Bnf/x720" to "bytes-falsos-miniatura",
+                ),
+                oembed = mapOf(
+                    "https://www.dailymotion.com/services/oembed" to (200 to jsonDailymotion),
+                ),
+                directorio = directorioMiniaturas,
+            )
+
+            val resultado = repo.agregarEnlace("https://www.dailymotion.com/video/x8ek5sr")
+
+            assertTrue(resultado is ResultadoAgregarEnlace.Exito)
+            val id = (resultado as ResultadoAgregarEnlace.Exito).id
+            val guardado = enlaceDao.obtenerPorId(id)!!
+            assertEquals("Así se vivió el Home Run Derby X en la CDMX", guardado.titulo)
+            assertTrue(guardado.htmlVideo!!.contains("dailymotion.com/embed/video/x8ek5sr"))
+            val imagenLocal = guardado.imagenLocal!!
+            assertTrue(File(imagenLocal).exists())
+            assertTrue(File(imagenLocal).length() > 0)
+        }
+
+    @Test
+    fun `agregarEnlace descarga a local la imagen de vista previa con firma temporal`() =
+        runBlocking {
+            val htmlFirmado = """
+                <html><head>
+                <meta property="og:title" content="Foto firmada">
+                <meta property="og:image" content="https://scontent.fbcdn.net/v/foto.jpg?oe=68ABC123&oh=00_xyz">
+                </head><body></body></html>
+            """.trimIndent()
+            val repo = repositorio(
+                respuestas = mapOf(
+                    "https://ejemplo.com/foto" to htmlFirmado,
+                    "https://scontent.fbcdn.net/v/foto.jpg?oe=68ABC123&oh=00_xyz" to "bytes-falsos-foto",
+                ),
+                directorio = directorioMiniaturas,
+            )
+
+            val resultado = repo.agregarEnlace("https://ejemplo.com/foto")
+
+            val id = (resultado as ResultadoAgregarEnlace.Exito).id
+            val guardado = enlaceDao.obtenerPorId(id)!!
+            assertEquals("Foto firmada", guardado.titulo)
+            val imagenLocal = guardado.imagenLocal!!
+            assertTrue(File(imagenLocal).exists())
+        }
+
+    @Test
+    fun `agregarEnlace no descarga a local la imagen de vista previa sin firma`() =
+        runBlocking {
+            val repo = repositorio(
+                mapOf("https://ejemplo.com/receta" to htmlReceta),
+                directorio = directorioMiniaturas,
+            )
+
+            val resultado = repo.agregarEnlace("https://ejemplo.com/receta")
+
+            val id = (resultado as ResultadoAgregarEnlace.Exito).id
+            val guardado = enlaceDao.obtenerPorId(id)!!
+            assertNull(guardado.imagenLocal)
+            assertEquals("https://ejemplo.com/img/paella.jpg", guardado.urlImagen)
+        }
+
+    @Test
+    fun `guardarMiniaturaVideo guarda el cuadro como PNG local`() = runBlocking {
+        val repo = repositorio(directorio = directorioMiniaturas)
+        val id = enlaceDao.insertar(
+            Enlace(
+                url = "https://www.facebook.com/share/r/1JqVPz7de",
+                titulo = "facebook.com",
+                categoriaId = otrosId,
+                htmlVideo = "<div class=\"fb-video\"></div>",
+            ),
+        )
+        val bitmap = android.graphics.Bitmap.createBitmap(
+            10, 10, android.graphics.Bitmap.Config.ARGB_8888,
+        )
+
+        val guardado = repo.guardarMiniaturaVideo(id, bitmap)
+
+        assertTrue(guardado)
+        val enlace = enlaceDao.obtenerPorId(id)!!
+        val imagenLocal = enlace.imagenLocal!!
+        assertTrue(File(imagenLocal).exists())
+        assertTrue(imagenLocal.endsWith(".png"))
+        assertFalse(repo.guardarMiniaturaVideo(9999L, bitmap))
+    }
+
+    // ---- Corrección 1.0.1: texto visible del reproductor ----
+
+    @Test
+    fun `actualizarTextoDesdeWebView rellena el titulo de dominio y reclasifica a Tecnologia`() =
+        runBlocking {
+            val repo = repositorio(
+                oembed = mapOf(
+                    "https://graph.facebook.com/v27.0/oembed_video" to (200 to jsonFacebook),
+                ),
+            )
+            val id = (repo.agregarEnlace("https://www.facebook.com/share/r/1JqVPz7de")
+                as ResultadoAgregarEnlace.Exito).id
+            assertEquals(otrosId, enlaceDao.obtenerPorId(id)!!.categoriaId)
+
+            val actualizado = repo.actualizarTextoDesdeWebView(
+                id,
+                "Contratamos a una IA... y el primer día ya vendía croquetas en Marte...\n" +
+                    "Hoy hemos contratado a una",
+            )
+
+            assertTrue(actualizado)
+            val guardado = enlaceDao.obtenerPorId(id)!!
+            assertEquals(
+                "Contratamos a una IA... y el primer día ya vendía croquetas en Marte...",
+                guardado.titulo,
+            )
+            assertTrue(guardado.descripcion.contains("Hoy hemos contratado a una"))
+            assertEquals(tecnologiaId, guardado.categoriaId)
+        }
+
+    @Test
+    fun `actualizarTextoDesdeWebView no sobrescribe un titulo que ya venia de oEmbed`() =
+        runBlocking {
+            val repo = repositorio(
+                respuestas = mapOf(
+                    "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg" to "bytes-falsos",
+                ),
+                oembed = mapOf(
+                    "https://www.youtube.com/oembed" to (200 to jsonYouTube),
+                ),
+                directorio = directorioMiniaturas,
+            )
+            val id = (repo.agregarEnlace("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+                as ResultadoAgregarEnlace.Exito).id
+
+            val actualizado = repo.actualizarTextoDesdeWebView(id, "Texto del reproductor")
+
+            assertTrue(actualizado)
+            val guardado = enlaceDao.obtenerPorId(id)!!
+            assertEquals(
+                "Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)",
+                guardado.titulo,
+            )
+            assertEquals("Texto del reproductor", guardado.descripcion)
+        }
+
+    @Test
+    fun `actualizarTextoDesdeWebView no toca nada con texto vacio o enlace inexistente`() =
+        runBlocking {
+            val repo = repositorio()
+            val id = enlaceDao.insertar(
+                Enlace(
+                    url = "https://ejemplo.com/x",
+                    titulo = "ejemplo.com",
+                    categoriaId = otrosId,
+                ),
+            )
+
+            assertFalse(repo.actualizarTextoDesdeWebView(id, "   "))
+            assertFalse(repo.actualizarTextoDesdeWebView(9999L, "Algo"))
+            assertEquals("ejemplo.com", enlaceDao.obtenerPorId(id)!!.titulo)
+            assertEquals("", enlaceDao.obtenerPorId(id)!!.descripcion)
+        }
+
+    @Test
+    fun `actualizarTextoDesdeWebView no reclasifica un enlace de categoria manual`() =
+        runBlocking {
+            val repo = repositorio()
+            val id = enlaceDao.insertar(
+                Enlace(
+                    url = "https://www.facebook.com/share/r/1JqVPz7de",
+                    titulo = "facebook.com",
+                    categoriaId = cocinaId,
+                    categoriaManual = true,
+                ),
+            )
+
+            assertTrue(
+                repo.actualizarTextoDesdeWebView(
+                    id,
+                    "Contratamos a una IA... y el primer día ya vendía croquetas en Marte...",
+                ),
+            )
+
+            val guardado = enlaceDao.obtenerPorId(id)!!
+            assertEquals(
+                "Contratamos a una IA... y el primer día ya vendía croquetas en Marte...",
+                guardado.titulo,
+            )
+            assertEquals(cocinaId, guardado.categoriaId)
+            assertTrue(guardado.categoriaManual)
+        }
 }
