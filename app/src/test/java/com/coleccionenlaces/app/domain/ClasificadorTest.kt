@@ -434,4 +434,218 @@ class ClasificadorTest {
             Clasificador.clasificar("Mira esto", "", "https://$dominio/pagina"),
         )
     }
+
+    // ---- Ampliación 1.0.1 (punto 4): una prueba por palabra nueva ----
+    // Cada lista se prueba en bucle: el título es "Mira esto: <palabra>",
+    // donde "Mira esto" es neutro (probado: cae en "Otros") y solo la
+    // palabra aporta puntos. Así cada palabra tiene su propia
+    // aserción y un fallo dice exactamente qué palabra no clasificó.
+
+    /** Cada palabra de [palabras] clasifica en [categoria] con "Mira esto: <palabra>". */
+    private fun palabrasClasificanEn(palabras: List<String>, categoria: String) {
+        for (palabra in palabras) {
+            assertEquals(
+                categoria,
+                Clasificador.clasificar(
+                    "Mira esto: $palabra",
+                    "",
+                    "https://ejemplo.com/pagina",
+                ),
+            )
+        }
+    }
+
+    @Test
+    fun `ampliacion cocina clasifica cada palabra nueva`() {
+        palabrasClasificanEn(
+            listOf(
+                "cocina", "cocinero", "chef", "reposteria", "hornear",
+                "tacos", "pizza", "pasta", "hamburguesa", "desayuno",
+                "almuerzo", "cena", "licuado", "ceviche", "sushi",
+            ),
+            "Cocina",
+        )
+    }
+
+    @Test
+    fun `ampliacion mecanica clasifica cada palabra nueva`() {
+        palabrasClasificanEn(
+            listOf(
+                "motor", "frenos", "bujia", "bujias", "transmision",
+                "suspension", "inyector", "turbo", "parabrisas",
+                "limpiaparabrisas", "silenciador", "filtro de aire",
+                "filtro de aceite", "direccion hidraulica",
+                "aire acondicionado del auto",
+            ),
+            "Videos de mecánica",
+        )
+    }
+
+    @Test
+    fun `ampliacion construccion clasifica cada palabra nueva`() {
+        palabrasClasificanEn(
+            listOf(
+                "construir", "pared", "techo", "piso", "azulejo",
+                "ceramica", "mamposteria", "andamio", "grua",
+                "excavadora", "remodelacion", "cimentacion",
+                "planos de construccion", "arquitecto",
+                "bloque de concreto",
+            ),
+            "Videos de construcción",
+        )
+    }
+
+    @Test
+    fun `ampliacion entretenimiento clasifica cada palabra nueva`() {
+        palabrasClasificanEn(
+            listOf(
+                "bola", "cometa", "risueño", "chiste", "humor",
+                "comedia", "risa", "meme", "memes", "baile",
+                "karaoke", "novela", "telenovela", "anime", "documental",
+            ),
+            "Entretenimiento",
+        )
+    }
+
+    @Test
+    fun `ampliacion tecnologia clasifica cada palabra nueva`() {
+        palabrasClasificanEn(
+            listOf(
+                "wifi", "bluetooth", "usb", "pantalla", "teclado",
+                "mouse", "monitor", "impresora", "software", "hardware",
+                "internet", "programacion", "codigo", "samsung", "xiaomi",
+            ),
+            "Tecnología y celulares",
+        )
+    }
+
+    @Test
+    fun `ampliacion autos clasifica cada palabra nueva`() {
+        palabrasClasificanEn(
+            listOf(
+                "auto", "carro", "llantas", "volante", "tablero",
+                "velocimetro", "estacionar", "parqueo",
+                "licencia de conducir", "examen de manejo",
+                "seguro del auto", "revision tecnica", "placa",
+                "matricula", "cambio de marchas",
+            ),
+            "Autos y motos",
+        )
+    }
+
+    @Test
+    fun `ampliacion salud clasifica cada palabra nueva`() {
+        palabrasClasificanEn(
+            listOf(
+                "sueño", "cama", "dormir", "descanso", "insomnio",
+                "meditacion", "estiramiento", "abdominales",
+                "sentadillas", "flexiones", "caminar", "nadar",
+                "ciclismo", "vitamina", "colesterol",
+            ),
+            "Salud y ejercicio",
+        )
+    }
+
+    @Test
+    fun `ampliacion dinero clasifica cada palabra nueva`() {
+        palabrasClasificanEn(
+            listOf(
+                "sueldo", "pension", "impuestos", "factura", "gastos",
+                "ingresos", "deudas", "cuenta bancaria", "transferencia",
+                "dolar", "colones", "remesa", "emprendimiento", "oferta",
+                "descuento",
+            ),
+            "Dinero y finanzas",
+        )
+    }
+
+    @Test
+    fun `ampliacion noticias clasifica cada palabra nueva`() {
+        palabrasClasificanEn(
+            listOf(
+                "periodista", "periodico", "reportaje", "entrevista",
+                "titulares", "suceso", "homicidio", "robo", "asalto",
+                "incendio", "temblor", "terremoto", "huracan",
+                "inundacion", "trafico",
+            ),
+            "Noticias",
+        )
+    }
+
+    @Test
+    fun `ampliacion juegos clasifica cada palabra nueva`() {
+        palabrasClasificanEn(
+            listOf(
+                "paleta", "mando", "joystick", "arcade", "speedrun",
+                "streamer", "gaming", "partida", "clan", "mundo abierto",
+                "personaje del juego", "control de videojuegos",
+                "game over", "puntaje", "dlc",
+            ),
+            "Juegos",
+        )
+    }
+
+    @Test
+    fun `ampliacion diy clasifica cada palabra nueva`() {
+        palabrasClasificanEn(
+            listOf(
+                "sierra electrica", "martillo", "destornillador",
+                "llave inglesa", "clavos", "tornillos", "pegamento",
+                "silicona", "cinta adhesiva", "serrucho", "madera",
+                "barniz", "laca", "restaurar mueble", "decoracion",
+            ),
+            "Hazlo tú mismo (DIY)",
+        )
+    }
+
+    @Test
+    fun `ampliacion jardin clasifica cada palabra nueva`() {
+        palabrasClasificanEn(
+            listOf(
+                "rosa", "rosas", "orquidea", "tulipan", "girasol",
+                "pasto", "arbol", "arbusto", "enredadera", "suculenta",
+                "cactus", "fertilizante", "riego", "trasplantar",
+                "paisajismo",
+            ),
+            "Jardín y plantas",
+        )
+    }
+
+    @Test
+    fun `ampliacion pesca clasifica cada palabra nueva`() {
+        palabrasClasificanEn(
+            listOf(
+                "lago", "rio", "lancha", "bote", "red de pescar",
+                "carnada", "cebo", "vaca", "cerdo", "gallina", "oveja",
+                "ordeñar", "potrero", "corral", "pesca deportiva",
+            ),
+            "Pesca y campo",
+        )
+    }
+
+    @Test
+    fun `ampliacion moda clasifica cada palabra nueva`() {
+        palabrasClasificanEn(
+            listOf(
+                "sombrero", "gorra", "bufanda", "guantes",
+                "calcetines", "pijama", "traje de baño", "blusa",
+                "sudadera", "sueter", "abrigo", "collar", "anillo",
+                "aretes", "pulsera",
+            ),
+            "Moda y ropa",
+        )
+    }
+
+    @Test
+    fun `ampliacion viajes clasifica cada palabra nueva`() {
+        palabrasClasificanEn(
+            listOf(
+                "avion", "tren", "bus", "pasaporte", "visa",
+                "hostal", "camping", "senderismo", "mirador", "museo",
+                "iglesia", "parque nacional", "volcan", "catarata",
+                "isla",
+            ),
+            "Viajes",
+        )
+    }
 }
