@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /** Una sección de la cuadrícula: una categoría con sus enlaces. */
@@ -84,85 +85,81 @@ data class HomeUiState(
  * se muestra como "Otros", así que al elegir el chip "Otros" aparece
  * (comparar el `categoriaId` guardado, que es null, lo dejaría fuera).
  */
+/**
+ * Controles mutables de la pantalla (filtro y alta de enlace) en un
+ * solo flujo. Así el estado se construye encadenando `combine` de
+ * 2 flujos, que el compilador resuelve sin ambigüedad (el `combine`
+ * de 8 flujos no compila: la resolución de sobrecargas elige la
+ * variante vararg).
+ */
+private data class ControlesUi(
+    val categoriaId: Long? = null,
+    val soloFavoritos: Boolean = false,
+    val busqueda: String = "",
+    val guardandoEnlace: Boolean = false,
+    val errorAgregar: TipoErrorAgregarEnlace? = null,
+)
+
 class HomeViewModel(
     private val repositorio: RepositorioEnlaces,
 ) : ViewModel() {
 
-    private val categoriaSeleccionadaId = MutableStateFlow<Long?>(null)
-    private val soloFavoritos = MutableStateFlow(false)
-    private val busqueda = MutableStateFlow("")
-    private val guardandoEnlace = MutableStateFlow(false)
-    private val errorAgregar = MutableStateFlow<TipoErrorAgregarEnlace?>(null)
+    private val controles = MutableStateFlow(ControlesUi())
 
-    // Los 8 flujos se combinan con parámetros de tipo explícitos:
-    // sin ellos el compilador no resuelve la sobrecarga de `combine`
-    // de 8 flujos y elige la de vararg (error de inferencia).
-    val estado: StateFlow<HomeUiState> = combine<
-        List<EnlaceConCategoria>,
-        List<Categoria>,
-        Map<Long, Int>,
-        Long?,
-        Boolean,
-        String,
-        Boolean,
-        TipoErrorAgregarEnlace?,
-        HomeUiState,
-        >(
+    val estado: StateFlow<HomeUiState> = combine(
         repositorio.enlacesConCategoria,
         repositorio.categorias,
-        repositorio.contadoresPorCategoria,
-        categoriaSeleccionadaId,
-        soloFavoritos,
-        busqueda,
-        guardandoEnlace,
-        errorAgregar,
-    ) { todos, categorias, contadores, categoriaId, soloFav, textoBusqueda, guardando, error ->
-        val texto = textoBusqueda.trim().lowercase()
-        val filtrados = todos.filter { item ->
-            val porCategoria = categoriaId == null || item.categoria.id == categoriaId
-            val porFavorito = !soloFav || item.enlace.esFavorito
-            val porBusqueda = texto.isEmpty() ||
-                item.enlace.titulo.lowercase().contains(texto) ||
-                item.enlace.descripcion.lowercase().contains(texto) ||
-                item.categoria.nombre.lowercase().contains(texto)
-            porCategoria && porFavorito && porBusqueda
+    ) { todos, categorias -> todos to categorias }
+        .combine(repositorio.contadoresPorCategoria) { (todos, categorias), contadores ->
+            Triple(todos, categorias, contadores)
         }
-        HomeUiState(
-            enlaces = filtrados,
-            totalEnlaces = todos.size,
-            categorias = categorias,
-            contadores = contadores,
-            categoriaSeleccionadaId = categoriaId,
-            soloFavoritos = soloFav,
-            busqueda = textoBusqueda,
-            cargando = false,
-            guardandoEnlace = guardando,
-            errorAgregar = error,
+        .combine(controles) { (todos, categorias, contadores), c ->
+            val texto = c.busqueda.trim().lowercase()
+            val filtrados = todos.filter { item ->
+                val porCategoria = c.categoriaId == null || item.categoria.id == c.categoriaId
+                val porFavorito = !c.soloFavoritos || item.enlace.esFavorito
+                val porBusqueda = texto.isEmpty() ||
+                    item.enlace.titulo.lowercase().contains(texto) ||
+                    item.enlace.descripcion.lowercase().contains(texto) ||
+                    item.categoria.nombre.lowercase().contains(texto)
+                porCategoria && porFavorito && porBusqueda
+            }
+            HomeUiState(
+                enlaces = filtrados,
+                totalEnlaces = todos.size,
+                categorias = categorias,
+                contadores = contadores,
+                categoriaSeleccionadaId = c.categoriaId,
+                soloFavoritos = c.soloFavoritos,
+                busqueda = c.busqueda,
+                cargando = false,
+                guardandoEnlace = c.guardandoEnlace,
+                errorAgregar = c.errorAgregar,
+            )
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = HomeUiState(),
         )
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = HomeUiState(),
-    )
 
     /** Elige la categoría del chip (null = todas). */
     fun seleccionarCategoria(categoriaId: Long?) {
-        this.categoriaSeleccionadaId.value = categoriaId
+        controles.update { it.copy(categoriaId = categoriaId) }
     }
 
     /** Invierte el filtro de solo favoritos. */
     fun alternarSoloFavoritos() {
-        soloFavoritos.value = !soloFavoritos.value
+        controles.update { it.copy(soloFavoritos = !it.soloFavoritos) }
     }
 
     /** Texto de búsqueda (la filtra en vivo; vacía la quita). */
     fun cambiarBusqueda(texto: String) {
-        busqueda.value = texto
+        controles.update { it.copy(busqueda = texto) }
     }
 
     /** Limpia la búsqueda. */
     fun limpiarBusqueda() {
-        busqueda.value = ""
+        controles.update { it.copy(busqueda = "") }
     }
 
     /**
@@ -174,19 +171,18 @@ class HomeViewModel(
      */
     fun agregarEnlace(url: String) {
         viewModelScope.launch {
-            guardandoEnlace.value = true
-            errorAgregar.value = null
+            controles.update { it.copy(guardandoEnlace = true, errorAgregar = null) }
             val resultado = repositorio.agregarEnlace(url)
             if (resultado is ResultadoAgregarEnlace.Error) {
-                errorAgregar.value = resultado.tipo
+                controles.update { it.copy(errorAgregar = resultado.tipo) }
             }
-            guardandoEnlace.value = false
+            controles.update { it.copy(guardandoEnlace = false) }
         }
     }
 
     /** Limpia el error de agregar, tras mostrarlo. */
     fun limpiarErrorAgregar() {
-        errorAgregar.value = null
+        controles.update { it.copy(errorAgregar = null) }
     }
 
     /** Invierte el favorito de un enlace. */
