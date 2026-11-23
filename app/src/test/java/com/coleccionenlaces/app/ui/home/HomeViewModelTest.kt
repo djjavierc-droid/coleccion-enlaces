@@ -731,8 +731,14 @@ class HomeViewModelTest {
     fun `sin filtro y con un enlace la lista no esta vacia y no hay filtro activo`() = runTest {
         viewModel.agregarEnlace("https://ejemplo.com/receta")
         advanceUntilIdle()
+        // Fase 9: la carpeta está bloqueada por defecto; sin
+        // desbloquearla, el enlace no se ve. Se desbloquea como
+        // haría la huella con éxito.
+        viewModel.desbloquearCategoria(cocinaId)
 
-        val estado = esperarEstado { it.totalEnlaces == 1 && !it.guardandoEnlace }
+        val estado = esperarEstado {
+            it.totalEnlaces == 1 && it.enlaces.size == 1 && !it.guardandoEnlace
+        }
 
         assertEquals(1, estado.enlaces.size)
         assertFalse(estado.hayFiltroActivo)
