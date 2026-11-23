@@ -11,6 +11,7 @@ import com.coleccionenlaces.app.data.TipoErrorAgregarEnlace
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -40,6 +41,7 @@ import org.robolectric.annotation.Config
  * `first { ... }`, que suspende hasta que el Flow de Room emite el
  * valor buscado.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class HomeViewModelTest {
@@ -170,18 +172,27 @@ class HomeViewModelTest {
         )
 
         viewModel.cambiarBusqueda("paella")
-        assertEquals(1, esperarEstado { it.enlaces.size == 1 }.enlaces.size)
-        assertEquals(
-            "Receta de paella valenciana",
-            viewModel.estado.value.enlaces.first().enlace.titulo,
-        )
+        val porPaella = esperarEstado {
+            it.enlaces.size == 1 &&
+                it.enlaces.first().enlace.titulo == "Receta de paella valenciana"
+        }
+        assertEquals(1, porPaella.enlaces.size)
+        assertEquals("Receta de paella valenciana", porPaella.enlaces.first().enlace.titulo)
 
         viewModel.cambiarBusqueda("clasico")
-        assertEquals(1, esperarEstado { it.enlaces.size == 1 }.enlaces.size)
-        assertEquals("Partido de futbol", viewModel.estado.value.enlaces.first().enlace.titulo)
+        val porClasico = esperarEstado {
+            it.enlaces.size == 1 &&
+                it.enlaces.first().enlace.titulo == "Partido de futbol"
+        }
+        assertEquals(1, porClasico.enlaces.size)
+        assertEquals("Partido de futbol", porClasico.enlaces.first().enlace.titulo)
 
         viewModel.cambiarBusqueda("entretenimiento")
-        assertEquals(1, esperarEstado { it.enlaces.size == 1 }.enlaces.size)
+        val porCategoria = esperarEstado {
+            it.enlaces.size == 1 &&
+                it.enlaces.first().categoria.nombre == "Entretenimiento"
+        }
+        assertEquals(1, porCategoria.enlaces.size)
 
         viewModel.cambiarBusqueda("no existe nada")
         assertEquals(0, esperarEstado { it.enlaces.isEmpty() }.enlaces.size)
