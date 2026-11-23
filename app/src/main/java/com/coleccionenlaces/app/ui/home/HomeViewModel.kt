@@ -94,7 +94,20 @@ class HomeViewModel(
     private val guardandoEnlace = MutableStateFlow(false)
     private val errorAgregar = MutableStateFlow<TipoErrorAgregarEnlace?>(null)
 
-    val estado: StateFlow<HomeUiState> = combine(
+    // Los 8 flujos se combinan con parámetros de tipo explícitos:
+    // sin ellos el compilador no resuelve la sobrecarga de `combine`
+    // de 8 flujos y elige la de vararg (error de inferencia).
+    val estado: StateFlow<HomeUiState> = combine<
+        List<EnlaceConCategoria>,
+        List<Categoria>,
+        Map<Long, Int>,
+        Long?,
+        Boolean,
+        String,
+        Boolean,
+        TipoErrorAgregarEnlace?,
+        HomeUiState,
+        >(
         repositorio.enlacesConCategoria,
         repositorio.categorias,
         repositorio.contadoresPorCategoria,
