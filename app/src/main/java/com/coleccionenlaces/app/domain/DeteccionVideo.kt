@@ -18,6 +18,12 @@ import com.coleccionenlaces.app.util.extraerHost
  * acentos y sin importar mayúsculas. La lista cubre el español y el
  * inglés de Facebook; una frase parcial ("video no disponible") basta
  * porque la página de error siempre la trae.
+ *
+ * Error nuevo de copyright (investigación de 1 hora, hilo C, §5):
+ * "Facebook Unavailable — This video can't be embedded because it
+ * may contain content owned by someone else". No contiene "Video
+ * Unavailable", así que tiene sus propias frases. Un vídeo real
+ * nunca muestra este texto: solo lo muestra la pantalla de error.
  */
 fun detectarVideoNoDisponible(textoVisible: String?): Boolean {
     if (textoVisible.isNullOrBlank()) return false
@@ -37,6 +43,10 @@ private val FRASES_VIDEO_NO_DISPONIBLE = listOf(
     "content isn t available",
     "this video is unavailable",
     "el video no esta disponible",
+    // Error nuevo de copyright (investigación de 1 hora, hilo C).
+    "facebook unavailable",
+    "can t be embedded",
+    "content owned by someone else",
 )
 
 /**

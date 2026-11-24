@@ -12,15 +12,30 @@ import org.junit.Test
  */
 class ClasificadorVisionTest {
 
-    /** Motor falso: clasifica por palabras contenidas en el texto. */
+    /**
+     * Motor falso: clasifica por palabras contenidas en el texto, con
+     * la confianza indicada (1,0 por defecto: el falso decide con
+     * seguridad total, como un motor real muy seguro). La confianza
+     * es el parámetro que prueban los tests del umbral OCR.
+     */
     private class MotorFalso(
         private val porPalabra: Map<String, String>,
+        private val confianza: Float = 1.0f,
     ) : MotorClasificacion {
         override fun clasificar(titulo: String, descripcion: String, url: String): String {
             val texto = "$titulo $descripcion".trim()
             return porPalabra.entries
                 .firstOrNull { (palabra, _) -> texto.contains(palabra, ignoreCase = true) }
                 ?.value ?: Clasificador.OTROS
+        }
+
+        override fun clasificarTextoConConfianza(texto: String): Pair<String, Float>? {
+            val categoria = clasificar(texto, "", "")
+            return if (categoria != Clasificador.OTROS) {
+                categoria to confianza
+            } else {
+                null
+            }
         }
     }
 
@@ -110,5 +125,65 @@ class ClasificadorVisionTest {
             textoOcr = "Algo de texto",
         )
         assertEquals("Viajes", vision(motor).clasificarPorVision(senales))
+    }
+
+    // ---- Umbral OCR (investigación de 1 hora, hilo D) ----
+
+    /**
+     * El OCR es solo un respaldo DÉBIL: la basura OCR da confianza
+     * alta y equivocada (12/30 cuadros > 0,5 con categoría errónea;
+     * el peor, 0,847). Con confianza 0,84 el OCR no decide: caen
+     * las etiquetas (Juegos) en vez de su categoría errónea.
+     */
+    @Test
+    fun `el OCR con confianza 0,84 no clasifica y caen las etiquetas`() {
+        val motor = MotorFalso(
+            mapOf("inteligencia artificial" to "Tecnología y celulares"),
+            confianza = 0.84f,
+        )
+        val senales = SenalesVisuales(
+            etiquetas = listOf(EtiquetaImagen("Video game", 0.9f)),
+            textoOcr = "La inteligencia artificial que vende en línea",
+        )
+        assertEquals("Juegos", vision(motor).clasificarPorVision(senales))
+    }
+
+    /**
+     * Con confianza 0,5 (lo que reporta un motor sin medida real)
+     * el OCR tampoco decide: el umbral alto es justo para eso.
+     */
+    @Test
+    fun `el OCR con confianza 0,5 no clasifica`() {
+        val motor = MotorFalso(
+            mapOf("inteligencia artificial" to "Tecnología y celulares"),
+            confianza = 0.5f,
+        )
+        val senales = SenalesVisuales(
+            etiquetas = emptyList(),
+            textoOcr = "La inteligencia artificial que vende en línea",
+        )
+        assertEquals(Clasificador.OTROS, vision(motor).clasificarPorVision(senales))
+    }
+
+    /**
+     * Con confianza 0,85 (el umbral) el OCR sí decide: el caso
+     * obligatorio (Soylorainegodoy, OCR exacto, 0,963) queda por
+     * encima con margen, y el peor OCR erróneo medido (0,847) queda
+     * por debajo.
+     */
+    @Test
+    fun `el OCR con confianza 0,85 si clasifica`() {
+        val motor = MotorFalso(
+            mapOf("inteligencia artificial" to "Tecnología y celulares"),
+            confianza = 0.85f,
+        )
+        val senales = SenalesVisuales(
+            etiquetas = listOf(EtiquetaImagen("Food", 0.95f)),
+            textoOcr = "La inteligencia artificial que vende en línea",
+        )
+        assertEquals(
+            "Tecnología y celulares",
+            vision(motor).clasificarPorVision(senales),
+        )
     }
 }

@@ -67,6 +67,45 @@ open class ServicioPosterResuelto(
         }
 
     /**
+     * Elige la rendition de VÍDEO de [urlsVideo] por bitrate
+     * (investigación de 1 hora, hilo B, §1): la primera `.mp4` de la
+     * lista puede ser solo audio (60.394 bps, 110.435 B, stream AAC
+     * único). Hace un HEAD por URL y elige la de mayor Content-Length
+     * con Content-Type `video/mp4` (el audio es ~20 veces más pequeño
+     * que el vídeo: 110 KB frente a 2,2 MB en Yofer). Si ningún HEAD
+     * responde, devuelve la primera URL (la descarga decidirá).
+     * Nunca lanza: lista vacía → null.
+     */
+    open suspend fun elegirVideoPorBitrate(urlsVideo: List<String>): String? =
+        withContext(Dispatchers.IO) {
+            if (urlsVideo.isEmpty()) return@withContext null
+            var mejor: String? = null
+            var mejorTamano = -1L
+            for (url in urlsVideo) {
+                val tamano = try {
+                    val peticion = Request.Builder()
+                        .url(url)
+                        .head()
+                        .header("User-Agent", ServicioVistaPrevia.USER_AGENT)
+                        .build()
+                    cliente.newCall(peticion).execute().use { respuesta ->
+                        val esVideo = respuesta.header("Content-Type")
+                            ?.startsWith("video/", ignoreCase = true) == true
+                        if (!respuesta.isSuccessful || !esVideo) return@use -1L
+                        respuesta.header("Content-Length")?.toLongOrNull() ?: -1L
+                    }
+                } catch (_: Exception) {
+                    -1L
+                }
+                if (tamano > mejorTamano) {
+                    mejorTamano = tamano
+                    mejor = url
+                }
+            }
+            mejor ?: urlsVideo.firstOrNull()
+        }
+
+    /**
      * Saca un cuadro del vídeo directo [urlVideo] y lo guarda como
      * JPEG en [destino]. Descarga solo los primeros
      * [BYTES_VIDEO_PARCIAL] del archivo (el `moov` y los primeros

@@ -7,6 +7,7 @@ import com.coleccionenlaces.app.domain.AnalizadorVisual
 import com.coleccionenlaces.app.domain.CabezaAprendizaje
 import com.coleccionenlaces.app.domain.ClasificadorVision
 import com.coleccionenlaces.app.domain.EtiquetaImagen
+import com.coleccionenlaces.app.domain.MotorClasificacion
 import com.coleccionenlaces.app.domain.MotorPalabrasClave
 import com.coleccionenlaces.app.domain.PosterResuelto
 import com.coleccionenlaces.app.domain.ResultadoOEmbed
@@ -196,6 +197,30 @@ class RepositorioEnlacesTest {
         override suspend fun analizar(bitmap: Bitmap): SenalesVisuales? = senales
     }
 
+    /**
+     * Motor por palabras clave que reporta confianza total (SOLO
+     * pruebas): el motor real mide su confianza; el de palabras
+     * clave no, y su valor por defecto (0,5) no llega al umbral alto
+     * que el clasificador por visión exige al OCR (0,85, investigación
+     * de 1 hora, hilo D). Este falso verifica el cableado (el gancho
+     * mueve el enlace cuando la visión clasifica); el umbral se
+     * prueba en ClasificadorVisionTest con confianzas controladas.
+     */
+    private object MotorPalabrasClaveConConfianza : MotorClasificacion {
+        override fun clasificar(
+            titulo: String,
+            descripcion: String,
+            url: String,
+        ): String = MotorPalabrasClave.clasificar(titulo, descripcion, url)
+
+        override fun clasificarTextoConConfianza(
+            texto: String,
+        ): Pair<String, Float>? {
+            val categoria = clasificar(texto, "", "")
+            return if (categoria != Clasificador.OTROS) categoria to 1.0f else null
+        }
+    }
+
     /** Repositorio con visión + OCR (Fix 5), con el motor por palabras clave (determinista). */
     private fun repositorioConVision(
         senales: SenalesVisuales?,
@@ -209,7 +234,7 @@ class RepositorioEnlacesTest {
             directorio,
             motorClasificacion = MotorPalabrasClave,
             analizadorVisual = AnalizadorFalso(senales),
-            clasificadorVision = ClasificadorVision(MotorPalabrasClave),
+            clasificadorVision = ClasificadorVision(MotorPalabrasClaveConConfianza),
         )
 
     @Test
@@ -1096,6 +1121,44 @@ class RepositorioEnlacesTest {
             assertEquals("", enlaceDao.obtenerPorId(id)!!.descripcion)
         }
 
+    /**
+     * Peligro activo (investigación de 1 hora, hilo D): el texto
+     * "Video no disponible" clasifica como Tecnología 0,737. Si el
+     * WebView lo entregara como texto del reproductor, el enlace se
+     * guardaría con ese título y esa categoría. Se ignora: el enlace
+     * queda como estaba (título de dominio, "Otros").
+     */
+    @Test
+    fun `actualizarTextoDesdeWebView ignora el texto de error y no reclasifica`() =
+        runBlocking {
+            val repo = repositorio()
+            val id = enlaceDao.insertar(
+                Enlace(
+                    url = "https://www.facebook.com/share/r/1JqVPz7de",
+                    titulo = "facebook.com",
+                    categoriaId = otrosId,
+                ),
+            )
+
+            assertFalse(
+                repo.actualizarTextoDesdeWebView(
+                    id,
+                    "Video no disponible\nEs posible que este video ya no exista",
+                ),
+            )
+            assertFalse(
+                repo.actualizarTextoDesdeWebView(
+                    id,
+                    "Facebook Unavailable — This video can't be embedded " +
+                        "because it may contain content owned by someone else.",
+                ),
+            )
+            val guardado = enlaceDao.obtenerPorId(id)!!
+            assertEquals("facebook.com", guardado.titulo)
+            assertEquals("", guardado.descripcion)
+            assertEquals(otrosId, guardado.categoriaId)
+        }
+
     @Test
     fun `actualizarTextoDesdeWebView no reclasifica un enlace de categoria manual`() =
         runBlocking {
@@ -1409,7 +1472,7 @@ class RepositorioEnlacesTest {
             directorioMiniaturas,
             motorClasificacion = MotorPalabrasClave,
             analizadorVisual = AnalizadorFalso(senales),
-            clasificadorVision = ClasificadorVision(MotorPalabrasClave),
+            clasificadorVision = ClasificadorVision(MotorPalabrasClaveConConfianza),
             servicioPosterResuelto = poster,
         )
     }
@@ -1427,6 +1490,11 @@ class RepositorioEnlacesTest {
                 ),
             )
         }
+
+        // Sin red en las pruebas: la única .mp4 es la del vídeo.
+        override suspend fun elegirVideoPorBitrate(
+            urlsVideo: List<String>,
+        ): String? = urlsVideo.firstOrNull()
 
         override suspend fun extraerCuadroDeVideo(
             urlVideo: String,

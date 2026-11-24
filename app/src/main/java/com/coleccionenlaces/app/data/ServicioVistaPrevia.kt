@@ -139,9 +139,12 @@ class ServicioVistaPrevia(
      * `m.facebook.com/share/r/...` y luego 400 (muro de login, sin
      * og tags). La resolución por sí sola NO arregla la vista
      * previa: el destino sigue siendo un muro. Lo que arregla el
-     * bug es la detección del error en el WebView (ver
-     * [com.coleccionenlaces.app.domain.detectarVideoNoDisponible]);
-     * esto solo le da al oEmbed la URL más estable que se conoce.
+     * bug es la pre-comprobación M5 por señal positiva
+     * (`<video>` o `.mp4` en la página del plugin) y la red de
+     * seguridad M3 (riqueza del bitmap); el texto del WebView solo
+     * enriquece y nunca decide si hay error (investigación de 1
+     * hora, hilo C). Esto solo le da al oEmbed la URL más estable
+     * que se conoce.
      *
      * Nunca lanza: con URL inválida o cualquier fallo de red
      * devuelve la URL tal cual (el oEmbed se intenta igual con la

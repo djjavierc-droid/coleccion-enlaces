@@ -23,6 +23,30 @@ interface MotorClasificacion {
     fun clasificar(titulo: String, descripcion: String, url: String): String
 
     /**
+     * Categoría de [texto] con su confianza (0..1), o null si el
+     * motor no decide ninguna ("Otros"). La implementación por
+     * defecto deriva de [clasificar]: si el motor decide una
+     * categoría, la confianza es el umbral mínimo
+     * ([CONFIANZA_SIN_MEDIR]); si no decide, null. Los motores con
+     * confianza real (DistilBERT) la sobrescriben con su medida.
+     * El clasificador por visión la usa para exigirle más al texto
+     * del OCR que al título (ver [ClasificadorVision]).
+     */
+    fun clasificarTextoConConfianza(texto: String): Pair<String, Float>? {
+        val categoria = clasificar(texto, "", "")
+        return if (categoria != Clasificador.OTROS) {
+            categoria to CONFIANZA_SIN_MEDIR
+        } else {
+            null
+        }
+    }
+
+    companion object {
+        /** Confianza que reporta un motor sin medida real cuando decide. */
+        const val CONFIANZA_SIN_MEDIR = 0.5f
+    }
+
+    /**
      * Categoría a aplicar a un enlace guardado.
      *
      * - Si `enlace.categoriaManual` es true, devuelve `null`: la
@@ -63,9 +87,20 @@ class ClasificadorInteligente(
     private val umbralCabeza: Float = UMBRAL_CABEZA,
 ) : MotorClasificacion {
 
-    override fun clasificar(titulo: String, descripcion: String, url: String): String {
-        val texto = "$titulo $descripcion".trim()
-        if (texto.isBlank()) return Clasificador.OTROS
+    override fun clasificar(titulo: String, descripcion: String, url: String): String =
+        clasificarTextoConConfianza("$titulo $descripcion".trim())?.first
+            ?: Clasificador.OTROS
+
+    /**
+     * Categoría de [texto] con su confianza real (la del modelo o la
+     * de la cabeza, la que haya decidido), o null si ninguna llega a
+     * su umbral ("Otros"). Es la misma decisión que [clasificar],
+     * pero devolviendo la confianza: el clasificador por visión la
+     * necesita para exigirle más al texto del OCR que al título.
+     */
+    override fun clasificarTextoConConfianza(texto: String): Pair<String, Float>? {
+        val limpio = texto.trim()
+        if (limpio.isBlank()) return null
         // Fix 4, bug 2: el texto es SOLO un dominio ("facebook.com").
         // Facebook no dio título y el modelo nunca vio dominios
         // sueltos en entrenamiento: su respuesta es espuria (medido
@@ -74,37 +109,37 @@ class ClasificadorInteligente(
         // "Juegos" 0,674). El modelo NO decide aquí: solo la cabeza
         // aprendida (la corrección manual de Javier) y, si no ha
         // aprendido nada sobre ese dominio, "Otros".
-        if (esTextoSoloDominio(texto)) {
+        if (esTextoSoloDominio(limpio)) {
             val prediccionCabeza = try {
-                cabeza.predecir(texto)
+                cabeza.predecir(limpio)
             } catch (_: Exception) {
                 null
             }
             if (prediccionCabeza != null && prediccionCabeza.confianza >= umbralCabeza) {
-                return etiquetas[prediccionCabeza.indiceClase]
+                return etiquetas[prediccionCabeza.indiceClase] to prediccionCabeza.confianza
             }
-            return Clasificador.OTROS
+            return null
         }
         // 1. El modelo DistilBERT.
         val resultadoModelo = try {
-            modelo?.clasificar(texto)
+            modelo?.clasificar(limpio)
         } catch (_: Exception) {
             null
         }
         if (resultadoModelo != null && resultadoModelo.confianza >= umbralModelo) {
-            return resultadoModelo.categoria
+            return resultadoModelo.categoria to resultadoModelo.confianza
         }
         // 2. La cabeza aprendida con las correcciones de Javier.
         val prediccionCabeza = try {
-            cabeza.predecir(texto)
+            cabeza.predecir(limpio)
         } catch (_: Exception) {
             null
         }
         if (prediccionCabeza != null && prediccionCabeza.confianza >= umbralCabeza) {
-            return etiquetas[prediccionCabeza.indiceClase]
+            return etiquetas[prediccionCabeza.indiceClase] to prediccionCabeza.confianza
         }
-        // 3. Sin seguridad: "Otros". Nunca se adivina con palabras clave.
-        return Clasificador.OTROS
+        // 3. Sin seguridad: null ("Otros"). Nunca se adivina con palabras clave.
+        return null
     }
 
     companion object {

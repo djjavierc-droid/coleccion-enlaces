@@ -36,6 +36,24 @@ class DeteccionVideoTest {
         )
     }
 
+    /**
+     * Error nuevo de copyright (investigación de 1 hora, hilo C, §5):
+     * no contiene "Video Unavailable", pero es la misma pantalla de
+     * error. El filtro del OCR y del enriquecimiento debe cazarlo
+     * igual: si ese texto llegara al clasificador, clasificaría mal.
+     */
+    @Test
+    fun `detecta el error nuevo de copyright sin Video Unavailable`() {
+        assertTrue(
+            detectarVideoNoDisponible(
+                "Facebook Unavailable — This video can't be embedded " +
+                    "because it may contain content owned by someone else.",
+            ),
+        )
+        assertTrue(detectarVideoNoDisponible("Facebook Unavailable"))
+        assertTrue(detectarVideoNoDisponible("This video can't be embedded"))
+    }
+
     @Test
     fun `no detecta error en textos normales de video`() {
         assertFalse(detectarVideoNoDisponible("Mira este video de Minecraft"))

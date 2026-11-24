@@ -11,6 +11,7 @@ import com.coleccionenlaces.app.domain.PosterResuelto
 import com.coleccionenlaces.app.domain.ResultadoOEmbed
 import com.coleccionenlaces.app.domain.ResultadoVistaPrevia
 import com.coleccionenlaces.app.domain.TipoErrorVistaPrevia
+import com.coleccionenlaces.app.domain.detectarVideoNoDisponible
 import com.coleccionenlaces.app.domain.esTextoSoloDominio
 import com.coleccionenlaces.app.domain.esUrlCortaFacebookCompartida
 import com.coleccionenlaces.app.domain.proveedorOEmbedDe
@@ -430,7 +431,9 @@ class RepositorioEnlaces(
                 }
             }
             // Sin og:image pero con .mp4 directo: sacar un cuadro del
-            // vídeo y guardarlo como miniatura local.
+            // vídeo y guardarlo como miniatura local. La rendition se
+            // elige por bitrate (investigación de 1 hora, hilo B): la
+            // primera .mp4 puede ser solo audio.
             if (!cuadroResueltoGuardado && poster != null &&
                 poster.urlsVideo.isNotEmpty()
             ) {
@@ -438,9 +441,11 @@ class RepositorioEnlaces(
                     carpeta.mkdirs()
                     File(carpeta, "miniatura-$id.jpg")
                 }
-                if (destino != null &&
+                val urlVideo = servicioPosterResuelto
+                    ?.elegirVideoPorBitrate(poster.urlsVideo)
+                if (destino != null && urlVideo != null &&
                     servicioPosterResuelto?.extraerCuadroDeVideo(
-                        poster.urlsVideo.first(), destino,
+                        urlVideo, destino,
                     ) == true
                 ) {
                     enlaceGuardado =
@@ -584,6 +589,11 @@ class RepositorioEnlaces(
         val enlace = enlaceDao.obtenerPorId(enlaceId) ?: return false
         val textoLimpio = texto.trim().take(500)
         if (textoLimpio.isBlank()) return false
+        // Investigación de 1 hora, hilo D (peligro activo): el texto
+        // "Video no disponible" clasifica como Tecnología 0,737. Si
+        // ese texto llegara al clasificador, clasificaría mal con
+        // confianza alta. Nunca se guarda ni se clasifica: se ignora.
+        if (detectarVideoNoDisponible(textoLimpio)) return false
         val host = extraerHost(enlace.url)
         val tituloNuevo = if (host != null && enlace.titulo == host) {
             primeraLinea(textoLimpio) ?: enlace.titulo

@@ -84,9 +84,9 @@ class MiniaturaWebViewTest {
     fun `un cuadro casi negro con pocos colores si se trata como sin cuadro real`() {
         // Límite honesto de M3 (diagnóstico §5.3): un cuadro de vídeo
         // muy oscuro o fundido a negro tiene pocos colores y da falso
-        // positivo. Por eso M3 es solo la red de seguridad (M5 y M2
-        // deciden antes) y la captura es a los 2 s, con el póster ya
-        // pintado, no con un fundido a negro.
+        // positivo. Por eso M3 es solo la red de seguridad (M5 decide
+        // antes por señal positiva) y la captura es a los 2 s, con el
+        // póster ya pintado, no con un fundido a negro.
         val bitmap = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888)
         val azar = Random(7)
         for (y in 0 until 100) {

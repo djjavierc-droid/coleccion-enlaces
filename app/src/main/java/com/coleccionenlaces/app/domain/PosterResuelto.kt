@@ -106,13 +106,23 @@ fun extraerOgImage(html: String, urlBase: String): String? {
 /**
  * URLs `.mp4` directas dentro de [html] (las que trae la página
  * canónica del vídeo en sus datos incrustados), sin duplicados y
- * como mucho 3. El HTML de Facebook escapa las barras (`\/`) y el
- * `&` (`\u0026`) dentro del JSON: se desescapan antes de buscar.
- * Devuelve lista vacía si no hay ninguna (muro de login, página de
- * error, HTML vacío).
+ * como mucho 3. El HTML de Facebook escapa las barras (`\/`) y los
+ * caracteres de URL (`\u0025` → `%`, `\u0026` → `&`, ...) dentro del
+ * JSON: se desescapan antes de buscar. Una URL truncada por no
+ * desescapar da 403 "Bad URL hash" (investigación de 1 hora, hilo
+ * B, §2): el `\u0025` se desescapa PRIMERO, porque es el escape del
+ * carácter de escape (`\u00252F` es `%2F`). Devuelve lista vacía si
+ * no hay ninguna (muro de login, página de error, HTML vacío).
  */
 fun extraerUrlsVideoMp4(html: String): List<String> {
-    val limpio = html.replace("\\/", "/").replace("\\u0026", "&")
+    val limpio = html.replace("\\/", "/")
+        .replace("\\u0025", "%")
+        .replace("\\u0026", "&")
+        .replace("\\u002F", "/")
+        .replace("\\u003D", "=")
+        .replace("\\u003F", "?")
+        .replace("\\u0023", "#")
+        .replace("\\u002B", "+")
     return URL_MP4.findAll(limpio)
         .map { it.value.replace("&amp;", "&").trimEnd('.', ',', ';') }
         .filter { it.isNotBlank() }

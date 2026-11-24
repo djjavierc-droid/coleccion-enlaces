@@ -146,4 +146,99 @@ class ServicioPosterResueltoTest {
 
         assertNull(servicio.resolver(urlReel))
     }
+
+    // ---- elegirVideoPorBitrate (investigación de 1 hora, hilo B, §1) ----
+
+    /** Cliente HEAD falso: responde (código, tipo, tamaño) según la URL. */
+    private fun clienteHeadFalso(
+        respuestas: Map<String, Triple<Int, String, Long>>,
+    ): OkHttpClient = OkHttpClient.Builder()
+        .addInterceptor { cadena ->
+            val url = cadena.request().url.toString()
+            val (codigo, tipo, tamano) = respuestas[url]
+                ?: Triple(404, "text/html", 0L)
+            Response.Builder()
+                .request(cadena.request())
+                .protocol(Protocol.HTTP_1_1)
+                .code(codigo)
+                .message(if (codigo == 200) "OK" else "Error")
+                .header("Content-Type", tipo)
+                .header("Content-Length", tamano.toString())
+                .body("".toResponseBody(tipo.toMediaType()))
+                .build()
+        }
+        .build()
+
+    /**
+     * La primera .mp4 puede ser solo audio (110.435 B, AAC único):
+     * se elige la rendition de vídeo por tamaño, no la primera.
+     * Tamaños medidos en el hilo B (Yofer): audio 110.435 B, baja
+     * 616.716 B, alta 2.262.571 B.
+     */
+    @Test
+    fun `elegirVideoPorBitrate elige la rendition de video y no el audio`() =
+        runBlocking {
+            val audio = "https://video-sjc3-1.xx.fbcdn.net/o1/audio.mp4?oe=1"
+            val baja = "https://video-sjc3-1.xx.fbcdn.net/o1/baja.mp4?oe=1"
+            val alta = "https://video-sjc3-1.xx.fbcdn.net/o1/alta.mp4?oe=1"
+            val cliente = clienteHeadFalso(
+                mapOf(
+                    audio to Triple(200, "video/mp4", 110435L),
+                    baja to Triple(200, "video/mp4", 616716L),
+                    alta to Triple(200, "video/mp4", 2262571L),
+                ),
+            )
+            val servicio = ServicioPosterResuelto(cliente = cliente)
+
+            assertEquals(
+                alta,
+                servicio.elegirVideoPorBitrate(listOf(audio, baja, alta)),
+            )
+            // El orden de la lista no importa: el audio primero sigue
+            // sin elegirse.
+            assertEquals(
+                alta,
+                servicio.elegirVideoPorBitrate(listOf(alta, audio, baja)),
+            )
+        }
+
+    @Test
+    fun `elegirVideoPorBitrate salta respuestas que no son video mp4`() =
+        runBlocking {
+            val error = "https://video-sjc3-1.xx.fbcdn.net/o1/error.mp4?oe=1"
+            val video = "https://video-sjc3-1.xx.fbcdn.net/o1/video.mp4?oe=1"
+            val cliente = clienteHeadFalso(
+                mapOf(
+                    error to Triple(200, "text/html", 9999999L),
+                    video to Triple(200, "video/mp4", 1000L),
+                ),
+            )
+            val servicio = ServicioPosterResuelto(cliente = cliente)
+
+            assertEquals(
+                video,
+                servicio.elegirVideoPorBitrate(listOf(error, video)),
+            )
+        }
+
+    @Test
+    fun `elegirVideoPorBitrate sin HEAD devuelve la primera URL`() = runBlocking {
+        val primera = "https://video-sjc3-1.xx.fbcdn.net/o1/primera.mp4?oe=1"
+        val segunda = "https://video-sjc3-1.xx.fbcdn.net/o1/segunda.mp4?oe=1"
+        val clienteSinRed = OkHttpClient.Builder()
+            .addInterceptor { throw java.net.UnknownHostException("fbcdn.net") }
+            .build()
+        val servicio = ServicioPosterResuelto(cliente = clienteSinRed)
+
+        assertEquals(
+            primera,
+            servicio.elegirVideoPorBitrate(listOf(primera, segunda)),
+        )
+    }
+
+    @Test
+    fun `elegirVideoPorBitrate con lista vacia devuelve null`() = runBlocking {
+        val servicio = ServicioPosterResuelto(cliente = clienteHeadFalso(emptyMap()))
+        assertNull(servicio.elegirVideoPorBitrate(emptyList()))
+    }
 }

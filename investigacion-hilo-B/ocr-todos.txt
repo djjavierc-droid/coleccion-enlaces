@@ -1,0 +1,57 @@
+== yofer-frame-t0.10.jpg: 0 lineas
+== yofer-frame-t10.97.jpg: 2 lineas
+   0.97	VISTAS
+   0.91	ELAPOYO!
+== yofer-frame-t14.48.jpg: 4 lineas
+   0.53	popayosmopsuumtoy
+   0.98	50.000+VISTAS
+   0.98	GRACIASPORELAPOYO!
+   0.99	MILESTONEACHIEVED
+== yofer-frame-t3.66.jpg: 4 lineas
+   0.64	popayosmdpsyumoy
+   0.98	50.000+VISTAS
+   0.99	GRACIASPORELAPOYO!
+   0.99	MILESTONEACHIEVED
+== yofer-frame-t7.32.jpg: 3 lineas
+   0.91	STTO+VISTAS
+   0.84	PSPORELAPOYO!
+   0.72	KSTONEOCHIET
+== yofer-ogimage.jpg: 2 lineas
+   0.82	TUBE
+   0.99	ATION
+== tec-ai-frame-t0.10.jpg: 0 lineas
+== tec-ai-frame-t24.10.jpg: 1 lineas
+   0.74	记单
+== tec-ai-frame-t48.20.jpg: 2 lineas
+   0.96	13:25
+   0.84	Amoo，你的全邮饮伴
+== tec-ai-frame-t72.30.jpg: 0 lineas
+== tec-ai-frame-t96.25.jpg: 2 lineas
+   0.83	C
+   0.99	TEC
+== tec-ai-ogimage.jpg: 0 lineas
+== game-freefire-frame-t0.10.jpg: 4 lineas
+   0.95	YO CUANDO SEA
+   0.91	PAPA Y ESTE EN
+   0.98	PLENA PARTIDA
+   0.90	DE FREE FRE
+== game-freefire-frame-t12.72.jpg: 0 lineas
+== game-freefire-frame-t3.22.jpg: 3 lineas
+   0.82	2026
+   0.96	#DaniDlop
+   0.99	INGENIERO
+== game-freefire-frame-t6.43.jpg: 4 lineas
+   0.84	21120
+   0.96	#DaniDlop
+   0.97	NGENIERO
+   1.00	FF
+== game-freefire-frame-t9.65.jpg: 4 lineas
+   0.97	07
+   0.96	#DaniDlop
+   0.94	NGENIERO
+   0.99	FF
+== game-freefire-ogimage.jpg: 4 lineas
+   0.96	YO CUANDO SEA
+   0.94	PAPAYESTE EN
+   0.97	PLENA PARTIDA
+   0.93	DE FREE FIRE

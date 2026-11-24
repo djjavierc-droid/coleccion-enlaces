@@ -19,7 +19,11 @@ import org.junit.Test
  * simulan la respuesta del servidor (mismo patrón que
  * `RepositorioEnlacesTest`). Los HTML son representativos de las
  * muestras medidas en fix-5-diagnostico.md §5.5 (error: "Video
- * Unavailable" ×1, `<video>` ×0, `.mp4` ×0; bueno: 0 / 1 / 14).
+ * Unavailable" ×1, `<video>` ×0, `.mp4` ×0; bueno: 0 / 1 / 14) y en
+ * la investigación de 1 hora, hilo C, §5 (página buena con "Video
+ * unavailable" de respaldo; error nuevo de copyright sin "Video
+ * Unavailable"). La decisión es SOLO por señal positiva
+ * (`<video>` o `.mp4`), nunca por texto de error.
  */
 class ServicioComprobacionVideoTest {
 
@@ -44,6 +48,28 @@ class ServicioComprobacionVideoTest {
         "<html><body><video src=\"https://video.xx.fbcdn.net/v/1.mp4\"></video>" +
             (2..14).joinToString("") { "<a href=\"https://video.xx.fbcdn.net/v/$it.mp4\">x</a>" } +
             "</body></html>"
+
+    /**
+     * HTML del plugin para el caso bueno CON el texto "Video
+     * unavailable" como respaldo (medido en la investigación de 1
+     * hora, hilo C, §5: la página buena de Yofer lo trae). Detectar
+     * por texto de error daría NO_DISPONIBLE aquí: falso positivo
+     * inverso. La señal positiva (1 `<video>`, 14 `.mp4`) manda.
+     */
+    private val htmlBuenoConRespaldo =
+        "<html><body><video src=\"https://video.xx.fbcdn.net/v/1.mp4\">" +
+            "Video unavailable<br>Sorry, this video could not be played." +
+            "</video>" +
+            (2..14).joinToString("") { "<a href=\"https://video.xx.fbcdn.net/v/$it.mp4\">x</a>" } +
+            "</body></html>"
+
+    /** HTML del plugin para el error nuevo de copyright (hilo C, §5). */
+    private val htmlErrorCopyright = """
+        <html><body>
+        <div class="_3i0o _50f7">Facebook Unavailable</div>
+        <div class="_3i0p">This video can't be embedded because it may contain content owned by someone else.</div>
+        </body></html>
+    """.trimIndent()
 
     /** Cliente que responde siempre con (código, cuerpo). */
     private fun clienteFijo(codigo: Int, cuerpo: String): OkHttpClient =
@@ -87,6 +113,34 @@ class ServicioComprobacionVideoTest {
         val servicio = ServicioComprobacionVideo(clienteFijo(200, htmlBueno))
         assertEquals(EstadoVideo.DISPONIBLE, servicio.comprobar(urlFacebook))
     }
+
+    /**
+     * Corrección crítica (investigación de 1 hora, hilo C): la página
+     * buena contiene "Video unavailable" como respaldo. Detectar por
+     * texto de error la marcaría NO_DISPONIBLE; la señal positiva
+     * (1 `<video>`, 14 `.mp4`) manda y es DISPONIBLE.
+     */
+    @Test
+    fun `la pagina buena con Video unavailable de respaldo da DISPONIBLE`() =
+        runBlocking {
+            val servicio =
+                ServicioComprobacionVideo(clienteFijo(200, htmlBuenoConRespaldo))
+            assertEquals(EstadoVideo.DISPONIBLE, servicio.comprobar(urlFacebook))
+        }
+
+    /**
+     * Corrección crítica (investigación de 1 hora, hilo C): el error
+     * nuevo de copyright NO contiene "Video Unavailable". Detectar
+     * por texto lo pasaría como bueno; sin señal positiva
+     * (`<video>` ×0, `.mp4` ×0) es NO_DISPONIBLE.
+     */
+    @Test
+    fun `el error nuevo de copyright sin Video Unavailable da NO_DISPONIBLE`() =
+        runBlocking {
+            val servicio =
+                ServicioComprobacionVideo(clienteFijo(200, htmlErrorCopyright))
+            assertEquals(EstadoVideo.NO_DISPONIBLE, servicio.comprobar(urlFacebook))
+        }
 
     @Test
     fun `sin error y sin video no hay senal positiva y da NO_DISPONIBLE`() = runBlocking {

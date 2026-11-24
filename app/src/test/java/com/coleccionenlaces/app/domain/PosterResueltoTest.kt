@@ -192,4 +192,25 @@ class PosterResueltoTest {
             extraerUrlsVideoMp4(html),
         )
     }
+
+    /**
+     * 403 "Bad URL hash" (investigación de 1 hora, hilo B, §2): una
+     * URL truncada por no desescapar `\u0025` (`%`) da 403. El
+     * `\u0025` se desescapa primero, porque es el escape del carácter
+     * de escape (`\u00252F` es `%2F`).
+     */
+    @Test
+    fun `extraerUrlsVideoMp4 desescapa u0025 antes que los demas`() {
+        val html = """
+            <script>var u = "https://video-sjc3-1.xx.fbcdn.net/o1/v.mp4?oh=abc\u0026oe=6B0A93AD";</script>
+            <script>var v = "https://video-sjc3-1.xx.fbcdn.net/o1/w.mp4?x=%2Fy\u00252Fz";</script>
+        """.trimIndent()
+        assertEquals(
+            listOf(
+                "https://video-sjc3-1.xx.fbcdn.net/o1/v.mp4?oh=abc&oe=6B0A93AD",
+                "https://video-sjc3-1.xx.fbcdn.net/o1/w.mp4?x=%2Fy%2Fz",
+            ),
+            extraerUrlsVideoMp4(html),
+        )
+    }
 }

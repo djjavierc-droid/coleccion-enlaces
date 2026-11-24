@@ -42,17 +42,22 @@ import org.json.JSONTokener
  *
  * - **M5 (primario):** antes de montar el WebView, [comprobarVideoDisponible]
  *   pre-comprueba la página del plugin de Facebook con OkHttp
- *   (`plugins/video.php?href=...`): si el servidor sirve "Video
- *   Unavailable" o no hay ningún `<video>` ni `.mp4`, el WebView NO
- *   se monta y se avisa con [onVideoNoDisponible]. Para enlaces que
- *   no son de Facebook (o si la comprobación no se pudo hacer) el
- *   WebView se monta como antes.
- * - **M2 (confirmación):** tras cargar la página, el texto se lee
- *   dentro del iframe (`iframe.contentDocument.body.innerText`,
- *   mismo origen) con sondeo cada segundo hasta ~8 s: si aparece el
- *   texto del error, la captura se descarta. El mismo sondeo repara
- *   la vía de texto: si el iframe trae texto real, se entrega con
- *   [onTextoDetectado] (en Fix 4 nunca se disparaba para Facebook).
+ *   (`plugins/video.php?href=...`): si la página no trae ninguna
+ *   señal positiva de cuadro real (ni `<video>` ni `.mp4`), el
+ *   WebView NO se monta y se avisa con [onVideoNoDisponible]. La
+ *   decisión es SOLO por señal positiva, nunca por el texto de error
+ *   (investigación de 1 hora, hilo C): la página buena contiene
+ *   "Video unavailable" como respaldo y el error de copyright no lo
+ *   contiene. Para enlaces que no son de Facebook (o si la
+ *   comprobación no se pudo hacer) el WebView se monta como antes.
+ * - **M2 (texto):** tras cargar la página, el texto se lee dentro
+ *   del iframe (`iframe.contentDocument.body.innerText`, mismo
+ *   origen) con sondeo cada segundo hasta ~8 s. El texto SOLO
+ *   enriquece el título/descripción con [onTextoDetectado] (en Fix 4
+ *   nunca se disparaba para Facebook): el texto de error NUNCA se
+ *   entrega (el clasificador lo tomaría por Tecnología 0,737 —
+ *   peligro medido en la investigación de 1 hora, hilo D) y el
+ *   texto NUNCA decide si hay error (eso lo hacen M5 y M3).
  * - **M3 (red de seguridad):** antes de entregar el cuadro, se mide
  *   su riqueza ([esBitmapSinCuadroReal]): un bitmap con muy pocos
  *   colores distintos y oscuro es la caja de error, no un cuadro
@@ -63,8 +68,9 @@ import org.json.JSONTokener
  *
  * La lectura del texto y la captura del cuadro no se pueden probar en
  * pruebas unitarias: solo verificable en dispositivo. Lo que SÍ se
- * prueba en la JVM es la decisión ([detectarVideoNoDisponible]) y la
- * riqueza del bitmap ([esBitmapSinCuadroReal]).
+ * prueba en la JVM es el filtro del texto de error
+ * ([detectarVideoNoDisponible]) y la riqueza del bitmap
+ * ([esBitmapSinCuadroReal]).
  */
 @Composable
 fun MiniaturaWebView(
@@ -143,8 +149,7 @@ fun MiniaturaWebView(
 
 /**
  * Espera a que el reproductor se pinte, lee su texto visible (M2) y,
- * solo si no es la página de error y el cuadro es un cuadro real
- * (M3), captura el cuadro.
+ * solo si el cuadro es un cuadro real (M3), captura el cuadro.
  *
  * Sondeo (M2): la primera lectura es a los 2 s (lo que tarda el
  * reproductor en pintarse) y luego cada segundo hasta ~8 s. El texto
@@ -153,6 +158,12 @@ fun MiniaturaWebView(
  * que una sola lectura a los 2 s no basta. El cuadro se captura en
  * el primer intento en que ya está pintado y no es la caja de error;
  * si a los 8 s sigue en blanco, se rinde sin capturar nada.
+ *
+ * El texto NUNCA decide si hay error (investigación de 1 hora, hilo
+ * C: el texto falla en ambos sentidos): solo M5 (señal positiva
+ * `<video>`/`.mp4` antes de montar) y M3 (riqueza del bitmap)
+ * deciden. El texto solo enriquece, y el texto de error nunca se
+ * entrega: el clasificador lo tomaría por Tecnología 0,737 (hilo D).
  */
 private fun programarCaptura(
     view: WebView,
@@ -172,16 +183,12 @@ private fun programarCaptura(
         if (view.width <= 0 || view.height <= 0) return@postDelayed
         view.evaluateJavascript(JS_TEXTO_REPRODUCTOR) { resultado ->
             val texto = decodificarCadenaJs(resultado)?.trim().orEmpty()
-            // M2: el texto del error vive en el iframe; si aparece,
-            // la captura se descarta.
-            if (detectarVideoNoDisponible(texto)) {
-                if (!errorAvisado()) {
-                    marcarErrorAvisado()
-                    onVideoNoDisponible()
-                }
-                return@evaluateJavascript
-            }
-            if (!textoEntregado() && texto.isNotBlank()) {
+            // M2: el texto solo enriquece. El texto de error nunca se
+            // entrega (el clasificador lo tomaría por Tecnología
+            // 0,737) y nunca decide si hay error: eso lo hacen M5 y M3.
+            if (!textoEntregado() && texto.isNotBlank() &&
+                !detectarVideoNoDisponible(texto)
+            ) {
                 marcarTextoEntregado()
                 onTextoDetectado(texto)
             }
