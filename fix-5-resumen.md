@@ -1,20 +1,22 @@
 # Fix 5 — Resumen de construcción (v1.0.4)
 
-Fecha: 2026-11-23 (noche) / 2026-11-24 00:16 UTC (APK verificado).
+Fecha: 2026-11-23 (noche) / 2026-11-24 00:36 UTC (APK verificado).
 Versión: **versionCode 5 / versionName 1.0.4**.
-Commit final: `70cb5b7` (correcciones de la investigación de 1 hora: `279dd1b`).
-CI: run **45294930856 SUCCESS** (`testDebugUnitTest` + `assembleDebug`).
-APK: `Coleccion-v1.0.4-debug.apk`, **193.525.977 bytes**,
-SHA-256 `cd4c03a1e3882db2e957c3ca10f50890ab7df2e714d53ac26c01660b0fcdd1b6`,
+Commit final: `eb03136` (giro de diseño ola 2: og:title limpio estilo D).
+CI: run **45297453923 SUCCESS** (`testDebugUnitTest` + `assembleDebug`).
+APK: `Coleccion-v1.0.4-debug.apk`, **148.467.218 bytes**,
+SHA-256 `b8c04d8970872bb84932d7fee2f086db301db3028ae8e50f98402d80786276f7`,
 package `com.coleccionenlaces.app`, minSdk 26, targetSdk 36,
 apksigner Verifies (v2 true, 1 firmante), **0 fuentes empaquetadas**,
-11 dex, `.tflite` dentro 67.818.584 bytes SHA
+10 dex, `.tflite` dentro 67.818.584 bytes SHA
 `ea5d39bcf19c3e888cc7f7f38f943d10f796bd0ba01d47ef0ba97cae74b38f13`
 (= el modelo reentrenado, verificado byte a byte).
 
 Diagnóstico que se integra: `fix-5-diagnostico.md` (no se pisa).
 Investigación de 1 hora: `investigacion-1-hora.md` (+ `investigacion-hilo-B/`,
 `censo-resolver-share.json`).
+Segunda ola: `investigacion-1-hora-ola2.md` (+ `investigacion-ola2/F`,
+`G`, `H/H.md`, `I`, evidencia ligera de `E`).
 
 ## 1. Qué se construyó
 
@@ -24,27 +26,29 @@ página de error "Video no disponible" como miniatura. Cuatro piezas:
 
 ### 1.1 Clasificación por visión + OCR (ML Kit, en el teléfono, sin servidor)
 
+> **Giro de diseño (ola 2, 18:24):** la clasificación por etiquetas
+> de visión se QUITÓ del build. MobileNet, equivalente a ML Kit Image
+> Labeling, midió **0/3 vídeos** como clasificador (hilo E); CLIP en
+> español 2/3 pero con un falso positivo de Contenido XXX a 0,62 en
+> un vídeo musical. La señal principal es ahora el og:title limpio
+> con estilo D (§1.6). Solo queda el OCR, como respaldo débil.
+
 - **Señales**: `domain/SenalesVisuales.kt` + `data/AnalizadorVisualMlKit.kt`.
-  ML Kit Image Labeling (etiquetas de lo que se ve) + ML Kit Text
-  Recognition v2 (OCR del texto quemado en el vídeo, latín, español
-  cubierto). Los dos **empaquetados** (bundled) en el APK:
-  `com.google.mlkit:image-labeling:17.0.9` y
+  Solo ML Kit Text Recognition v2 (OCR del texto quemado en el vídeo,
+  latín, español cubierto), **empaquetado** (bundled) en el APK:
   `com.google.mlkit:text-recognition:16.0.1`. Decisión verificada en la
   documentación oficial: la app se instala por sideload (no desde Play
   Store), así que la descarga en instalación por manifiesto no se
   dispararía; empaquetado garantiza que funciona offline desde el
   primer arranque, sin Google Play Services. La API es idéntica en las
   dos variantes: cambiar después es solo cambiar la dependencia.
-- **Mapeo de etiquetas** (`domain/MapeoEtiquetas.kt`): ~50 etiquetas
-  en inglés de ML Kit mapeadas a mano a las 16 categorías. Nada mapea
-  a Noticias ni a Contenido XXX; "Person" no vota. El voto suma
-  confianzas; el ganador necesita total ≥ 0,8 y ventaja ≥ 0,3 sobre
-  el segundo; etiquetas < 0,5 no votan.
+  La Image Labeling (`com.google.mlkit:image-labeling:17.0.9`) y su
+  voto (`MapeoEtiquetas`) se borraron: el APK bajó de 193,5 MB a
+  148,5 MB.
 - **Decisión** (`domain/ClasificadorVision.kt`): pantalla de error
   (OCR) → "Otros" y nunca clasifica; texto OCR → mismo motor de texto
-  que ya existe, **solo si la confianza ≥ 0,85**; si no, voto de
-  etiquetas; si no hay señal → "Otros". El motor nunca adivina con
-  palabras clave en ejecución.
+  que ya existe, **solo si la confianza ≥ 0,85**; si no, "Otros". El
+  motor nunca adivina con palabras clave en ejecución.
 - **Gancho**: `RepositorioEnlaces.guardarMiniaturaVideo` — cuando llega
   el cuadro/miniatura y el enlace sigue en "Otros" y no es manual, se
   analiza la foto y se reclasifica; el texto OCR se guarda como
@@ -160,6 +164,42 @@ Reentrenamiento (agente 56a20f0d, primer intento, sin iteraciones):
   explícita `[input_ids, input_word_mask]` + un assert que falla si el
   orden se invierte de nuevo. El commit incluye `convertir.py`.
 
+### 1.6 Limpieza estilo D del og:title (ola 2, señal principal)
+
+La segunda ola (hilo I) midió que la limpieza "estilo D" del og:title
+da **3/3** con el .tflite real: Yofer 0,532→**0,643** (Entretenimiento),
+TEC 0,984→**0,986** (Tecnología), Free Fire 0,468→Otros pasa a Juegos
+**0,670**. El modelo es 100 % determinista; la inestabilidad entre
+hilos era sensibilidad al texto exacto, no aleatoriedad.
+
+- **Reglas exactas** (`domain/LimpiezaTitulo.kt`, reproducción de
+  `investigacion-ola2/I/clasificar_variantes.py::limpieza_estilo_D`,
+  en el mismo orden): sin emojis (mismos rangos Unicode, por puntos
+  de código, con U+FE0F y U+200D para que las secuencias ZWJ se
+  eliminen enteras); `#palabra` → `palabra` (la palabra SE CONSERVA
+  — quitar los hashtags es lo peor que se puede hacer: en Free Fire
+  llevan la señal de Juegos; quitarlos da Entretenimiento 0,788);
+  sin URLs; sin prefijo `N views · N reactions |`; sin sufijo
+  `| Autor`; sin `«»“”`; `–`/`—` → espacio; colapsar espacios.
+  Los `!` NO se quitan (quitarlos hunde Yofer de 0,643 a 0,477).
+  La limpieza se aplica en el motor, no al guardar: el título
+  guardado y visible sigue siendo el original.
+- **La descripción redundante no se añade**
+  (`construirTextoClasificacion`): la `og:description` de Facebook
+  suele ser un duplicado del cuerpo del `og:title`, y duplicar el
+  texto cambia la predicción. Medido con el .tflite real: Free Fire,
+  título solo → Juegos 0,670; título + descripción duplicada →
+  Otros 0,453. La regla (todas las palabras de la descripción ya
+  están en el título) la detectó mi verificación independiente
+  (`/tmp/verificar-estilo-D.py`: 5/6 sin la regla, 6/6 con ella).
+  Si la descripción aporta palabras nuevas se conserva (EterniCodIA:
+  título + descripción → Tecnología 0,971). La regla es neutra para
+  la cabeza aprendida (sus palabras ya son distintas y normalizadas).
+- **Orden de señales medido** (ola 2): og:title limpio > visión >
+  OCR. En la app: el motor clasifica el título limpio al guardar;
+  la visión (OCR, ≥ 0,85) solo actúa después, si el enlace quedó
+  en "Otros".
+
 ## 2. El umbral OCR: 0,85 (medido, no adivinado)
 
 La investigación de 1 hora (hilo D) midió que la clasificación por OCR
@@ -185,16 +225,18 @@ caso que debe funcionar. Por eso el OCR es solo un respaldo débil:
   "facebook.com" está a 0,004 del umbral (0,496): el atajo de
   solo-dominio NO se quita.
 
-## 3. Crecimiento del APK: 105 MB → 193,5 MB
+## 3. Crecimiento del APK: 105 MB → 148,5 MB
 
-La 1.0.3 pesaba 105.111.783 bytes; la 1.0.4, 193.525.977 (+88,4 MB).
-Desglose medido dentro del APK:
+La 1.0.3 pesaba 105.111.783 bytes; la 1.0.4 final, **148.467.218**
+(+43,4 MB). El primer build de Fix 5 pesaba 193.525.977 bytes; al
+quitar la Image Labeling (ola 2: 0/3 vídeos) bajó 45 MB.
+Desglose medido dentro del APK final:
 
 - ML Kit OCR nativo: `libmlkit_google_ocr_pipeline.so` +
   `libmlkitcommonpipeline.so` × 4 ABIs ≈ 83 MB sin comprimir.
-- ML Kit Image Labeling: modelo `mobile_ica_8bit` 3.042.638 bytes.
 - Modelos OCR en assets ≈ 1 MB (detector + reconocimiento + layout).
-- Código ML Kit: `classes9.dex` 15,7 MB + `classes10.dex` 12,5 MB.
+- Código ML Kit en dex (parte de `classes.dex` 41,6 MB en el build
+  anterior; ahora 10 dex en total).
 - El clasificador DistilBERT sigue igual: 67.818.584 bytes.
 
 Es el precio de la variante empaquetada (funciona offline desde el
@@ -202,15 +244,13 @@ primer arranque, sin Play Services). La variante no empaquetada sería
 ~200 KB en el APK + descarga del modelo por Play Services en el primer
 uso (con las llamadas fallando hasta que termina). Para una app
 sideloaded sin Play Store, la empaquetada es la correcta; si algún día
-la app se publica en Play, el cambio es solo la dependencia. **Decisión
-para el padre**: el tamaño casi se duplica; no hay alternativa gratuita
-más ligera que mantenga el offline inmediato.
+la app se publica en Play, el cambio es solo la dependencia.
 
 ## 4. Pruebas
 
-**400 pruebas unitarias en el repo** (`testDebugUnitTest` en CI:
+**406 pruebas unitarias en el repo** (`testDebugUnitTest` en CI:
 BUILD SUCCESSFUL, 0 fallos). Las del intérprete
-(`ClasificadorModeloTest`, 7) se saltan en la JVM de CI con JUnit
+(`ClasificadorModeloTest`, 9) se saltan en la JVM de CI con JUnit
 Assume — el .so de Android no carga en Linux — y corren de verdad en
 el teléfono/emulador; el comportamiento del modelo se verificó en
 Python con los mismos bytes y el tokenizador Kotlin en CI contra los
@@ -218,16 +258,22 @@ ids exactos de Python.
 
 Nuevas en Fix 5 (y en las correcciones de la investigación):
 
-- `MapeoEtiquetasTest`: mapa, nada mapea a Noticias/XXX, "Person" no
-  vota, el voto suma, un solo voto fuerte gana, total bajo / empate /
-  margen pequeño / confianza baja / vacío → null, insensible a
-  mayúsculas.
-- `ClasificadorVisionTest`: la pantalla de error nunca clasifica
-  aunque las etiquetas digan Juegos; el OCR vence a las etiquetas;
-  las etiquetas deciden cuando el OCR no da nada o el motor dice
-  "Otros"; sin señal → "Otros"; texto solo-dominio no va al motor;
-  fallo del motor → etiquetas. **Umbral OCR**: 0,84 → no clasifica
-  (caen las etiquetas); 0,5 → no clasifica; 0,85 → sí clasifica.
+- `LimpiezaTituloTest` (ola 2, 16 pruebas): los 3 og:title crudos
+  exactos → limpios exactos (Yofer, TEC, Free Fire); `!` se
+  conserva; `#palabra` → `palabra`; URLs, prefijo de views,
+  sufijo de autor, `«»`, guiones → espacio; secuencia ZWJ entera;
+  colapsar espacios; descripción redundante no se añade; descripción
+  con palabras nuevas se conserva; título/descripción en blanco.
+- `ClasificadorModeloTest` (2 pruebas nuevas con el modelo real,
+  patrón Assume): Free Fire og:title + og:description crudos → Juegos
+  por el motor completo (limpieza + deduplicación); Yofer og:title +
+  og:description crudos → Entretenimiento.
+- `ClasificadorVisionTest`: la pantalla de error nunca clasifica;
+  el OCR con confianza alta clasifica; sin OCR → "Otros"; OCR que
+  el motor manda a "Otros" → "Otros"; texto solo-dominio no va al
+  motor; fallo del motor → "Otros". **Umbral OCR**: 0,84 → no
+  clasifica; 0,5 → no clasifica; 0,85 → sí clasifica. Las pruebas
+  del voto de etiquetas se borraron con `MapeoEtiquetas`.
 - `ServicioComprobacionVideoTest`: error → NO_DISPONIBLE; página
   buena con "Video unavailable" de respaldo → DISPONIBLE; error nuevo
   de copyright → NO_DISPONIBLE; neutro sin vídeo → NO_DISPONIBLE;
@@ -287,7 +333,12 @@ Historial CI de Fix 5 (todo por API, sin navegador):
 - `45294096734` (279dd1b): FALLO — `RepositorioEnlacesTest.kt:220`:
   falta el import de `Clasificador` (nuevo falso con confianza).
   Corregido en `70cb5b7`.
-- **`45294930856` (70cb5b7): SUCCESS.**
+- `45294930856` (70cb5b7): SUCCESS.
+- `45296031637` (2c8f8da, solo el resumen .md): FALLO — INFRA, no
+  código: Maven Central devolvió HTTP 429 al descargar
+  `nativeruntime-dist-compat-1.0.16.jar` (Robolectric) antes de correr
+  ningún test. El código era idéntico al del run verde anterior.
+- **`45297453923` (eb03136): SUCCESS.**
 
 ## 5. Límites honestos (lo que Fix 5 NO resuelve)
 
@@ -308,18 +359,24 @@ Historial CI de Fix 5 (todo por API, sin navegador):
    con la app de Facebook). Consenso 15/19 del censo de miniatura
    real. **No verificado en un teléfono** (falta probar si la
    redirección con sesión revela la canónica). **Riesgo de Términos
-   de Meta (suspensión de la cuenta) — decisión de Javier.** 6/15
-   modelos del censo lo advierten. La cuenta de Javier ya tiene un
-   aviso de desbloqueo pendiente. No se construyó en Fix 5: el alcance
-   era M5 + mina + visión/OCR + póster resuelto.
-3. **Clasificación exacta del contenido del vídeo: BLOQUEADA por OCR**
-   (0/30 cuadros, 0/3 vídeos). El texto quemado no habla del tema y
-   la basura OCR clasifica mal con confianza alta. El og:title
-   clasifica 2/3 pero es inestable entre variantes de extracción.
-   Falta: visión (etiquetas de imagen, ya construida en Fix 5 pero
-   sin probar en el teléfono con cuadros reales) o reentrenar con
-   texto estilo OCR; y probar ML Kit v2 en el teléfono con estos
-   mismos cuadros.
+   de Meta (suspensión de la cuenta).** 6/15 modelos del censo lo
+   advierten. La ola 2 añadió: Facebook puede rechazar el login
+   dentro de un WebView (Meta lo deprecó en 2021) y los Términos
+   vigentes desde 2025 prohíben el acceso automatizado incluso con
+   sesión (§3.2.3), con eliminación de la cuenta (§4.2). La cuenta
+   de Javier ya tiene un aviso de desbloqueo pendiente.
+   **DECISIÓN DE JAVIER (18:24): construir solo lo que no necesita
+   sesión. NO se construye el WebView con sesión.** El alcance de
+   Fix 5 queda: M5 + mina + og:title limpio + póster resuelto + OCR
+   débil.
+3. **Clasificación exacta del contenido del vídeo: el og:title limpio
+   es la mejor señal medida (3/3), pero frágil.** El modelo es 100 %
+   determinista pero sensible al texto exacto: quitar los `!` hunde
+   Yofer de 0,643 a 0,477; la estabilidad real requeriría
+   reentrenamiento, no más limpieza manual. El OCR solo sigue en
+   0/30 cuadros, 0/3 vídeos; las etiquetas de visión en 0/3 (por eso
+   se quitaron). Falta probar ML Kit v2 en el teléfono con los
+   cuadros reales.
 4. **Las 3 tarjetas con la miniatura de error guardada NO se
    auto-reparan**: las 2 viejas + el enlace nuevo 1FKC67bv seguirán
    con la foto del error aunque el código esté arreglado. Javier tiene
@@ -328,14 +385,15 @@ Historial CI de Fix 5 (todo por API, sin navegador):
 5. **M3 necesita recalibración** con PNG reales capturados por la app
    en el teléfono (los umbrales se calibraron con JPEG de capturas de
    pantalla de Javier).
-6. **Los 4 tests del intérprete se saltan en la JVM de CI** y solo
-   corren de verdad en el teléfono/emulador. La extracción de cuadros
-   de .mp4 (`MediaMetadataRetriever`) también es solo de teléfono; en
+6. **Las pruebas del intérprete se saltan en la JVM de CI** (9 en
+   `ClasificadorModeloTest`) y solo corren de verdad en el
+   teléfono/emulador. La extracción de cuadros de .mp4
+   (`MediaMetadataRetriever`) también es solo de teléfono; en
    CI se prueba el cableado con un falso.
-7. **El APK creció a 193,5 MB** (ver §3). ML Kit empaquetado es la
-   causa. Si el tamaño es un problema, la alternativa es la variante
-   no empaquetada por Play Services (~200 KB + descarga en primer
-   uso), que exige Play Services y conexión en el primer uso.
+7. **El APK creció a 148,5 MB** (ver §3). ML Kit OCR empaquetado es
+   la causa principal. Si el tamaño es un problema, la alternativa es
+   la variante no empaquetada por Play Services (~200 KB + descarga
+   en primer uso), que exige Play Services y conexión en el primer uso.
 8. **Decisión pendiente del padre**: el UA de crawler
    (facebookexternalhit/Googlebot) en producción — es lo que exige la
    medición para que Facebook sirva og:image y .mp4 sin sesión; la
@@ -358,20 +416,29 @@ Commits en `main` (repo público `djjavierc-droid/coleccion-enlaces`):
   elegir por bitrate, umbral OCR 0,85, + documentación de la
   investigación).
 - `70cb5b7` — fix de compilación en CI (import `Clasificador`).
+- `2c8f8da` — resumen de construcción v1.0.4 (solo .md; su CI falló
+  por 429 de Maven Central, infra, no código).
+- `eb03136` — giro de diseño ola 2: limpieza estilo D del og:title
+  como señal principal, descripción redundante no se añade,
+  clasificación por etiquetas QUITADA (borrados `MapeoEtiquetas` y
+  su test, dependencia mlkit-image-labeling), OCR como único
+  respaldo visual + documentación de la ola 2 (59 archivos).
 
 Archivos nuevos principales: `domain/SenalesVisuales.kt`,
-`domain/MapeoEtiquetas.kt`, `domain/ClasificadorVision.kt`,
-`data/AnalizadorVisualMlKit.kt`, `data/ServicioComprobacionVideo.kt`,
+`domain/LimpiezaTitulo.kt` (estilo D + deduplicación),
+`domain/ClasificadorVision.kt`, `data/AnalizadorVisualMlKit.kt`
+(solo OCR), `data/ServicioComprobacionVideo.kt`,
 `domain/PosterResuelto.kt`, `data/ServicioPosterResuelto.kt`,
 `domain/DeteccionVideo.kt` (frases de copyright),
-`domain/MotorClasificacion.kt` (`clasificarTextoConConfianza`).
+`domain/MotorClasificacion.kt` (`clasificarTextoConConfianza` +
+limpieza en un solo punto).
 Modificados: `MiniaturaWebView.kt`, `TarjetaEnlace.kt`,
 `HomeScreen.kt`, `HomeViewModel.kt`, `RepositorioEnlaces.kt`,
 `ServicioAprendizaje.kt`, `Aprendizaje.kt`, `CabezaAprendizaje.kt`,
 `AppContainer.kt`, `gradle/libs.versions.toml`,
-`app/build.gradle.kts` (ML Kit + versión 1.0.4).
+`app/build.gradle.kts` (solo ML Kit OCR + versión 1.0.4).
 
 APK entregable (NO commiteado, nunca se commitean APKs):
 `~/workspace/coleccion-enlaces/Coleccion-v1.0.4-debug.apk`
-(193.525.977 bytes, SHA-256
-`cd4c03a1e3882db2e957c3ca10f50890ab7df2e714d53ac26c01660b0fcdd1b6`).
+(148.467.218 bytes, SHA-256
+`b8c04d8970872bb84932d7fee2f086db301db3028ae8e50f98402d80786276f7`).
