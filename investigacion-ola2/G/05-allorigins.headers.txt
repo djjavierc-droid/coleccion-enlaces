@@ -1,0 +1,20 @@
+HTTP/1.1 200 Connection Established
+
+HTTP/1.1 200 OK
+Date: Tue, 24 Nov 2026 00:00:41 GMT
+Content-Type: application/json
+alt-svc: h3=":443"; ma=86400
+CF-RAY: a5f4227d6efbe678-SJC
+Server: cloudflare
+Nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+Access-Control-Allow-Origin: *
+Cache-Control: public, max-age=300, stale-while-revalidate=86400
+Via: allOrigins v3+
+Access-Control-Allow-Credentials: true
+Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Content-Encoding, Accept
+Access-Control-Allow-Methods: OPTIONS, GET, POST, PATCH, PUT, DELETE
+X-Response-Time: 317.00ms
+cf-cache-status: DYNAMIC
+Report-To: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=Qi9kuPiYrtSgueFWJ1gWNIq4TAWMaLhXeCy105G70vwNWoRPww4TD6G81y6y303aVzrGTGOvkGaFVxw6JJ0xvjQMrKxC0HGrY75Kh00%2FlpsQ05dxJ8k84dnffALAXmtoizaCwrw%2FjRH2jbAa0U6Qmto%3D"}]}
+Content-Length: 75306
+

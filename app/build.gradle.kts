@@ -91,11 +91,10 @@ dependencies {
     // Reentrenamiento de la cabeza en reposo (Fix 3): trabajo único
     // periódico con cargador y dispositivo en reposo.
     implementation(libs.androidx.work.runtime.ktx)
-    // Visión + OCR (Fix 5): ML Kit EMPAQUETADO — Image Labeling base
-    // (etiquetas de lo que se ve) + Text Recognition v2 latino (OCR
-    // del texto quemado en el vídeo). Modelos dentro del APK: ~9,7 MB
-    // más, disponibles sin internet desde la primera ejecución.
-    implementation(libs.mlkit.image.labeling)
+    // OCR (Fix 5): ML Kit EMPAQUETADO — Text Recognition v2 latino
+    // (texto quemado en el vídeo). Modelo dentro del APK, disponible
+    // sin internet desde la primera ejecución. La Image Labeling se
+    // quitó (ola 2: 0/3 vídeos como clasificador).
     implementation(libs.mlkit.text.recognition)
 
     testImplementation(libs.junit)

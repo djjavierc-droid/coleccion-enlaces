@@ -1,0 +1,560 @@
+{
+  "game-freefire-frame-t0.10.jpg": {
+    "top5": [
+      {
+        "label": "book_jacket",
+        "score": 0.753,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "comic_book",
+        "score": 0.0627,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "scoreboard",
+        "score": 0.0369,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "jersey",
+        "score": 0.0267,
+        "categoria_mapeada": "Moda y ropa"
+      },
+      {
+        "label": "brass",
+        "score": 0.013,
+        "categoria_mapeada": null
+      }
+    ],
+    "categoria_por_top1": "Moda y ropa",
+    "categoria_por_top1_label": "jersey"
+  },
+  "game-freefire-frame-t12.72.jpg": {
+    "top5": [
+      {
+        "label": "monitor",
+        "score": 0.192,
+        "categoria_mapeada": "Tecnología y celulares"
+      },
+      {
+        "label": "television",
+        "score": 0.1473,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "screen",
+        "score": 0.1005,
+        "categoria_mapeada": "Tecnología y celulares"
+      },
+      {
+        "label": "school_bus",
+        "score": 0.0394,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "window_shade",
+        "score": 0.0323,
+        "categoria_mapeada": null
+      }
+    ],
+    "categoria_por_top1": "Tecnología y celulares",
+    "categoria_por_top1_label": "monitor"
+  },
+  "game-freefire-frame-t3.22.jpg": {
+    "top5": [
+      {
+        "label": "stretcher",
+        "score": 0.1399,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "television",
+        "score": 0.1006,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "football_helmet",
+        "score": 0.0493,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "parachute",
+        "score": 0.0417,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "home_theater",
+        "score": 0.0406,
+        "categoria_mapeada": null
+      }
+    ],
+    "categoria_por_top1": "Otros",
+    "categoria_por_top1_label": null
+  },
+  "game-freefire-frame-t6.43.jpg": {
+    "top5": [
+      {
+        "label": "stretcher",
+        "score": 0.1123,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "television",
+        "score": 0.0873,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "football_helmet",
+        "score": 0.0653,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "monitor",
+        "score": 0.0535,
+        "categoria_mapeada": "Tecnología y celulares"
+      },
+      {
+        "label": "ballplayer",
+        "score": 0.0437,
+        "categoria_mapeada": null
+      }
+    ],
+    "categoria_por_top1": "Tecnología y celulares",
+    "categoria_por_top1_label": "monitor"
+  },
+  "game-freefire-frame-t9.65.jpg": {
+    "top5": [
+      {
+        "label": "stretcher",
+        "score": 0.1501,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "television",
+        "score": 0.1071,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "football_helmet",
+        "score": 0.0843,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "monitor",
+        "score": 0.0676,
+        "categoria_mapeada": "Tecnología y celulares"
+      },
+      {
+        "label": "toyshop",
+        "score": 0.0647,
+        "categoria_mapeada": null
+      }
+    ],
+    "categoria_por_top1": "Tecnología y celulares",
+    "categoria_por_top1_label": "monitor"
+  },
+  "game-freefire-ogimage.jpg": {
+    "top5": [
+      {
+        "label": "book_jacket",
+        "score": 0.7009,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "comic_book",
+        "score": 0.0626,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "scoreboard",
+        "score": 0.0538,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "jersey",
+        "score": 0.0275,
+        "categoria_mapeada": "Moda y ropa"
+      },
+      {
+        "label": "brass",
+        "score": 0.0108,
+        "categoria_mapeada": null
+      }
+    ],
+    "categoria_por_top1": "Moda y ropa",
+    "categoria_por_top1_label": "jersey"
+  },
+  "tec-ai-frame-t0.10.jpg": {
+    "top5": [
+      {
+        "label": "parachute",
+        "score": 0.1221,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "space_shuttle",
+        "score": 0.0504,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "airship",
+        "score": 0.043,
+        "categoria_mapeada": "Viajes"
+      },
+      {
+        "label": "matchstick",
+        "score": 0.0239,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "bald_eagle",
+        "score": 0.0206,
+        "categoria_mapeada": null
+      }
+    ],
+    "categoria_por_top1": "Viajes",
+    "categoria_por_top1_label": "airship"
+  },
+  "tec-ai-frame-t24.10.jpg": {
+    "top5": [
+      {
+        "label": "bullet_train",
+        "score": 0.0858,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "barbell",
+        "score": 0.0615,
+        "categoria_mapeada": "Salud y ejercicio"
+      },
+      {
+        "label": "scoreboard",
+        "score": 0.0436,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "grocery_store",
+        "score": 0.0241,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "oscilloscope",
+        "score": 0.0212,
+        "categoria_mapeada": null
+      }
+    ],
+    "categoria_por_top1": "Salud y ejercicio",
+    "categoria_por_top1_label": "barbell"
+  },
+  "tec-ai-frame-t48.20.jpg": {
+    "top5": [
+      {
+        "label": "cellular_telephone",
+        "score": 0.3915,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "modem",
+        "score": 0.1563,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "iPod",
+        "score": 0.1013,
+        "categoria_mapeada": "Tecnología y celulares"
+      },
+      {
+        "label": "notebook",
+        "score": 0.0874,
+        "categoria_mapeada": "Tecnología y celulares"
+      },
+      {
+        "label": "hand-held_computer",
+        "score": 0.0255,
+        "categoria_mapeada": null
+      }
+    ],
+    "categoria_por_top1": "Tecnología y celulares",
+    "categoria_por_top1_label": "iPod"
+  },
+  "tec-ai-frame-t72.30.jpg": {
+    "top5": [
+      {
+        "label": "feather_boa",
+        "score": 0.0554,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "wig",
+        "score": 0.038,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "stole",
+        "score": 0.0379,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "hair_spray",
+        "score": 0.0343,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "fur_coat",
+        "score": 0.02,
+        "categoria_mapeada": null
+      }
+    ],
+    "categoria_por_top1": "Otros",
+    "categoria_por_top1_label": null
+  },
+  "tec-ai-frame-t96.25.jpg": {
+    "top5": [
+      {
+        "label": "projectile",
+        "score": 0.7634,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "missile",
+        "score": 0.0388,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "binoculars",
+        "score": 0.0308,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "military_uniform",
+        "score": 0.0166,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "tank",
+        "score": 0.0157,
+        "categoria_mapeada": null
+      }
+    ],
+    "categoria_por_top1": "Otros",
+    "categoria_por_top1_label": null
+  },
+  "tec-ai-ogimage.jpg": {
+    "top5": [
+      {
+        "label": "airship",
+        "score": 0.5627,
+        "categoria_mapeada": "Viajes"
+      },
+      {
+        "label": "parachute",
+        "score": 0.1013,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "balloon",
+        "score": 0.0899,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "warplane",
+        "score": 0.021,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "volleyball",
+        "score": 0.0146,
+        "categoria_mapeada": null
+      }
+    ],
+    "categoria_por_top1": "Viajes",
+    "categoria_por_top1_label": "airship"
+  },
+  "yofer-frame-t0.10.jpg": {
+    "top5": [
+      {
+        "label": "beer_glass",
+        "score": 0.0445,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "plate_rack",
+        "score": 0.0373,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "tobacco_shop",
+        "score": 0.0331,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "cab",
+        "score": 0.0219,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "freight_car",
+        "score": 0.0193,
+        "categoria_mapeada": null
+      }
+    ],
+    "categoria_por_top1": "Otros",
+    "categoria_por_top1_label": null
+  },
+  "yofer-frame-t10.97.jpg": {
+    "top5": [
+      {
+        "label": "lipstick",
+        "score": 0.1415,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "paintbrush",
+        "score": 0.0954,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "comic_book",
+        "score": 0.0635,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "accordion",
+        "score": 0.0462,
+        "categoria_mapeada": "Entretenimiento"
+      },
+      {
+        "label": "quill",
+        "score": 0.0381,
+        "categoria_mapeada": null
+      }
+    ],
+    "categoria_por_top1": "Entretenimiento",
+    "categoria_por_top1_label": "accordion"
+  },
+  "yofer-frame-t14.48.jpg": {
+    "top5": [
+      {
+        "label": "loudspeaker",
+        "score": 0.19,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "comic_book",
+        "score": 0.0843,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "binoculars",
+        "score": 0.0502,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "book_jacket",
+        "score": 0.0392,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "slot",
+        "score": 0.0343,
+        "categoria_mapeada": null
+      }
+    ],
+    "categoria_por_top1": "Otros",
+    "categoria_por_top1_label": null
+  },
+  "yofer-frame-t3.66.jpg": {
+    "top5": [
+      {
+        "label": "comic_book",
+        "score": 0.1548,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "loudspeaker",
+        "score": 0.076,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "tape_player",
+        "score": 0.0647,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "carpenter's_kit",
+        "score": 0.0373,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "slot",
+        "score": 0.0343,
+        "categoria_mapeada": null
+      }
+    ],
+    "categoria_por_top1": "Otros",
+    "categoria_por_top1_label": null
+  },
+  "yofer-frame-t7.32.jpg": {
+    "top5": [
+      {
+        "label": "comic_book",
+        "score": 0.3873,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "cassette",
+        "score": 0.1103,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "caldron",
+        "score": 0.0286,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "book_jacket",
+        "score": 0.0211,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "plunger",
+        "score": 0.0206,
+        "categoria_mapeada": null
+      }
+    ],
+    "categoria_por_top1": "Otros",
+    "categoria_por_top1_label": null
+  },
+  "yofer-ogimage.jpg": {
+    "top5": [
+      {
+        "label": "book_jacket",
+        "score": 0.236,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "fountain_pen",
+        "score": 0.1675,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "harmonica",
+        "score": 0.0975,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "packet",
+        "score": 0.095,
+        "categoria_mapeada": null
+      },
+      {
+        "label": "pickelhaube",
+        "score": 0.0925,
+        "categoria_mapeada": null
+      }
+    ],
+    "categoria_por_top1": "Otros",
+    "categoria_por_top1_label": null
+  }
+}

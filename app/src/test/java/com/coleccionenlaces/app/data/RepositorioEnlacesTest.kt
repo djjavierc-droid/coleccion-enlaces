@@ -6,7 +6,6 @@ import androidx.test.core.app.ApplicationProvider
 import com.coleccionenlaces.app.domain.AnalizadorVisual
 import com.coleccionenlaces.app.domain.CabezaAprendizaje
 import com.coleccionenlaces.app.domain.ClasificadorVision
-import com.coleccionenlaces.app.domain.EtiquetaImagen
 import com.coleccionenlaces.app.domain.Clasificador
 import com.coleccionenlaces.app.domain.MotorClasificacion
 import com.coleccionenlaces.app.domain.MotorPalabrasClave
@@ -937,7 +936,6 @@ class RepositorioEnlacesTest {
     fun `guardarMiniaturaVideo con OCR clasifica un enlace en Otros`() = runBlocking {
         val repo = repositorioConVision(
             SenalesVisuales(
-                etiquetas = emptyList(),
                 textoOcr = "Receta de pasta casera en 15 minutos",
             ),
             directorio = directorioMiniaturas,
@@ -971,7 +969,6 @@ class RepositorioEnlacesTest {
     fun `guardarMiniaturaVideo con pantalla de error no reclasifica`() = runBlocking {
         val repo = repositorioConVision(
             SenalesVisuales(
-                etiquetas = listOf(EtiquetaImagen("Video game", 0.95f)),
                 textoOcr = "Video no disponible\nEste video ya no existe",
             ),
             directorio = directorioMiniaturas,
@@ -1027,7 +1024,6 @@ class RepositorioEnlacesTest {
     fun `guardarMiniaturaVideo no toca un enlace ya clasificado`() = runBlocking {
         val repo = repositorioConVision(
             SenalesVisuales(
-                etiquetas = listOf(EtiquetaImagen("Video game", 0.9f)),
                 textoOcr = "Gameplay de Minecraft construyendo mi base",
             ),
             directorio = directorioMiniaturas,
@@ -1544,7 +1540,6 @@ class RepositorioEnlacesTest {
             val repo = repositorioConPoster(
                 htmlRastreadorMiraEsto,
                 SenalesVisuales(
-                    etiquetas = emptyList(),
                     textoOcr = "Receta de pasta casera en 15 minutos",
                 ),
             )
@@ -1593,7 +1588,6 @@ class RepositorioEnlacesTest {
             val repo = repositorioConPoster(
                 paginaRastreador = null,
                 senales = SenalesVisuales(
-                    etiquetas = emptyList(),
                     textoOcr = "Receta de pasta casera en 15 minutos",
                 ),
                 servicioPoster = PosterSoloMp4Falso(),

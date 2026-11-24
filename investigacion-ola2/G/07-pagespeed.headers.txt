@@ -1,0 +1,16 @@
+HTTP/1.1 200 Connection Established
+
+HTTP/1.1 429 Too Many Requests
+Vary: X-Origin
+Vary: Referer
+Vary: Origin,Accept-Encoding
+Content-Type: application/json; charset=UTF-8
+Date: Tue, 24 Nov 2026 00:01:06 GMT
+Server: ESF
+X-XSS-Protection: 0
+X-Frame-Options: SAMEORIGIN
+X-Content-Type-Options: nosniff
+Alt-Svc: h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+Accept-Ranges: none
+Transfer-Encoding: chunked
+

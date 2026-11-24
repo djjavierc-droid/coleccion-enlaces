@@ -1,0 +1,1399 @@
+{
+  "proceso": "1",
+  "umbral": 0.5,
+  "videos": {
+    "yofer": {
+      "reel_id": "1168661422485798",
+      "esperado": "Entretenimiento",
+      "og_title_crudo": "🦇🔥 ¡¡¡50.000 VISITAS!!! 🖤🥀\n\n❤️‍🔥 ¡¡¡LO HEMOS CONSEGUIDO!!! «LÁGRIMAS DE MI SOLEDAD» sigue conquistando corazones. ¡¡¡GRACIAS POR HACERLO POSIBLE!!!\n\n🚀♾️ ¡¡¡AHORA A POR LAS 60.000!!!\n\n🎬 YOFER – LÁGRIMAS DE MI SOLEDAD\n▶️ https://youtu.be/2SIT1qqNVEA\n\n#Yofer #LágrimasDeMiSoledad #50k  #Youtube #Spotify #itunes | Yofer",
+      "variantes": {
+        "a_crudo": {
+          "texto": "🦇🔥 ¡¡¡50.000 VISITAS!!! 🖤🥀 ❤️‍🔥 ¡¡¡LO HEMOS CONSEGUIDO!!! «LÁGRIMAS DE MI SOLEDAD» sigue conquistando corazones. ¡¡¡GRACIAS POR HACERLO POSIBLE!!! 🚀♾️ ¡¡¡AHORA A POR LAS 60.000!!! 🎬 YOFER – LÁGRIMAS DE MI SOLEDAD ▶️ https://youtu.be/2SIT1qqNVEA #Yofer #LágrimasDeMiSoledad #50k #Youtube #Spotify #itunes | Yofer",
+          "n_chars": 311,
+          "runs": [
+            {
+              "categoria_top1": "Entretenimiento",
+              "confianza_top1": 0.531521,
+              "final_app": "Entretenimiento",
+              "top3": [
+                [
+                  "Entretenimiento",
+                  0.531521
+                ],
+                [
+                  "Noticias",
+                  0.205935
+                ],
+                [
+                  "Tecnología y celulares",
+                  0.086745
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            },
+            {
+              "categoria_top1": "Entretenimiento",
+              "confianza_top1": 0.531521,
+              "final_app": "Entretenimiento",
+              "top3": [
+                [
+                  "Entretenimiento",
+                  0.531521
+                ],
+                [
+                  "Noticias",
+                  0.205935
+                ],
+                [
+                  "Tecnología y celulares",
+                  0.086745
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            }
+          ],
+          "determinista_intra": true
+        },
+        "b_sin_emojis": {
+          "texto": "¡¡¡50.000 VISITAS!!! ¡¡¡LO HEMOS CONSEGUIDO!!! «LÁGRIMAS DE MI SOLEDAD» sigue conquistando corazones. ¡¡¡GRACIAS POR HACERLO POSIBLE!!! ¡¡¡AHORA A POR LAS 60.000!!! YOFER – LÁGRIMAS DE MI SOLEDAD https://youtu.be/2SIT1qqNVEA #Yofer #LágrimasDeMiSoledad #50k #Youtube #Spotify #itunes | Yofer",
+          "n_chars": 291,
+          "runs": [
+            {
+              "categoria_top1": "Entretenimiento",
+              "confianza_top1": 0.525648,
+              "final_app": "Entretenimiento",
+              "top3": [
+                [
+                  "Entretenimiento",
+                  0.525648
+                ],
+                [
+                  "Noticias",
+                  0.210109
+                ],
+                [
+                  "Tecnología y celulares",
+                  0.06925
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            },
+            {
+              "categoria_top1": "Entretenimiento",
+              "confianza_top1": 0.525648,
+              "final_app": "Entretenimiento",
+              "top3": [
+                [
+                  "Entretenimiento",
+                  0.525648
+                ],
+                [
+                  "Noticias",
+                  0.210109
+                ],
+                [
+                  "Tecnología y celulares",
+                  0.06925
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            }
+          ],
+          "determinista_intra": true
+        },
+        "c_sin_hashtags": {
+          "texto": "🦇🔥 ¡¡¡50.000 VISITAS!!! 🖤🥀 ❤️‍🔥 ¡¡¡LO HEMOS CONSEGUIDO!!! «LÁGRIMAS DE MI SOLEDAD» sigue conquistando corazones. ¡¡¡GRACIAS POR HACERLO POSIBLE!!! 🚀♾️ ¡¡¡AHORA A POR LAS 60.000!!! 🎬 YOFER – LÁGRIMAS DE MI SOLEDAD ▶️ https://youtu.be/2SIT1qqNVEA | Yofer",
+          "n_chars": 252,
+          "runs": [
+            {
+              "categoria_top1": "Entretenimiento",
+              "confianza_top1": 0.531521,
+              "final_app": "Entretenimiento",
+              "top3": [
+                [
+                  "Entretenimiento",
+                  0.531521
+                ],
+                [
+                  "Noticias",
+                  0.205935
+                ],
+                [
+                  "Tecnología y celulares",
+                  0.086745
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            },
+            {
+              "categoria_top1": "Entretenimiento",
+              "confianza_top1": 0.531521,
+              "final_app": "Entretenimiento",
+              "top3": [
+                [
+                  "Entretenimiento",
+                  0.531521
+                ],
+                [
+                  "Noticias",
+                  0.205935
+                ],
+                [
+                  "Tecnología y celulares",
+                  0.086745
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            }
+          ],
+          "determinista_intra": true
+        },
+        "d_sin_emojis_ni_hashtags": {
+          "texto": "¡¡¡50.000 VISITAS!!! ¡¡¡LO HEMOS CONSEGUIDO!!! «LÁGRIMAS DE MI SOLEDAD» sigue conquistando corazones. ¡¡¡GRACIAS POR HACERLO POSIBLE!!! ¡¡¡AHORA A POR LAS 60.000!!! YOFER – LÁGRIMAS DE MI SOLEDAD https://youtu.be/2SIT1qqNVEA | Yofer",
+          "n_chars": 232,
+          "runs": [
+            {
+              "categoria_top1": "Entretenimiento",
+              "confianza_top1": 0.525648,
+              "final_app": "Entretenimiento",
+              "top3": [
+                [
+                  "Entretenimiento",
+                  0.525648
+                ],
+                [
+                  "Noticias",
+                  0.210109
+                ],
+                [
+                  "Tecnología y celulares",
+                  0.06925
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            },
+            {
+              "categoria_top1": "Entretenimiento",
+              "confianza_top1": 0.525648,
+              "final_app": "Entretenimiento",
+              "top3": [
+                [
+                  "Entretenimiento",
+                  0.525648
+                ],
+                [
+                  "Noticias",
+                  0.210109
+                ],
+                [
+                  "Tecnología y celulares",
+                  0.06925
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            }
+          ],
+          "determinista_intra": true
+        },
+        "e_d_sin_estructura": {
+          "texto": "¡¡¡50.000 VISITAS!!! ¡¡¡LO HEMOS CONSEGUIDO!!! «LÁGRIMAS DE MI SOLEDAD» sigue conquistando corazones. ¡¡¡GRACIAS POR HACERLO POSIBLE!!! ¡¡¡AHORA A POR LAS 60.000!!! YOFER – LÁGRIMAS DE MI SOLEDAD",
+          "n_chars": 195,
+          "runs": [
+            {
+              "categoria_top1": "Entretenimiento",
+              "confianza_top1": 0.525648,
+              "final_app": "Entretenimiento",
+              "top3": [
+                [
+                  "Entretenimiento",
+                  0.525648
+                ],
+                [
+                  "Noticias",
+                  0.210109
+                ],
+                [
+                  "Tecnología y celulares",
+                  0.06925
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            },
+            {
+              "categoria_top1": "Entretenimiento",
+              "confianza_top1": 0.525648,
+              "final_app": "Entretenimiento",
+              "top3": [
+                [
+                  "Entretenimiento",
+                  0.525648
+                ],
+                [
+                  "Noticias",
+                  0.210109
+                ],
+                [
+                  "Tecnología y celulares",
+                  0.06925
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            }
+          ],
+          "determinista_intra": true
+        },
+        "f_a_sin_estructura": {
+          "texto": "🦇🔥 ¡¡¡50.000 VISITAS!!! 🖤🥀 ❤️‍🔥 ¡¡¡LO HEMOS CONSEGUIDO!!! «LÁGRIMAS DE MI SOLEDAD» sigue conquistando corazones. ¡¡¡GRACIAS POR HACERLO POSIBLE!!! 🚀♾️ ¡¡¡AHORA A POR LAS 60.000!!! 🎬 YOFER – LÁGRIMAS DE MI SOLEDAD ▶️ #Yofer #LágrimasDeMiSoledad #50k #Youtube #Spotify #itunes",
+          "n_chars": 274,
+          "runs": [
+            {
+              "categoria_top1": "Entretenimiento",
+              "confianza_top1": 0.531521,
+              "final_app": "Entretenimiento",
+              "top3": [
+                [
+                  "Entretenimiento",
+                  0.531521
+                ],
+                [
+                  "Noticias",
+                  0.205935
+                ],
+                [
+                  "Tecnología y celulares",
+                  0.086745
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            },
+            {
+              "categoria_top1": "Entretenimiento",
+              "confianza_top1": 0.531521,
+              "final_app": "Entretenimiento",
+              "top3": [
+                [
+                  "Entretenimiento",
+                  0.531521
+                ],
+                [
+                  "Noticias",
+                  0.205935
+                ],
+                [
+                  "Tecnología y celulares",
+                  0.086745
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            }
+          ],
+          "determinista_intra": true
+        },
+        "g_a_sin_sufijo": {
+          "texto": "🦇🔥 ¡¡¡50.000 VISITAS!!! 🖤🥀 ❤️‍🔥 ¡¡¡LO HEMOS CONSEGUIDO!!! «LÁGRIMAS DE MI SOLEDAD» sigue conquistando corazones. ¡¡¡GRACIAS POR HACERLO POSIBLE!!! 🚀♾️ ¡¡¡AHORA A POR LAS 60.000!!! 🎬 YOFER – LÁGRIMAS DE MI SOLEDAD ▶️ https://youtu.be/2SIT1qqNVEA #Yofer #LágrimasDeMiSoledad #50k #Youtube #Spotify #itunes",
+          "n_chars": 303,
+          "runs": [
+            {
+              "categoria_top1": "Entretenimiento",
+              "confianza_top1": 0.531521,
+              "final_app": "Entretenimiento",
+              "top3": [
+                [
+                  "Entretenimiento",
+                  0.531521
+                ],
+                [
+                  "Noticias",
+                  0.205935
+                ],
+                [
+                  "Tecnología y celulares",
+                  0.086745
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            },
+            {
+              "categoria_top1": "Entretenimiento",
+              "confianza_top1": 0.531521,
+              "final_app": "Entretenimiento",
+              "top3": [
+                [
+                  "Entretenimiento",
+                  0.531521
+                ],
+                [
+                  "Noticias",
+                  0.205935
+                ],
+                [
+                  "Tecnología y celulares",
+                  0.086745
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            }
+          ],
+          "determinista_intra": true
+        },
+        "i_limpieza_estilo_D": {
+          "texto": "¡¡¡50.000 VISITAS!!! ¡¡¡LO HEMOS CONSEGUIDO!!! LÁGRIMAS DE MI SOLEDAD sigue conquistando corazones. ¡¡¡GRACIAS POR HACERLO POSIBLE!!! ¡¡¡AHORA A POR LAS 60.000!!! YOFER LÁGRIMAS DE MI SOLEDAD Yofer LágrimasDeMiSoledad 50k Youtube Spotify itunes",
+          "n_chars": 244,
+          "runs": [
+            {
+              "categoria_top1": "Entretenimiento",
+              "confianza_top1": 0.643197,
+              "final_app": "Entretenimiento",
+              "top3": [
+                [
+                  "Entretenimiento",
+                  0.643197
+                ],
+                [
+                  "Noticias",
+                  0.115942
+                ],
+                [
+                  "Viajes",
+                  0.084611
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            },
+            {
+              "categoria_top1": "Entretenimiento",
+              "confianza_top1": 0.643197,
+              "final_app": "Entretenimiento",
+              "top3": [
+                [
+                  "Entretenimiento",
+                  0.643197
+                ],
+                [
+                  "Noticias",
+                  0.115942
+                ],
+                [
+                  "Viajes",
+                  0.084611
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            }
+          ],
+          "determinista_intra": true
+        },
+        "j_sin_emojis_sin_estructura": {
+          "texto": "¡¡¡50.000 VISITAS!!! ¡¡¡LO HEMOS CONSEGUIDO!!! «LÁGRIMAS DE MI SOLEDAD» sigue conquistando corazones. ¡¡¡GRACIAS POR HACERLO POSIBLE!!! ¡¡¡AHORA A POR LAS 60.000!!! YOFER – LÁGRIMAS DE MI SOLEDAD #Yofer #LágrimasDeMiSoledad #50k #Youtube #Spotify #itunes",
+          "n_chars": 254,
+          "runs": [
+            {
+              "categoria_top1": "Entretenimiento",
+              "confianza_top1": 0.525648,
+              "final_app": "Entretenimiento",
+              "top3": [
+                [
+                  "Entretenimiento",
+                  0.525648
+                ],
+                [
+                  "Noticias",
+                  0.210109
+                ],
+                [
+                  "Tecnología y celulares",
+                  0.06925
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            },
+            {
+              "categoria_top1": "Entretenimiento",
+              "confianza_top1": 0.525648,
+              "final_app": "Entretenimiento",
+              "top3": [
+                [
+                  "Entretenimiento",
+                  0.525648
+                ],
+                [
+                  "Noticias",
+                  0.210109
+                ],
+                [
+                  "Tecnología y celulares",
+                  0.06925
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            }
+          ],
+          "determinista_intra": true
+        },
+        "h_texto_exactohiloD": {
+          "texto": "¡¡¡50.000 VISITAS!!! ¡¡¡LO HEMOS CONSEGUIDO!!! LÁGRIMAS DE MI SOLEDAD sigue conquistando corazones. GRACIAS POR HACERLO POSIBLE AHORA A POR LAS 60.000 YOFER LÁGRIMAS DE MI SOLEDAD Youtube Spotify itunes",
+          "n_chars": 202,
+          "runs": [
+            {
+              "categoria_top1": "Viajes",
+              "confianza_top1": 0.430119,
+              "final_app": "Otros",
+              "top3": [
+                [
+                  "Viajes",
+                  0.430119
+                ],
+                [
+                  "Entretenimiento",
+                  0.340032
+                ],
+                [
+                  "Tecnología y celulares",
+                  0.055132
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            },
+            {
+              "categoria_top1": "Viajes",
+              "confianza_top1": 0.430119,
+              "final_app": "Otros",
+              "top3": [
+                [
+                  "Viajes",
+                  0.430119
+                ],
+                [
+                  "Entretenimiento",
+                  0.340032
+                ],
+                [
+                  "Tecnología y celulares",
+                  0.055132
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            }
+          ],
+          "determinista_intra": true
+        }
+      }
+    },
+    "tec": {
+      "reel_id": "1395074825861831",
+      "esperado": "Tecnología y celulares",
+      "og_title_crudo": "4.7K views · 990 reactions | 📱 La empresa StepFun presentó el STEPX Neo, el primer smartphone creado desde cero para trabajar con inteligencia artificial basada en agentes, acompañado de un nuevo sistema operativo y un asistente inteligente. 🤖 | TEC",
+      "variantes": {
+        "a_crudo": {
+          "texto": "4.7K views · 990 reactions | 📱 La empresa StepFun presentó el STEPX Neo, el primer smartphone creado desde cero para trabajar con inteligencia artificial basada en agentes, acompañado de un nuevo sistema operativo y un asistente inteligente. 🤖 | TEC",
+          "n_chars": 249,
+          "runs": [
+            {
+              "categoria_top1": "Tecnología y celulares",
+              "confianza_top1": 0.983623,
+              "final_app": "Tecnología y celulares",
+              "top3": [
+                [
+                  "Tecnología y celulares",
+                  0.983623
+                ],
+                [
+                  "Entretenimiento",
+                  0.005386
+                ],
+                [
+                  "Juegos",
+                  0.002548
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            },
+            {
+              "categoria_top1": "Tecnología y celulares",
+              "confianza_top1": 0.983623,
+              "final_app": "Tecnología y celulares",
+              "top3": [
+                [
+                  "Tecnología y celulares",
+                  0.983623
+                ],
+                [
+                  "Entretenimiento",
+                  0.005386
+                ],
+                [
+                  "Juegos",
+                  0.002548
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            }
+          ],
+          "determinista_intra": true
+        },
+        "b_sin_emojis": {
+          "texto": "4.7K views · 990 reactions | La empresa StepFun presentó el STEPX Neo, el primer smartphone creado desde cero para trabajar con inteligencia artificial basada en agentes, acompañado de un nuevo sistema operativo y un asistente inteligente. | TEC",
+          "n_chars": 245,
+          "runs": [
+            {
+              "categoria_top1": "Tecnología y celulares",
+              "confianza_top1": 0.9842,
+              "final_app": "Tecnología y celulares",
+              "top3": [
+                [
+                  "Tecnología y celulares",
+                  0.9842
+                ],
+                [
+                  "Entretenimiento",
+                  0.004434
+                ],
+                [
+                  "Videos de mecánica",
+                  0.002607
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            },
+            {
+              "categoria_top1": "Tecnología y celulares",
+              "confianza_top1": 0.9842,
+              "final_app": "Tecnología y celulares",
+              "top3": [
+                [
+                  "Tecnología y celulares",
+                  0.9842
+                ],
+                [
+                  "Entretenimiento",
+                  0.004434
+                ],
+                [
+                  "Videos de mecánica",
+                  0.002607
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            }
+          ],
+          "determinista_intra": true
+        },
+        "c_sin_hashtags": {
+          "texto": "4.7K views · 990 reactions | 📱 La empresa StepFun presentó el STEPX Neo, el primer smartphone creado desde cero para trabajar con inteligencia artificial basada en agentes, acompañado de un nuevo sistema operativo y un asistente inteligente. 🤖 | TEC",
+          "n_chars": 249,
+          "runs": [
+            {
+              "categoria_top1": "Tecnología y celulares",
+              "confianza_top1": 0.983623,
+              "final_app": "Tecnología y celulares",
+              "top3": [
+                [
+                  "Tecnología y celulares",
+                  0.983623
+                ],
+                [
+                  "Entretenimiento",
+                  0.005386
+                ],
+                [
+                  "Juegos",
+                  0.002548
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            },
+            {
+              "categoria_top1": "Tecnología y celulares",
+              "confianza_top1": 0.983623,
+              "final_app": "Tecnología y celulares",
+              "top3": [
+                [
+                  "Tecnología y celulares",
+                  0.983623
+                ],
+                [
+                  "Entretenimiento",
+                  0.005386
+                ],
+                [
+                  "Juegos",
+                  0.002548
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            }
+          ],
+          "determinista_intra": true
+        },
+        "d_sin_emojis_ni_hashtags": {
+          "texto": "4.7K views · 990 reactions | La empresa StepFun presentó el STEPX Neo, el primer smartphone creado desde cero para trabajar con inteligencia artificial basada en agentes, acompañado de un nuevo sistema operativo y un asistente inteligente. | TEC",
+          "n_chars": 245,
+          "runs": [
+            {
+              "categoria_top1": "Tecnología y celulares",
+              "confianza_top1": 0.9842,
+              "final_app": "Tecnología y celulares",
+              "top3": [
+                [
+                  "Tecnología y celulares",
+                  0.9842
+                ],
+                [
+                  "Entretenimiento",
+                  0.004434
+                ],
+                [
+                  "Videos de mecánica",
+                  0.002607
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            },
+            {
+              "categoria_top1": "Tecnología y celulares",
+              "confianza_top1": 0.9842,
+              "final_app": "Tecnología y celulares",
+              "top3": [
+                [
+                  "Tecnología y celulares",
+                  0.9842
+                ],
+                [
+                  "Entretenimiento",
+                  0.004434
+                ],
+                [
+                  "Videos de mecánica",
+                  0.002607
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            }
+          ],
+          "determinista_intra": true
+        },
+        "e_d_sin_estructura": {
+          "texto": "La empresa StepFun presentó el STEPX Neo, el primer smartphone creado desde cero para trabajar con inteligencia artificial basada en agentes, acompañado de un nuevo sistema operativo y un asistente inteligente.",
+          "n_chars": 210,
+          "runs": [
+            {
+              "categoria_top1": "Tecnología y celulares",
+              "confianza_top1": 0.986458,
+              "final_app": "Tecnología y celulares",
+              "top3": [
+                [
+                  "Tecnología y celulares",
+                  0.986458
+                ],
+                [
+                  "Videos de mecánica",
+                  0.003601
+                ],
+                [
+                  "Juegos",
+                  0.001889
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            },
+            {
+              "categoria_top1": "Tecnología y celulares",
+              "confianza_top1": 0.986458,
+              "final_app": "Tecnología y celulares",
+              "top3": [
+                [
+                  "Tecnología y celulares",
+                  0.986458
+                ],
+                [
+                  "Videos de mecánica",
+                  0.003601
+                ],
+                [
+                  "Juegos",
+                  0.001889
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            }
+          ],
+          "determinista_intra": true
+        },
+        "f_a_sin_estructura": {
+          "texto": "📱 La empresa StepFun presentó el STEPX Neo, el primer smartphone creado desde cero para trabajar con inteligencia artificial basada en agentes, acompañado de un nuevo sistema operativo y un asistente inteligente. 🤖",
+          "n_chars": 214,
+          "runs": [
+            {
+              "categoria_top1": "Tecnología y celulares",
+              "confianza_top1": 0.988933,
+              "final_app": "Tecnología y celulares",
+              "top3": [
+                [
+                  "Tecnología y celulares",
+                  0.988933
+                ],
+                [
+                  "Videos de mecánica",
+                  0.002598
+                ],
+                [
+                  "Juegos",
+                  0.001796
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            },
+            {
+              "categoria_top1": "Tecnología y celulares",
+              "confianza_top1": 0.988933,
+              "final_app": "Tecnología y celulares",
+              "top3": [
+                [
+                  "Tecnología y celulares",
+                  0.988933
+                ],
+                [
+                  "Videos de mecánica",
+                  0.002598
+                ],
+                [
+                  "Juegos",
+                  0.001796
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            }
+          ],
+          "determinista_intra": true
+        },
+        "g_a_sin_sufijo": {
+          "texto": "4.7K views · 990 reactions | 📱 La empresa StepFun presentó el STEPX Neo, el primer smartphone creado desde cero para trabajar con inteligencia artificial basada en agentes, acompañado de un nuevo sistema operativo y un asistente inteligente. 🤖",
+          "n_chars": 243,
+          "runs": [
+            {
+              "categoria_top1": "Tecnología y celulares",
+              "confianza_top1": 0.983623,
+              "final_app": "Tecnología y celulares",
+              "top3": [
+                [
+                  "Tecnología y celulares",
+                  0.983623
+                ],
+                [
+                  "Entretenimiento",
+                  0.005386
+                ],
+                [
+                  "Juegos",
+                  0.002548
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            },
+            {
+              "categoria_top1": "Tecnología y celulares",
+              "confianza_top1": 0.983623,
+              "final_app": "Tecnología y celulares",
+              "top3": [
+                [
+                  "Tecnología y celulares",
+                  0.983623
+                ],
+                [
+                  "Entretenimiento",
+                  0.005386
+                ],
+                [
+                  "Juegos",
+                  0.002548
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            }
+          ],
+          "determinista_intra": true
+        },
+        "i_limpieza_estilo_D": {
+          "texto": "La empresa StepFun presentó el STEPX Neo, el primer smartphone creado desde cero para trabajar con inteligencia artificial basada en agentes, acompañado de un nuevo sistema operativo y un asistente inteligente.",
+          "n_chars": 210,
+          "runs": [
+            {
+              "categoria_top1": "Tecnología y celulares",
+              "confianza_top1": 0.986458,
+              "final_app": "Tecnología y celulares",
+              "top3": [
+                [
+                  "Tecnología y celulares",
+                  0.986458
+                ],
+                [
+                  "Videos de mecánica",
+                  0.003601
+                ],
+                [
+                  "Juegos",
+                  0.001889
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            },
+            {
+              "categoria_top1": "Tecnología y celulares",
+              "confianza_top1": 0.986458,
+              "final_app": "Tecnología y celulares",
+              "top3": [
+                [
+                  "Tecnología y celulares",
+                  0.986458
+                ],
+                [
+                  "Videos de mecánica",
+                  0.003601
+                ],
+                [
+                  "Juegos",
+                  0.001889
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            }
+          ],
+          "determinista_intra": true
+        },
+        "j_sin_emojis_sin_estructura": {
+          "texto": "La empresa StepFun presentó el STEPX Neo, el primer smartphone creado desde cero para trabajar con inteligencia artificial basada en agentes, acompañado de un nuevo sistema operativo y un asistente inteligente.",
+          "n_chars": 210,
+          "runs": [
+            {
+              "categoria_top1": "Tecnología y celulares",
+              "confianza_top1": 0.986458,
+              "final_app": "Tecnología y celulares",
+              "top3": [
+                [
+                  "Tecnología y celulares",
+                  0.986458
+                ],
+                [
+                  "Videos de mecánica",
+                  0.003601
+                ],
+                [
+                  "Juegos",
+                  0.001889
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            },
+            {
+              "categoria_top1": "Tecnología y celulares",
+              "confianza_top1": 0.986458,
+              "final_app": "Tecnología y celulares",
+              "top3": [
+                [
+                  "Tecnología y celulares",
+                  0.986458
+                ],
+                [
+                  "Videos de mecánica",
+                  0.003601
+                ],
+                [
+                  "Juegos",
+                  0.001889
+                ]
+              ],
+              "tokens": 64,
+              "truncado_64": true
+            }
+          ],
+          "determinista_intra": true
+        }
+      }
+    },
+    "freefire": {
+      "reel_id": "914666554561073",
+      "esperado": "Juegos",
+      "og_title_crudo": "173K views · 13K reactions | A ustedes le ha pasado lo mismo, Confirmen 😂🤣 #freefire #freefirelatam #freefireedit #garenafreefire #reels #viral #humor | El ingeniero FF",
+      "variantes": {
+        "a_crudo": {
+          "texto": "173K views · 13K reactions | A ustedes le ha pasado lo mismo, Confirmen 😂🤣 #freefire #freefirelatam #freefireedit #garenafreefire #reels #viral #humor | El ingeniero FF",
+          "n_chars": 168,
+          "runs": [
+            {
+              "categoria_top1": "Juegos",
+              "confianza_top1": 0.467759,
+              "final_app": "Otros",
+              "top3": [
+                [
+                  "Juegos",
+                  0.467759
+                ],
+                [
+                  "Entretenimiento",
+                  0.270051
+                ],
+                [
+                  "Tecnología y celulares",
+                  0.183779
+                ]
+              ],
+              "tokens": 57,
+              "truncado_64": false
+            },
+            {
+              "categoria_top1": "Juegos",
+              "confianza_top1": 0.467759,
+              "final_app": "Otros",
+              "top3": [
+                [
+                  "Juegos",
+                  0.467759
+                ],
+                [
+                  "Entretenimiento",
+                  0.270051
+                ],
+                [
+                  "Tecnología y celulares",
+                  0.183779
+                ]
+              ],
+              "tokens": 57,
+              "truncado_64": false
+            }
+          ],
+          "determinista_intra": true
+        },
+        "b_sin_emojis": {
+          "texto": "173K views · 13K reactions | A ustedes le ha pasado lo mismo, Confirmen #freefire #freefirelatam #freefireedit #garenafreefire #reels #viral #humor | El ingeniero FF",
+          "n_chars": 165,
+          "runs": [
+            {
+              "categoria_top1": "Juegos",
+              "confianza_top1": 0.50714,
+              "final_app": "Juegos",
+              "top3": [
+                [
+                  "Juegos",
+                  0.50714
+                ],
+                [
+                  "Entretenimiento",
+                  0.269118
+                ],
+                [
+                  "Tecnología y celulares",
+                  0.147583
+                ]
+              ],
+              "tokens": 56,
+              "truncado_64": false
+            },
+            {
+              "categoria_top1": "Juegos",
+              "confianza_top1": 0.50714,
+              "final_app": "Juegos",
+              "top3": [
+                [
+                  "Juegos",
+                  0.50714
+                ],
+                [
+                  "Entretenimiento",
+                  0.269118
+                ],
+                [
+                  "Tecnología y celulares",
+                  0.147583
+                ]
+              ],
+              "tokens": 56,
+              "truncado_64": false
+            }
+          ],
+          "determinista_intra": true
+        },
+        "c_sin_hashtags": {
+          "texto": "173K views · 13K reactions | A ustedes le ha pasado lo mismo, Confirmen 😂🤣 | El ingeniero FF",
+          "n_chars": 92,
+          "runs": [
+            {
+              "categoria_top1": "Entretenimiento",
+              "confianza_top1": 0.7884,
+              "final_app": "Entretenimiento",
+              "top3": [
+                [
+                  "Entretenimiento",
+                  0.7884
+                ],
+                [
+                  "Juegos",
+                  0.060785
+                ],
+                [
+                  "Noticias",
+                  0.057314
+                ]
+              ],
+              "tokens": 31,
+              "truncado_64": false
+            },
+            {
+              "categoria_top1": "Entretenimiento",
+              "confianza_top1": 0.7884,
+              "final_app": "Entretenimiento",
+              "top3": [
+                [
+                  "Entretenimiento",
+                  0.7884
+                ],
+                [
+                  "Juegos",
+                  0.060785
+                ],
+                [
+                  "Noticias",
+                  0.057314
+                ]
+              ],
+              "tokens": 31,
+              "truncado_64": false
+            }
+          ],
+          "determinista_intra": true
+        },
+        "d_sin_emojis_ni_hashtags": {
+          "texto": "173K views · 13K reactions | A ustedes le ha pasado lo mismo, Confirmen | El ingeniero FF",
+          "n_chars": 89,
+          "runs": [
+            {
+              "categoria_top1": "Entretenimiento",
+              "confianza_top1": 0.840417,
+              "final_app": "Entretenimiento",
+              "top3": [
+                [
+                  "Entretenimiento",
+                  0.840417
+                ],
+                [
+                  "Juegos",
+                  0.048826
+                ],
+                [
+                  "Noticias",
+                  0.040714
+                ]
+              ],
+              "tokens": 30,
+              "truncado_64": false
+            },
+            {
+              "categoria_top1": "Entretenimiento",
+              "confianza_top1": 0.840417,
+              "final_app": "Entretenimiento",
+              "top3": [
+                [
+                  "Entretenimiento",
+                  0.840417
+                ],
+                [
+                  "Juegos",
+                  0.048826
+                ],
+                [
+                  "Noticias",
+                  0.040714
+                ]
+              ],
+              "tokens": 30,
+              "truncado_64": false
+            }
+          ],
+          "determinista_intra": true
+        },
+        "e_d_sin_estructura": {
+          "texto": "A ustedes le ha pasado lo mismo, Confirmen",
+          "n_chars": 42,
+          "runs": [
+            {
+              "categoria_top1": "Entretenimiento",
+              "confianza_top1": 0.647067,
+              "final_app": "Entretenimiento",
+              "top3": [
+                [
+                  "Entretenimiento",
+                  0.647067
+                ],
+                [
+                  "Cocina",
+                  0.061094
+                ],
+                [
+                  "Moda y ropa",
+                  0.05583
+                ]
+              ],
+              "tokens": 16,
+              "truncado_64": false
+            },
+            {
+              "categoria_top1": "Entretenimiento",
+              "confianza_top1": 0.647067,
+              "final_app": "Entretenimiento",
+              "top3": [
+                [
+                  "Entretenimiento",
+                  0.647067
+                ],
+                [
+                  "Cocina",
+                  0.061094
+                ],
+                [
+                  "Moda y ropa",
+                  0.05583
+                ]
+              ],
+              "tokens": 16,
+              "truncado_64": false
+            }
+          ],
+          "determinista_intra": true
+        },
+        "f_a_sin_estructura": {
+          "texto": "A ustedes le ha pasado lo mismo, Confirmen 😂🤣 #freefire #freefirelatam #freefireedit #garenafreefire #reels #viral #humor",
+          "n_chars": 121,
+          "runs": [
+            {
+              "categoria_top1": "Juegos",
+              "confianza_top1": 0.558263,
+              "final_app": "Juegos",
+              "top3": [
+                [
+                  "Juegos",
+                  0.558263
+                ],
+                [
+                  "Tecnología y celulares",
+                  0.276728
+                ],
+                [
+                  "Entretenimiento",
+                  0.08579
+                ]
+              ],
+              "tokens": 43,
+              "truncado_64": false
+            },
+            {
+              "categoria_top1": "Juegos",
+              "confianza_top1": 0.558263,
+              "final_app": "Juegos",
+              "top3": [
+                [
+                  "Juegos",
+                  0.558263
+                ],
+                [
+                  "Tecnología y celulares",
+                  0.276728
+                ],
+                [
+                  "Entretenimiento",
+                  0.08579
+                ]
+              ],
+              "tokens": 43,
+              "truncado_64": false
+            }
+          ],
+          "determinista_intra": true
+        },
+        "g_a_sin_sufijo": {
+          "texto": "173K views · 13K reactions | A ustedes le ha pasado lo mismo, Confirmen 😂🤣 #freefire #freefirelatam #freefireedit #garenafreefire #reels #viral #humor",
+          "n_chars": 150,
+          "runs": [
+            {
+              "categoria_top1": "Juegos",
+              "confianza_top1": 0.479464,
+              "final_app": "Otros",
+              "top3": [
+                [
+                  "Juegos",
+                  0.479464
+                ],
+                [
+                  "Tecnología y celulares",
+                  0.242619
+                ],
+                [
+                  "Entretenimiento",
+                  0.203414
+                ]
+              ],
+              "tokens": 51,
+              "truncado_64": false
+            },
+            {
+              "categoria_top1": "Juegos",
+              "confianza_top1": 0.479464,
+              "final_app": "Otros",
+              "top3": [
+                [
+                  "Juegos",
+                  0.479464
+                ],
+                [
+                  "Tecnología y celulares",
+                  0.242619
+                ],
+                [
+                  "Entretenimiento",
+                  0.203414
+                ]
+              ],
+              "tokens": 51,
+              "truncado_64": false
+            }
+          ],
+          "determinista_intra": true
+        },
+        "i_limpieza_estilo_D": {
+          "texto": "A ustedes le ha pasado lo mismo, Confirmen freefire freefirelatam freefireedit garenafreefire reels viral humor",
+          "n_chars": 111,
+          "runs": [
+            {
+              "categoria_top1": "Juegos",
+              "confianza_top1": 0.669528,
+              "final_app": "Juegos",
+              "top3": [
+                [
+                  "Juegos",
+                  0.669528
+                ],
+                [
+                  "Tecnología y celulares",
+                  0.244364
+                ],
+                [
+                  "Entretenimiento",
+                  0.044107
+                ]
+              ],
+              "tokens": 35,
+              "truncado_64": false
+            },
+            {
+              "categoria_top1": "Juegos",
+              "confianza_top1": 0.669528,
+              "final_app": "Juegos",
+              "top3": [
+                [
+                  "Juegos",
+                  0.669528
+                ],
+                [
+                  "Tecnología y celulares",
+                  0.244364
+                ],
+                [
+                  "Entretenimiento",
+                  0.044107
+                ]
+              ],
+              "tokens": 35,
+              "truncado_64": false
+            }
+          ],
+          "determinista_intra": true
+        },
+        "j_sin_emojis_sin_estructura": {
+          "texto": "A ustedes le ha pasado lo mismo, Confirmen #freefire #freefirelatam #freefireedit #garenafreefire #reels #viral #humor",
+          "n_chars": 118,
+          "runs": [
+            {
+              "categoria_top1": "Juegos",
+              "confianza_top1": 0.54091,
+              "final_app": "Juegos",
+              "top3": [
+                [
+                  "Juegos",
+                  0.54091
+                ],
+                [
+                  "Tecnología y celulares",
+                  0.309631
+                ],
+                [
+                  "Entretenimiento",
+                  0.074047
+                ]
+              ],
+              "tokens": 42,
+              "truncado_64": false
+            },
+            {
+              "categoria_top1": "Juegos",
+              "confianza_top1": 0.54091,
+              "final_app": "Juegos",
+              "top3": [
+                [
+                  "Juegos",
+                  0.54091
+                ],
+                [
+                  "Tecnología y celulares",
+                  0.309631
+                ],
+                [
+                  "Entretenimiento",
+                  0.074047
+                ]
+              ],
+              "tokens": 42,
+              "truncado_64": false
+            }
+          ],
+          "determinista_intra": true
+        }
+      }
+    }
+  }
+}

@@ -519,8 +519,10 @@ class RepositorioEnlaces(
     /**
      * Clasificación por visión + OCR (Fix 5): si el enlace está en
      * "Otros" y su categoría no es manual, analiza el cuadro
-     * capturado (etiquetas de lo que se ve + OCR del texto quemado)
-     * y, si hay señal, lo mueve a la categoría detectada.
+     * capturado (OCR del texto quemado en el vídeo) y, si hay señal,
+     * lo mueve a la categoría detectada. Las etiquetas de imagen se
+     * quitaron (ola 2: ML Kit 0/3 vídeos); el OCR es el único
+     * respaldo visual, y solo con confianza >= 0,85.
      *
      * El texto del OCR se guarda como descripción cuando está vacía:
      * así la clasificación es estable (una reclasificación posterior

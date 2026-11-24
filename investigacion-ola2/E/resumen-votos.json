@@ -1,0 +1,38 @@
+{
+  "yofer|EN": {
+    "por_cuadro": 0,
+    "mayoria": "Contenido XXX",
+    "prob_media": "Contenido XXX",
+    "og": "Entretenimiento"
+  },
+  "yofer|ES": {
+    "por_cuadro": 0,
+    "mayoria": "Juegos",
+    "prob_media": "Dinero y finanzas",
+    "og": "Entretenimiento"
+  },
+  "tec-ai|EN": {
+    "por_cuadro": 0,
+    "mayoria": "Juegos",
+    "prob_media": "Juegos",
+    "og": "Hazlo tú mismo (DIY)"
+  },
+  "tec-ai|ES": {
+    "por_cuadro": 2,
+    "mayoria": "Tecnología y celulares",
+    "prob_media": "Tecnología y celulares",
+    "og": "Tecnología y celulares"
+  },
+  "game-freefire|EN": {
+    "por_cuadro": 4,
+    "mayoria": "Juegos",
+    "prob_media": "Juegos",
+    "og": "Contenido XXX"
+  },
+  "game-freefire|ES": {
+    "por_cuadro": 3,
+    "mayoria": "Juegos",
+    "prob_media": "Juegos",
+    "og": "Autos y motos"
+  }
+}

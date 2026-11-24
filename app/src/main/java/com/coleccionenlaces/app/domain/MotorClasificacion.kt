@@ -73,6 +73,16 @@ object MotorPalabrasClave : MotorClasificacion {
  * La URL no alimenta al modelo (solo título + descripción, como en el
  * entrenamiento); se recibe por la interfaz y se ignora.
  *
+ * La entrada se limpia ANTES de decidir (ola 2, hilo I): el texto se
+ * pasa por [limpiarTextoParaClasificar] (estilo D: sin emojis,
+ * `#palabra` → `palabra`, sin URLs, sin prefijo de views ni sufijo de
+ * autor) y el título y la descripción se unen con
+ * [construirTextoClasificacion] (la descripción redundante no se
+ * añade: duplicar el texto cambia la predicción — Free Fire, título
+ * solo → Juegos 0,670; título + descripción duplicada → Otros 0,453,
+ * medido con el .tflite real). El título guardado no cambia: la
+ * limpieza es solo para clasificar.
+ *
  * @param modelo el DistilBERT INT8 (null si no cargó: se salta).
  * @param cabeza la cabeza aprendida (pesos de Room, en memoria).
  * @param etiquetas las 16 categorías en el orden del modelo y la cabeza.
@@ -88,7 +98,7 @@ class ClasificadorInteligente(
 ) : MotorClasificacion {
 
     override fun clasificar(titulo: String, descripcion: String, url: String): String =
-        clasificarTextoConConfianza("$titulo $descripcion".trim())?.first
+        clasificarLimpio(construirTextoClasificacion(titulo, descripcion))?.first
             ?: Clasificador.OTROS
 
     /**
@@ -98,8 +108,18 @@ class ClasificadorInteligente(
      * pero devolviendo la confianza: el clasificador por visión la
      * necesita para exigirle más al texto del OCR que al título.
      */
-    override fun clasificarTextoConConfianza(texto: String): Pair<String, Float>? {
-        val limpio = texto.trim()
+    override fun clasificarTextoConConfianza(texto: String): Pair<String, Float>? =
+        clasificarLimpio(limpiarTextoParaClasificar(texto))
+
+    /**
+     * Decisión sobre un texto YA limpio (estilo D). Es el único punto
+     * que decide: [clasificar] y [clasificarTextoConConfianza] solo
+     * preparan la entrada y llaman aquí, así que la limpieza se hace
+     * exactamente una vez (no es idempotente: el sufijo `| Autor` se
+     * comería un segmento `|` más en cada pasada).
+     */
+    private fun clasificarLimpio(textoLimpio: String): Pair<String, Float>? {
+        val limpio = textoLimpio.trim()
         if (limpio.isBlank()) return null
         // Fix 4, bug 2: el texto es SOLO un dominio ("facebook.com").
         // Facebook no dio título y el modelo nunca vio dominios

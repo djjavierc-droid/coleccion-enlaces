@@ -1,0 +1,146 @@
+{
+  "k1_h_mas_exclamaciones": {
+    "texto": "¡¡¡50.000 VISITAS!!! ¡¡¡LO HEMOS CONSEGUIDO!!! LÁGRIMAS DE MI SOLEDAD sigue conquistando corazones. GRACIAS POR HACERLO POSIBLE!!! AHORA A POR LAS 60.000!!! YOFER LÁGRIMAS DE MI SOLEDAD Youtube Spotify itunes",
+    "runs": [
+      {
+        "categoria_top1": "Viajes",
+        "confianza_top1": 0.375492,
+        "final_app": "Otros",
+        "top3": [
+          [
+            "Viajes",
+            0.375492
+          ],
+          [
+            "Entretenimiento",
+            0.340691
+          ],
+          [
+            "Dinero y finanzas",
+            0.101546
+          ]
+        ],
+        "tokens": 64,
+        "truncado_64": true
+      },
+      {
+        "categoria_top1": "Viajes",
+        "confianza_top1": 0.375492,
+        "final_app": "Otros",
+        "top3": [
+          [
+            "Viajes",
+            0.375492
+          ],
+          [
+            "Entretenimiento",
+            0.340691
+          ],
+          [
+            "Dinero y finanzas",
+            0.101546
+          ]
+        ],
+        "tokens": 64,
+        "truncado_64": true
+      }
+    ],
+    "determinista_intra": true
+  },
+  "k2_i_sin_exclamaciones": {
+    "texto": "¡¡¡50.000 VISITAS ¡¡¡LO HEMOS CONSEGUIDO LÁGRIMAS DE MI SOLEDAD sigue conquistando corazones. ¡¡¡GRACIAS POR HACERLO POSIBLE ¡¡¡AHORA A POR LAS 60.000 YOFER LÁGRIMAS DE MI SOLEDAD Yofer LágrimasDeMiSoledad 50k Youtube Spotify itunes",
+    "runs": [
+      {
+        "categoria_top1": "Entretenimiento",
+        "confianza_top1": 0.476684,
+        "final_app": "Otros",
+        "top3": [
+          [
+            "Entretenimiento",
+            0.476684
+          ],
+          [
+            "Tecnología y celulares",
+            0.111626
+          ],
+          [
+            "Jardín y plantas",
+            0.091353
+          ]
+        ],
+        "tokens": 64,
+        "truncado_64": true
+      },
+      {
+        "categoria_top1": "Entretenimiento",
+        "confianza_top1": 0.476684,
+        "final_app": "Otros",
+        "top3": [
+          [
+            "Entretenimiento",
+            0.476684
+          ],
+          [
+            "Tecnología y celulares",
+            0.111626
+          ],
+          [
+            "Jardín y plantas",
+            0.091353
+          ]
+        ],
+        "tokens": 64,
+        "truncado_64": true
+      }
+    ],
+    "determinista_intra": true
+  },
+  "k3_i_sin_palabras_hashtag_yofer": {
+    "texto": "¡¡¡50.000 VISITAS!!! ¡¡¡LO HEMOS CONSEGUIDO!!! LÁGRIMAS DE MI SOLEDAD sigue conquistando corazones. ¡¡¡GRACIAS POR HACERLO POSIBLE!!! ¡¡¡AHORA A POR LAS 60.000!!! YOFER LÁGRIMAS DE MI SOLEDAD Youtube Spotify itunes",
+    "runs": [
+      {
+        "categoria_top1": "Entretenimiento",
+        "confianza_top1": 0.643197,
+        "final_app": "Entretenimiento",
+        "top3": [
+          [
+            "Entretenimiento",
+            0.643197
+          ],
+          [
+            "Noticias",
+            0.115942
+          ],
+          [
+            "Viajes",
+            0.084611
+          ]
+        ],
+        "tokens": 64,
+        "truncado_64": true
+      },
+      {
+        "categoria_top1": "Entretenimiento",
+        "confianza_top1": 0.643197,
+        "final_app": "Entretenimiento",
+        "top3": [
+          [
+            "Entretenimiento",
+            0.643197
+          ],
+          [
+            "Noticias",
+            0.115942
+          ],
+          [
+            "Viajes",
+            0.084611
+          ]
+        ],
+        "tokens": 64,
+        "truncado_64": true
+      }
+    ],
+    "determinista_intra": true
+  }
+}

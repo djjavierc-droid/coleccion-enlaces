@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Page Not Found - Unshorten.It!</title>
+    
+    <link rel="stylesheet" href="/static/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="/static/css/application.css"/>
+    
+
+    <script type="text/javascript" src="/static/js/jquery-2.0.3.min.js"></script>
+    <script type="text/javascript" src="/static/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="/static/js/application.js"></script>
+
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5811274377807453" crossorigin="anonymous"></script>
+
+    
+
+    
+</head>
+<body>
+    <!-- Google Tag Manager -->
+    <noscript><iframe src="//www.googletagmanager.com/ns.html?id=GTM-N4SMRZ"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    '//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','GTM-N4SMRZ');</script>
+    <!-- End Google Tag Manager -->
+    
+        <nav class="navbar navbar-default" role="navigation">
+            <div class="collapse navbar-collapse">
+                <ul class="nav navbar-nav">
+                    <li ><a href="/">Home</a></li>
+                    <li ><a href="/browser-extensions">Browser Extensions</a></li>
+                    <li ><a href="/explaining-unshorten-it">Explaining Unshorten.It!</a></li>
+                    <li ><a href="/contact">Contact Us</a></li>
+                </ul>
+            </div>
+        </nav>
+    
+
+    <div id="container" class="container">
+        
+    <h2>Error 404 - Page Could Not be Found</h2>
+
+    <p>
+        Uh oh!  The page you are looking for does not seem to exist, if you think this is our fault, please <a href="/contact">Contact Us!</a>.
+    </p>
+
+
+        
+        
+
+        <footer class="footer" style="text-align: left; padding-top: 20px;">
+            <p>Copyright © 2026 <a href="/">Unshorten.It!</a>. All Rights Reserved</p>
+            <p>Built with <a href="https://www.python.org/" target="_blank">Python</a> and <a href="https://www.djangoproject.com" target="_blank">Django</a>.</p>
+		    <p><small><a href="/terms-of-service">Terms of Service</a> | <a href="/privacy-policy">Privacy Policy</a> | <a href="/api/documentation">Legacy API Documentation</a></small></p>
+        </footer>
+    </div>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a5f4205c0b00a709',t:'MTc5NTQ3ODM1Mw=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a5f4205c0b00a709',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

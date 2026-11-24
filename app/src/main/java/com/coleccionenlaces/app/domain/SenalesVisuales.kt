@@ -3,23 +3,25 @@ package com.coleccionenlaces.app.domain
 import android.graphics.Bitmap
 
 /**
- * Señales visuales de un cuadro de vídeo (Fix 5): lo que se ve en
- * la miniatura/poster que la app ya captura, para clasificar enlaces
- * que no traen título ni descripción (solo el dominio).
+ * Señales visuales de un cuadro de vídeo (Fix 5): el texto quemado
+ * en la miniatura/poster que la app ya captura, para clasificar
+ * enlaces que no traen título ni descripción (solo el dominio).
  *
- * Las señales se sacan EN EL TELÉFONO, sin servidor y sin pagar
- * (ML Kit en el dispositivo): etiquetas de lo que se ve en la
- * imagen + el texto quemado en el vídeo (OCR). El texto del OCR
- * alimenta al clasificador DistilBERT que ya existe; las etiquetas
- * se mapean a mano a las 16 categorías ([MapeoEtiquetas]).
+ * La señal se saca EN EL TELÉFONO, sin servidor y sin pagar
+ * (ML Kit Text Recognition v2 en el dispositivo). El texto del OCR
+ * alimenta al clasificador DistilBERT que ya existe, con el umbral
+ * alto de [ClasificadorVision] (respaldo débil, nunca señal
+ * principal: la principal es el og:title limpio con estilo D).
  *
- * @param etiquetas lo que ML Kit ve en la imagen (texto en inglés,
- *   confianza 0..1).
+ * Las etiquetas de imagen se QUITARON (ola 2, hilo E): MobileNet,
+ * equivalente a ML Kit Image Labeling, midió 0/3 vídeos, y CLIP en
+ * español 2/3 con un falso positivo de Contenido XXX a 0,62. No hay
+ * voto de etiquetas en el build.
+ *
  * @param textoOcr texto quemado en el vídeo (OCR), o "" si no hay
  *   texto legible.
  */
 data class SenalesVisuales(
-    val etiquetas: List<EtiquetaImagen>,
     val textoOcr: String,
 ) {
     /**
@@ -33,12 +35,6 @@ data class SenalesVisuales(
     val esPantallaError: Boolean
         get() = detectarVideoNoDisponible(textoOcr)
 }
-
-/** Una etiqueta de imagen: texto y confianza (0..1). */
-data class EtiquetaImagen(
-    val texto: String,
-    val confianza: Float,
-)
 
 /**
  * Analiza un cuadro de vídeo y devuelve sus señales visuales, o

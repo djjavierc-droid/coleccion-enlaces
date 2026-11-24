@@ -2,26 +2,20 @@ package com.coleccionenlaces.app.domain
 
 /**
  * Clasificación por visión + OCR (Fix 5): decide la categoría de un
- * enlace a partir de las señales visuales de su cuadro de vídeo.
+ * enlace a partir del texto quemado en su cuadro de vídeo (OCR).
  *
  * La señal principal de clasificación es el og:title COMPLETO en
- * una sola entrada (el título del vídeo, que el repositorio guarda
- * entero y clasifica como "título descripción" sin fragmentarlo —
- * investigación de 1 hora, hilo B: párrafos sueltos del mismo
- * título dan Viajes 0,920 / Dinero 0,589 / Tecnología 0,927 según
- * el fragmento). El OCR es solo un respaldo DÉBIL (hilo D: 0/30
- * cuadros, 0/3 vídeos; la basura OCR da confianza ALTA y equivocada:
- * 12/30 cuadros > 0,5 con categoría errónea). Por eso aquí el OCR
- * solo decide cuando el modelo está muy seguro ([UMBRAL_OCR]); si
- * no llega, se sigue con las etiquetas de imagen.
- *
- * Orden de señales (de más a menos fiable):
- * 1. **Texto del OCR** → el mismo motor de texto que ya existe
- *    (DistilBERT → cabeza aprendida → "Otros"), pero con el umbral
- *    alto [UMBRAL_OCR]: es un respaldo débil, nunca la señal
- *    principal.
- * 2. **Etiquetas de imagen** → voto por [MapeoEtiquetas]. Solo
- *    decide si el OCR no dio nada con suficiente confianza.
+ * una sola entrada, limpio con estilo D (ver
+ * [limpiarTextoParaClasificar]: 3/3 medido con el .tflite real en la
+ * ola 2, hilo I). El OCR es solo un respaldo DÉBIL y el ÚLTIMO: la
+ * ola 2 midió que las etiquetas de visión NO sirven como clasificador
+ * (MobileNet, equivalente a ML Kit Image Labeling: 0/3 vídeos; CLIP
+ * en español 2/3 pero con un falso positivo de Contenido XXX a 0,62
+ * en un vídeo musical; hilo E) y que el OCR solo tampoco (0/30
+ * cuadros, 0/3 vídeos, hilo D de la ola 1). Por eso la clasificación
+ * por etiquetas se QUITÓ del build (ver `MapeoEtiquetas`, borrado):
+ * aquí solo queda el OCR, y solo decide cuando el modelo está muy
+ * seguro ([UMBRAL_OCR]); si no llega, "Otros".
  *
  * Reglas que se mantienen:
  * - La pantalla de error ("Video no disponible") NUNCA se clasifica
@@ -44,8 +38,7 @@ class ClasificadorVision(
 
     /**
      * Categoría de [senales], o [Clasificador.OTROS] si no hay señal
-     * suficiente. Nunca lanza: si el motor falla, se sigue con las
-     * etiquetas; si todo falla, "Otros".
+     * suficiente. Nunca lanza: si el motor falla, "Otros".
      */
     fun clasificarPorVision(senales: SenalesVisuales): String {
         if (senales.esPantallaError) return Clasificador.OTROS
@@ -60,13 +53,11 @@ class ClasificadorVision(
             // hora, hilo D): la basura OCR da confianza alta y
             // equivocada (12/30 cuadros > 0,5 con categoría errónea;
             // el peor, 0,847). Solo se confía en él cuando el modelo
-            // está muy seguro; si no llega al umbral alto, se sigue
-            // con las etiquetas en vez de devolver su categoría.
+            // está muy seguro; si no llega al umbral alto, "Otros".
             if (porTexto != null && porTexto.second >= UMBRAL_OCR) {
                 return porTexto.first
             }
         }
-        MapeoEtiquetas.votar(senales.etiquetas)?.let { return it }
         return Clasificador.OTROS
     }
 

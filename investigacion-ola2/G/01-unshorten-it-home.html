@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Unshorten that URL! - Unshorten.It!</title>
+    
+    <link rel="stylesheet" href="/static/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="/static/css/application.css"/>
+    
+
+    <script type="text/javascript" src="/static/js/jquery-2.0.3.min.js"></script>
+    <script type="text/javascript" src="/static/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="/static/js/application.js"></script>
+
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5811274377807453" crossorigin="anonymous"></script>
+
+    
+
+    
+</head>
+<body>
+    <!-- Google Tag Manager -->
+    <noscript><iframe src="//www.googletagmanager.com/ns.html?id=GTM-N4SMRZ"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    '//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','GTM-N4SMRZ');</script>
+    <!-- End Google Tag Manager -->
+    
+        <nav class="navbar navbar-default" role="navigation">
+            <div class="collapse navbar-collapse">
+                <ul class="nav navbar-nav">
+                    <li ><a href="/">Home</a></li>
+                    <li ><a href="/browser-extensions">Browser Extensions</a></li>
+                    <li ><a href="/explaining-unshorten-it">Explaining Unshorten.It!</a></li>
+                    <li ><a href="/contact">Contact Us</a></li>
+                </ul>
+            </div>
+        </nav>
+    
+
+    <div id="container" class="container">
+        
+    <h1 class="logo">Unshorten.It!</h1>
+
+    <form action="/no-js" method="POST" id="unshorten-form">
+        <div class="input-group col-md-8 col-md-offset-2">
+            <input type="text" class="form-control" name="short-url" id="short-url"
+                       placeholder="Please enter a URL to unshorten"/>
+            <span class="input-group-btn">
+                <input type="submit" class="btn btn-primary" value="Unshorten.It!" id="unshorten-button"/>
+            </span>
+        </div>
+        <div class="input-group col-md-offset-2">
+            <p><small>Not got a short URL to try? Here's one: <a id="test-link" href="http://bit.ly/GVBQJS">http://bit.ly/GVBQJS</a></small></p>
+        </div>
+        <input type='hidden' name='csrfmiddlewaretoken' value='CAbAXN4zspEkIgBSX6ThSFJvpkV3Uc6NKQw7nBhtPaB14bVWKNywLV7b6Hb1VugA' />
+    </form>
+
+    <div id="alert-container"></div>
+
+    <div id="results-container" class="clearfix">
+        <div id="results-left-column">
+            <div id="meta-title">
+                <h3 class="data">Title Loading...</h3>
+            </div>
+
+            <div id="destination-url">
+                <h4>Destination URL:</h4>
+                <p class="data">URL Loading...</p>
+            </div>
+
+            <div id="meta-description">
+                <h4>Description:</h4>
+                <div class="well data">Description Loading...</div>
+            </div>
+
+            <div id="wot-ratings">
+                <h4>Safety Ratings (Provided by <a href="https://www.mywot.com/" target="_blank">Web of Trust</a>):</h4>
+                <div class="data">
+                    <div class="alert alert-info" id="wot-loading">Web of Trust ratings loading...</div>
+                </div>
+            </div>
+
+            <div id="destination-link">
+                <a href="#" class="btn btn-primary"></a>
+            </div>
+        </div>
+
+        <div id="results-right-column">
+            <div id="screenshot">
+                <div class="data">
+                    <h4>Screenshot Loading, please wait...</h4>
+                    <div id="screenshot-spinner">
+                        <div id="floatingBarsG"><div class="blockG" id="rotateG_01"></div><div class="blockG" id="rotateG_02"></div><div class="blockG" id="rotateG_03"></div><div class="blockG" id="rotateG_04"></div><div class="blockG" id="rotateG_05"></div><div class="blockG" id="rotateG_06"></div><div class="blockG" id="rotateG_07"></div><div class="blockG" id="rotateG_08"></div></div>
+                    </div>
+                    <p>Screenshots for popular websites will load quicker than those of less popular sites.</p>
+                </div>
+            </div>
+
+            <div id="blacklists">
+                <h4>Blacklists:</h4>
+                <div class="data">
+                    <div class="alert alert-info">
+                        <p>Checking against blacklists...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+        
+        
+
+        <footer class="footer" style="text-align: left; padding-top: 20px;">
+            <p>Copyright © 2026 <a href="/">Unshorten.It!</a>. All Rights Reserved</p>
+            <p>Built with <a href="https://www.python.org/" target="_blank">Python</a> and <a href="https://www.djangoproject.com" target="_blank">Django</a>.</p>
+		    <p><small><a href="/terms-of-service">Terms of Service</a> | <a href="/privacy-policy">Privacy Policy</a> | <a href="/api/documentation">Legacy API Documentation</a></small></p>
+        </footer>
+    </div>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a5f430daf9c7ebe1',t:'MTc5NTQ3OTAyOA=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a5f430daf9c7ebe1',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

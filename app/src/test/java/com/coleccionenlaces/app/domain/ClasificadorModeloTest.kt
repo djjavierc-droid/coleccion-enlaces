@@ -29,7 +29,7 @@ import org.tensorflow.lite.TensorFlowLite
  * libc.so sin versión) y en Linux `libm.so` es un script de enlace
  * ("invalid ELF header") y `liblog.so` no existe. La carga directa
  * en una JVM Linux falla con UnsatisfiedLinkError aunque la .so esté
- * en java.library.path (probado con `java` directo). Por eso las 4
+ * en java.library.path (probado con `java` directo). Por eso las
  * pruebas que construyen el intérprete usan [modeloDisponible]: si
  * la carga nativa falla, la prueba se SALTA (JUnit Assume), no falla.
  * En un teléfono real (o emulador) la .so sí carga y las pruebas
@@ -200,6 +200,76 @@ class ClasificadorModeloTest {
     fun `un texto en blanco devuelve null`() {
         val modelo = modeloDisponible()
         assertEquals(null, modelo.clasificar("   "))
+        modelo.cerrar()
+    }
+
+    // ---- Señal principal: og:title limpio estilo D (ola 2, hilo I) ----
+
+    /**
+     * Motor completo (modelo + cabeza vacía) sobre el og:title CRUDO
+     * y la og:description CRUDA: la limpieza estilo D y la
+     * deduplicación de la descripción redundante las hace el motor.
+     * Free Fire es el caso que solo funciona limpio: crudo va a
+     * "Otros" (0,468) y título + descripción duplicada también
+     * (Otros 0,453); con la limpieza y sin duplicar, Juegos 0,670
+     * (medido con el .tflite real, /tmp/verificar-estilo-D.py).
+     */
+    @Test
+    fun `el og_title de Free Fire con su descripcion clasifica en Juegos por el motor`() {
+        val modelo = modeloDisponible()
+        val motor = ClasificadorInteligente(
+            modelo,
+            CabezaAprendizaje(modelo.etiquetas),
+            modelo.etiquetas,
+        )
+        val titulo = "173K views · 13K reactions | A ustedes le ha pasado " +
+            "lo mismo, Confirmen \uD83D\uDE02\uD83E\uDD23 #freefire " +
+            "#freefirelatam #freefireedit #garenafreefire #reels #viral " +
+            "#humor | El ingeniero FF"
+        val descripcion = "A ustedes le ha pasado lo mismo, Confirmen " +
+            "\uD83D\uDE02\uD83E\uDD23 #freefire #freefirelatam " +
+            "#freefireedit #garenafreefire #reels #viral #humor"
+        assertEquals(
+            "Juegos",
+            motor.clasificar(
+                titulo,
+                descripcion,
+                "https://www.facebook.com/reel/914666554561073/",
+            ),
+        )
+        modelo.cerrar()
+    }
+
+    @Test
+    fun `el og_title de Yofer con su descripcion clasifica en Entretenimiento por el motor`() {
+        val modelo = modeloDisponible()
+        val motor = ClasificadorInteligente(
+            modelo,
+            CabezaAprendizaje(modelo.etiquetas),
+            modelo.etiquetas,
+        )
+        val titulo = "\uD83E\uDD87\uD83D\uDD25 ¡¡¡50.000 VISITAS!!! " +
+            "\uD83D\uDDA4\uD83E\uDD40 \u2764\uFE0F\u200D\uD83D\uDD25 " +
+            "¡¡¡LO HEMOS CONSEGUIDO!!! «LÁGRIMAS DE MI SOLEDAD» sigue " +
+            "conquistando corazones. ¡¡¡GRACIAS POR HACERLO POSIBLE!!! " +
+            "\uD83D\uDE80\u267E\uFE0F ¡¡¡AHORA A POR LAS 60.000!!! " +
+            "\uD83C\uDFAC YOFER – LÁGRIMAS DE MI SOLEDAD " +
+            "\u25B6\uFE0F https://youtu.be/2SIT1qqNVEA #Yofer " +
+            "#LágrimasDeMiSoledad #50k #Youtube #Spotify #itunes | Yofer"
+        val descripcion = "\uD83E\uDD87\uD83D\uDD25 ¡¡¡50.000 VISITAS!!! " +
+            "\uD83D\uDDA4\uD83E\uDD40\n\n\u2764\uFE0F\u200D\uD83D\uDD25 " +
+            "¡¡¡LO HEMOS CONSEGUIDO!!! «LÁGRIMAS DE MI SOLEDAD» sigue " +
+            "conquistando corazones. ¡¡¡GRACIAS POR HACERLO POSIBLE!!!\n\n" +
+            "\uD83D\uDE80\u267E\uFE0F ¡¡¡AHORA A POR LAS 60.000!!!\n\n" +
+            "\uD83C\uDFAC YOFER –..."
+        assertEquals(
+            "Entretenimiento",
+            motor.clasificar(
+                titulo,
+                descripcion,
+                "https://www.facebook.com/reel/1168661422485798/",
+            ),
+        )
         modelo.cerrar()
     }
 }

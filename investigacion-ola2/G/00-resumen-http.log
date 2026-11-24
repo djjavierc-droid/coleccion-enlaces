@@ -1,0 +1,17 @@
+Entrada: https://www.facebook.com/share/r/1Bo58NQ
+Fecha: 2026-11-23 23:59 UTC
+
+01-unshorten-it | HTTP 404 | 3712 bytes | https://unshorten.it/api.php?url=https%3A%2F%2Fwww.facebook.com%2Fshare%2Fr%2F1Bo58NQ
+02-longurl | HTTP 000 | 0 bytes | https://api.longurl.org/v2/expand?url=https%3A%2F%2Fwww.facebook.com%2Fshare%2Fr%2F1Bo58NQ&format=json&title=1
+home HTTP 200
+<form  name="f1" action='JavaScript:xmlhttpPost("/ld.px")'>
+03-redirectdetective POST | HTTP 000 |  bytes
+home HTTP 301
+04-linkunshorten POST | HTTP 000 |  bytes
+05-allorigins | HTTP 200 | 75306 bytes | https://api.allorigins.win/get?url=https%3A%2F%2Fwww.facebook.com%2Fshare%2Fr%2F1Bo58NQ
+06-codetabs | HTTP 522 | 16 bytes | https://api.codetabs.com/v1/proxy?quest=https%3A%2F%2Fwww.facebook.com%2Fshare%2Fr%2F1Bo58NQ
+07-pagespeed | HTTP 429 | 1346 bytes | https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=https%3A%2F%2Fwww.facebook.com%2Fshare%2Fr%2F1Bo58NQ&screenshot=true
+08-sshot | HTTP 000 | 0 bytes | https://mini.s-shot.ru/1024x768/JPEG/1024/Z100/?https://www.facebook.com/share/r/1Bo58NQ
+09-urlmeta | HTTP 401 | 20 bytes | https://api.urlmeta.org/?url=https%3A%2F%2Fwww.facebook.com%2Fshare%2Fr%2F1Bo58NQ
+
+FIN
