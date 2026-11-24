@@ -7,6 +7,7 @@ import com.coleccionenlaces.app.domain.AnalizadorVisual
 import com.coleccionenlaces.app.domain.CabezaAprendizaje
 import com.coleccionenlaces.app.domain.ClasificadorVision
 import com.coleccionenlaces.app.domain.EtiquetaImagen
+import com.coleccionenlaces.app.domain.Clasificador
 import com.coleccionenlaces.app.domain.MotorClasificacion
 import com.coleccionenlaces.app.domain.MotorPalabrasClave
 import com.coleccionenlaces.app.domain.PosterResuelto
